@@ -1,0 +1,342 @@
+# Agent Configuration
+
+# Define specialist agents with their roles, tools, and knowledge sources
+
+agents:
+  researcher:
+    role: "Senior Research Analyst"
+    description: "Expert in academic literature review, market research, and data synthesis"
+    expertise:
+      - "Academic literature review"
+      - "Market research"
+      - "Data synthesis"
+      - "Source verification"
+    tools:
+      - "web_search"
+      - "search_academic_papers"
+      - "query_knowledge_base"
+    knowledge_sources:
+      - "academic_papers_db"
+      - "industry_reports"
+    prompt_template: |
+      You are a {role}.
+      
+      EXPERTISE:
+      {expertise}
+      
+      AVAILABLE TOOLS:
+      {tools}
+      
+      GUIDELINES:
+      - Be precise and thorough in your domain
+      - Cite sources when providing information
+      - Flag uncertainties clearly
+      - Build upon previous work in the conversation
+      
+      OUTPUT FORMAT:
+      1. Summary of what you're doing
+      2. Step-by-step execution
+      3. Results with evidence
+      4. Recommendations for next steps
+    
+    max_iterations: 5
+    temperature: 0.3
+
+  coder:
+    role: "Senior Software Engineer"
+    description: "Expert in clean code architecture, TDD, and performance optimization"
+    expertise:
+      - "Clean code architecture"
+      - "Test-driven development"
+      - "Performance optimization"
+      - "Security best practices"
+    tools:
+      - "execute_python_code"
+      - "validate_code_syntax"
+      - "generate_unit_tests"
+      - "search_code_repository"
+    knowledge_sources:
+      - "code_examples_db"
+      - "best_practices_docs"
+    prompt_template: |
+      You are a {role}.
+      
+      EXPERTISE:
+      {expertise}
+      
+      AVAILABLE TOOLS:
+      {tools}
+      
+      GUIDELINES:
+      - Write clean, maintainable code
+      - Include comprehensive tests
+      - Follow security best practices
+      - Document your code thoroughly
+    
+    max_iterations: 3
+    temperature: 0.2
+
+  reviewer:
+    role: "Senior Code Reviewer"
+    description: "Expert in code quality assessment, bug detection, and security"
+    expertise:
+      - "Code quality assessment"
+      - "Bug detection"
+      - "Security vulnerabilities"
+      - "Performance bottlenecks"
+      - "Best practices compliance"
+    tools:
+      - "analyze_sentiment"
+      - "validate_code_syntax"
+      - "extract_keyphrases"
+    knowledge_sources:
+      - "security_guidelines"
+      - "coding_standards"
+    prompt_template: |
+      You are a {role}.
+      
+      EXPERTISE:
+      {expertise}
+      
+      GUIDELINES:
+      - Be thorough but constructive
+      - Prioritize issues by severity
+      - Provide actionable suggestions
+      - Reference relevant standards
+    
+    max_iterations: 2
+    temperature: 0.1
+
+  general:
+    role: "AI Assistant"
+    description: "General-purpose assistant for tasks that don't require specialization"
+    expertise:
+      - "General knowledge"
+      - "Task coordination"
+      - "Information synthesis"
+    tools:
+      - "calculate"
+      - "format_data"
+      - "summarize_text"
+    knowledge_sources:
+      - "general_knowledge_base"
+    prompt_template: |
+      You are a helpful AI assistant.
+      Provide clear, accurate, and helpful responses.
+      If a task requires specialized knowledge, indicate that.
+    
+    max_iterations: 3
+    temperature: 0.5
+
+
+# Routing Configuration
+
+routing:
+  # Keyword-based routing rules (fallback to LLM classification)
+  keyword_rules:
+    research:
+      keywords: ["research", "search", "find", "study", "analyze", "literature", "papers"]
+      priority: 1
+    coding:
+      keywords: ["code", "implement", "build", "develop", "function", "script", "program"]
+      priority: 1
+    review:
+      keywords: ["review", "check", "validate", "test", "audit", "examine"]
+      priority: 1
+  
+  # LLM-based classification configuration
+  llm_classification:
+    enabled: true
+    model: "gpt-4"
+    confidence_threshold: 0.7
+    fallback_agent: "general"
+  
+  # Confidence-based routing
+  confidence_routing:
+    high_confidence_threshold: 0.8  # Route directly
+    medium_confidence_threshold: 0.5  # Route with monitoring
+    low_confidence_action: "escalate_to_general"  # Below threshold
+
+
+# Workflow Configuration
+
+workflows:
+  code_generation:
+    description: "Complete code generation with review cycle"
+    steps:
+      - node: "router"
+        next: "dynamic"
+      - node: "coder"
+        next: "reviewer"
+      - node: "reviewer"
+        conditional:
+          approved: "END"
+          rejected: "coder"  # Loop back for revision
+          max_revisions: 3
+  
+  research_synthesis:
+    description: "Research and synthesize findings"
+    steps:
+      - node: "router"
+        next: "dynamic"
+      - node: "researcher"
+        next: "general"
+      - node: "general"
+        next: "END"
+  
+  decision_support:
+    description: "Analyze options and make recommendations with human approval"
+    steps:
+      - node: "router"
+        next: "dynamic"
+      - node: "researcher"
+        next: "human_review"
+      - node: "human_review"
+        conditional:
+          approved: "general"
+          rejected: "researcher"
+          max_revisions: 2
+
+
+# Tool Registry
+
+tools:
+  web_search:
+    category: "search"
+    description: "Search the web for current information"
+    rate_limit: 10  # requests per minute
+    timeout: 30  # seconds
+  
+  search_academic_papers:
+    category: "search"
+    description: "Search academic papers and research publications"
+    rate_limit: 5
+    timeout: 60
+  
+  execute_python_code:
+    category: "code"
+    description: "Safely execute Python code in sandboxed environment"
+    rate_limit: 20
+    timeout: 30
+    security_level: "high"
+  
+  validate_code_syntax:
+    category: "code"
+    description: "Validate code syntax without execution"
+    rate_limit: 50
+    timeout: 10
+  
+  query_knowledge_base:
+    category: "knowledge"
+    description: "Query vector-based knowledge base"
+    rate_limit: 30
+    timeout: 15
+  
+  calculate:
+    category: "utility"
+    description: "Safely evaluate mathematical expressions"
+    rate_limit: 100
+    timeout: 5
+
+
+# Knowledge Base Configuration
+
+knowledge_bases:
+  academic_papers_db:
+    type: "vector"
+    provider: "chroma"
+    collection: "academic_papers"
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    metadata_filtering: true
+  
+  code_examples_db:
+    type: "vector"
+    provider: "chroma"
+    collection: "code_examples"
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    metadata_filtering: true
+    filters:
+      - "language"
+      - "license"
+      - "complexity"
+  
+  general_knowledge_base:
+    type: "vector"
+    provider: "chroma"
+    collection: "general_knowledge"
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+
+
+# Human-in-the-Loop Configuration
+
+human_in_loop:
+  enabled: true
+  
+  # Actions requiring human approval
+  approval_required:
+    - action: "deploy_code"
+      conditions:
+        - "production_environment"
+        - "security_sensitive"
+      approvers: ["senior_engineer", "security_team"]
+    
+    - action: "publish_content"
+      conditions:
+        - "public_facing"
+        - "regulated_industry"
+      approvers: ["content_manager", "legal"]
+    
+    - action: "financial_decision"
+      conditions:
+        - "amount > 10000"
+      approvers: ["finance_manager", "executive"]
+  
+  # Notification channels
+  notifications:
+    slack:
+      enabled: true
+      channel: "#agent-reviews"
+    email:
+      enabled: true
+      recipients: ["review-team@company.com"]
+  
+  # Timeout and escalation
+  timeout_minutes: 60
+  escalation_path:
+    - "primary_reviewer"
+    - "backup_reviewer"
+    - "manager"
+
+
+# Monitoring & Observability
+
+monitoring:
+  metrics:
+    - "agent_execution_time"
+    - "tool_usage_count"
+    - "routing_accuracy"
+    - "approval_rate"
+    - "revision_cycles"
+    - "token_usage"
+    - "cost_per_task"
+  
+  logging:
+    level: "INFO"
+    format: "json"
+    include:
+      - "messages"
+      - "tool_calls"
+      - "state_changes"
+      - "decisions"
+  
+  tracing:
+    enabled: true
+    provider: "langsmith"  # or "otel"
+  
+  alerts:
+    - metric: "error_rate"
+      threshold: 0.05  # 5%
+      action: "notify_oncall"
+    - metric: "avg_execution_time"
+      threshold: 300  # 5 minutes
+      action: "performance_review"
