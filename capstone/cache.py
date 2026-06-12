@@ -21,19 +21,22 @@ class SemanticCache:
         a, b = np.array(a), np.array(b)
         return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
 
-    def get(self, query: str) -> Optional[dict]:
+    def get(self, query: str) -> tuple[Optional[dict], Optional[list]]:
+        """Returns (cached_value, query_embedding). Embedding is returned so callers
+        can pass it to set() and avoid a second API call on a miss."""
         emb = self._embed(query)
         for entry in self._store:
             if self._sim(emb, entry["emb"]) >= self.threshold:
                 self.hits += 1
-                return entry["value"]
+                return entry["value"], emb
         self.misses += 1
-        return None
+        return None, emb
 
-    def set(self, query: str, value: dict):
+    def set(self, value: dict, emb: list):
+        """Store a value using a pre-computed embedding (returned by get())."""
         if len(self._store) >= self.max_size:
             self._store.pop(0)
-        self._store.append({"emb": self._embed(query), "value": value})
+        self._store.append({"emb": emb, "value": value})
 
     @property
     def hit_rate(self) -> float:

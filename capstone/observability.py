@@ -59,5 +59,5 @@ class ObservabilityTracker:
             "total_cost_usd": sum(costs),
             "avg_cost_usd": sum(costs) / len(costs),
             "avg_latency_ms": sum(latencies) / len(latencies) if latencies else 0,
-            "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
+            "p95_latency_ms": sorted(latencies)[max(0, int(len(latencies) * 0.95) - 1)] if latencies else 0,
         }

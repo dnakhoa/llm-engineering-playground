@@ -30,6 +30,7 @@ from rag import RAGPipeline
 rag: Optional[RAGPipeline] = None
 cache = SemanticCache(threshold=0.93)
 tracker = ObservabilityTracker()
+MAX_SESSIONS = 1000
 sessions: dict[str, ConversationMemory] = {}
 
 
@@ -74,8 +75,8 @@ async def chat(req: ChatRequest):
     if not guard.allowed:
         raise HTTPException(status_code=400, detail=guard.reason)
 
-    # 2. Cache lookup
-    cached = cache.get(req.question)
+    # 2. Cache lookup — get() also returns the embedding so set() reuses it
+    cached, query_emb = cache.get(req.question)
     if cached:
         metrics = RequestMetrics(
             request_id=request_id,
@@ -86,8 +87,10 @@ async def chat(req: ChatRequest):
         tracker.record(metrics)
         return ChatResponse(cache_hit=True, latency_ms=metrics.latency_ms, session_id=req.session_id, **cached)
 
-    # 3. Get/create session memory
+    # 3. Get/create session memory (evict oldest when cap reached)
     if req.session_id not in sessions:
+        if len(sessions) >= MAX_SESSIONS:
+            sessions.pop(next(iter(sessions)))
         sessions[req.session_id] = ConversationMemory(max_turns=6)
     memory = sessions[req.session_id]
     history = memory.to_string()
@@ -105,9 +108,9 @@ async def chat(req: ChatRequest):
     memory.add("user", req.question)
     memory.add("assistant", answer)
 
-    # 7. Cache store
+    # 7. Cache store — reuse the embedding computed in step 2 (no second API call)
     cache_value = {"answer": answer, "sources": result["sources"]}
-    cache.set(req.question, cache_value)
+    cache.set(cache_value, query_emb)
 
     # 8. Record metrics
     latency_ms = (time.time() - start) * 1000

@@ -27,7 +27,7 @@ def check_input(text: str) -> GuardResult:
     text_lower = text.lower()
     for pattern in INJECTION_PATTERNS:
         if re.search(pattern, text_lower):
-            return GuardResult(allowed=False, reason=f"Potential prompt injection: '{pattern}'")
+            return GuardResult(allowed=False, reason="Input contains a disallowed pattern and cannot be processed.")
     if len(text) > 4000:
         return GuardResult(allowed=False, reason="Input exceeds 4000 character limit")
     return GuardResult(allowed=True)

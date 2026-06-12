@@ -23,10 +23,8 @@ jobs:
 
       - name: Check Python syntax (pyflakes)
         run: |
-          find . -name "*.py" \
-            -not -path "./.git/*" \
-            -not -path "./capstone/api_server.py" \
-            | xargs pyflakes
+          find . -name "*.py" -not -path "./.git/*" \
+            | xargs -r pyflakes
 
   notebook-smoke:
     name: Notebook smoke test (no API calls)

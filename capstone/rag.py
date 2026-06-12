@@ -1,8 +1,8 @@
 """RAG pipeline — Module 02 applied."""
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Chroma
-from langchain.schema import Document
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.documents import Document
+from langchain_core.prompts import ChatPromptTemplate
 import os
 
 EMBED_MODEL = "text-embedding-3-small"
