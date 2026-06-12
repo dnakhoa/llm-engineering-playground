@@ -3,20 +3,22 @@ RAG (Retrieval-Augmented Generation) Example
 =============================================
 This file demonstrates a complete RAG pipeline using LangChain and ChromaDB.
 
-Prerequisites:
-    pip install langchain langchain-community chromadb sentence-transformers
+For the interactive step-by-step version, open rag_systems.ipynb instead.
 
-For production, you might also need:
-    pip install openai  # if using OpenAI embeddings/LLM
+Prerequisites:
+    pip install -r requirements.txt
+    cp ../.env.example ../.env   # add your OPENAI_API_KEY
 """
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_community.llms import HuggingFaceHub
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI   # replaces deprecated HuggingFaceEmbeddings/HuggingFaceHub
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 # ============================================================================
 # STEP 1: Prepare Sample Documents

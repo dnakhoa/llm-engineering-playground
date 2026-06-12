@@ -1,17 +1,41 @@
 """
 Multi-Agent Collaborative Workflow with LangGraph
+==================================================
 
-This example demonstrates a complete multi-agent system with:
-- Specialist agents (Researcher, Coder, Reviewer)
-- Dynamic routing based on task type
-- State management with typed StateGraph
-- Iterative refinement loops
-- Human-in-the-loop checkpoints
+ARCHITECTURE DEMONSTRATION — READ THIS FIRST
+─────────────────────────────────────────────
+This file demonstrates the STRUCTURE and PATTERNS of a multi-agent system.
+The agent bodies use *mock/simulated* LLM responses so you can study the graph
+logic without needing API credits or waiting for real calls.
 
-Architecture:
+To connect to a real LLM, replace the mock sections marked with:
+    # [MOCK] Replace with: response = self.llm.invoke(...)
+with actual LangChain LLM calls.
+
+SETUP
+─────
+    pip install -r requirements.txt
+    cp ../../.env.example ../../.env   # then add your OPENAI_API_KEY
+
+WHAT THIS DEMONSTRATES
+──────────────────────
+- Specialist agents (Researcher, Coder, Reviewer) with distinct roles
+- Dynamic routing based on task type (keyword → agent selection)
+- Typed StateGraph with shared state passed between nodes
+- Iterative refinement loops (router → agent → router)
+- Human-in-the-loop checkpoint via MemorySaver
+
+ARCHITECTURE
+────────────
     User Request → Router → [Researcher | Coder | Reviewer] → Output
                           ↑              ↓
                           └── Refinement Loop
+
+TO MAKE IT REAL
+───────────────
+Each agent's __call__ method contains a commented block showing the real
+LLM invocation pattern. Uncomment those lines and remove the mock_result
+dict to get live responses.
 """
 
 from typing import TypedDict, Annotated, List, Literal, Optional, Dict, Any

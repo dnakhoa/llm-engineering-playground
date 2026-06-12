@@ -72,9 +72,18 @@ Text: "John Smith is a 35-year-old software engineer..."
 4. **Specify Format**: Tell the model exactly how you want the output
 5. **Iterate**: Refine prompts based on results
 
-## Hands-On Exercise
+## Hands-On Exercises
 
-Create a file `prompt_examples.py` to experiment with different prompting techniques.
+Two ways to learn hands-on:
+
+1. **Interactive notebook** (recommended): Open `prompt_engineering.ipynb` and run cells one at a time — you'll see LLM responses inline.
+2. **Script**: Run `python prompt_examples.py` to execute all 8 examples end-to-end.
+
+**Challenges to try:**
+- Modify the few-shot examples in Example 2 and observe how output style changes
+- Add a `role` parameter to Example 4 and compare responses (e.g., "pirate", "professor")
+- Change the JSON schema in Example 5 to extract different fields
+- Build your own chain-of-thought prompt for a math problem
 
 ## Next Steps
 

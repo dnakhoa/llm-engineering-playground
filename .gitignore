@@ -1,4 +1,3 @@
-```
 # Python
 __pycache__/
 *.py[cod]
@@ -34,11 +33,11 @@ venv.bak/
 htmlcov/
 .coverage.*
 
-# Environment
+# Environment — NEVER commit your API keys
 .env
 .env.local
 .env.*
-.env~*
+!.env.example
 
 # IDE
 .vscode/
@@ -54,6 +53,14 @@ Thumbs.db
 # Logs
 *.log
 
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Vector DB / local data
+chroma_db/
+*.db
+*.sqlite
+
 # Coverage
 coverage/
-```

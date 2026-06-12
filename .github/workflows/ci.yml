@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linting tools
+        run: pip install pyflakes
+
+      - name: Check Python syntax (pyflakes)
+        run: |
+          find . -name "*.py" \
+            -not -path "./.git/*" \
+            -not -path "./capstone/api_server.py" \
+            | xargs pyflakes
+
+  notebook-smoke:
+    name: Notebook smoke test (no API calls)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install nbformat
+        run: pip install nbformat
+
+      - name: Validate notebook structure
+        run: |
+          python - <<'EOF'
+          import nbformat, pathlib, sys
+
+          notebooks = list(pathlib.Path(".").rglob("*.ipynb"))
+          errors = []
+
+          for nb_path in notebooks:
+              try:
+                  nb = nbformat.read(str(nb_path), as_version=4)
+                  nbformat.validate(nb)
+                  code_cells = [c for c in nb.cells if c.cell_type == "code"]
+                  markdown_cells = [c for c in nb.cells if c.cell_type == "markdown"]
+                  print(f"✅ {nb_path}  ({len(code_cells)} code, {len(markdown_cells)} markdown cells)")
+              except Exception as e:
+                  errors.append(f"❌ {nb_path}: {e}")
+
+          if errors:
+              print("\n".join(errors))
+              sys.exit(1)
+
+          print(f"\n{len(notebooks)} notebooks validated.")
+          EOF
+
+  structure-check:
+    name: Repo structure check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          python - <<'EOF'
+          import pathlib, sys
+
+          required = [
+              "README.md",
+              "SETUP.md",
+              "CONTRIBUTING.md",
+              "requirements.txt",
+              ".env.example",
+              ".gitignore",
+          ]
+          module_required = ["README.md", "requirements.txt"]
+          modules = [f"0{i}" for i in range(1, 10)] + ["10", "11"]
+
+          missing = []
+
+          for f in required:
+              if not pathlib.Path(f).exists():
+                  missing.append(f"Missing root file: {f}")
+
+          for mod in modules:
+              dirs = list(pathlib.Path(".").glob(f"{mod}-*"))
+              if not dirs:
+                  missing.append(f"Missing module dir: {mod}-*")
+                  continue
+              for req in module_required:
+                  if not (dirs[0] / req).exists():
+                      missing.append(f"Missing {dirs[0]}/{req}")
+
+          if missing:
+              print("\n".join(missing))
+              sys.exit(1)
+
+          print("✅ All required files present")
+          EOF

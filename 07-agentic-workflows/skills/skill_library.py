@@ -9,7 +9,7 @@ Each skill should be:
 - Testable in isolation
 """
 
-from langchain.tools import tool
+from langchain_core.tools import tool  # langchain.tools is deprecated
 from typing import List, Dict, Optional, Any
 import json
 import logging

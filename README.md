@@ -145,23 +145,28 @@ This playground provides a structured, step-by-step curriculum covering all esse
 
 ## Getting Started
 
-### Prerequisites
-- Basic Python programming knowledge
-- Understanding of machine learning concepts (helpful but not required)
-- Access to an LLM API (OpenAI, Anthropic, etc.) or local GPU (optional)
+See [SETUP.md](SETUP.md) for the full environment guide — API keys, virtual env, troubleshooting.
 
-### Installation
+### Quick Start
 
 ```bash
-# Clone the repository
-cd /workspace
+# 1. Create and activate a virtual environment
+python -m venv .venv && source .venv/bin/activate
 
-# Install core dependencies (varies by module)
-pip install langchain langchain-community chromadb sentence-transformers
-pip install fastapi uvicorn pydantic
-pip install transformers datasets peft accelerate
-pip install evaluate ragas
+# 2. Install all dependencies
+pip install -r requirements.txt
+
+# 3. Set up your API keys
+cp .env.example .env    # then edit .env with your keys
+
+# 4. Start learning interactively
+jupyter notebook
 ```
+
+### Prerequisites
+- Basic Python programming knowledge
+- An OpenAI or Anthropic API key (most modules use `gpt-4o-mini` — very cheap)
+- GPU optional (Module 03 fine-tuning only — use Google Colab if needed)
 
 ### Learning Path
 
@@ -188,26 +193,85 @@ pip install evaluate ragas
 ## Project Structure
 
 ```
-/workspace/
+llm-engineering-playground/
 ├── README.md                          # This file
+├── SETUP.md                           # Environment setup guide
+├── requirements.txt                   # All dependencies
+├── .env.example                       # API key template → copy to .env
+│
 ├── 01-prompt-engineering/
 │   ├── README.md                      # Concepts and theory
-│   └── prompt_examples.py             # Hands-on examples
+│   ├── requirements.txt
+│   ├── prompt_engineering.ipynb       # ★ Interactive notebook
+│   └── prompt_examples.py             # Runnable script
+│
 ├── 02-rag-systems/
 │   ├── README.md
+│   ├── requirements.txt
+│   ├── rag_systems.ipynb              # ★ Interactive notebook
 │   └── rag_example.py
+│
 ├── 03-fine-tuning/
 │   ├── README.md
+│   ├── requirements.txt
 │   └── finetune_example.py
+│
 ├── 04-evaluation/
 │   ├── README.md
+│   ├── requirements.txt
 │   └── evaluation_example.py
+│
 ├── 05-deployment/
 │   ├── README.md
+│   ├── requirements.txt
 │   └── deployment_example.py
-└── 06-optimization/
+│
+├── 06-optimization/
+│   ├── README.md
+│   ├── requirements.txt
+│   └── optimization_example.py
+│
+├── 07-agentic-workflows/
+│   ├── README.md
+│   ├── requirements.txt
+│   ├── agents/
+│   ├── examples/
+│   │   ├── multi_agent_workflow.py
+│   │   └── human_in_loop.py
+│   ├── skills/
+│   ├── router/
+│   └── configs/
+│
+├── 08-llmops-observability/
+│   ├── README.md
+│   ├── requirements.txt
+│   └── observability_example.py
+│
+├── 09-eval-ops/
+│   ├── README.md
+│   ├── requirements.txt
+│   └── eval_ops_example.py
+│
+├── 10-gateway-guardrails/
+│   ├── README.md
+│   ├── requirements.txt
+│   ├── gateway/
+│   │   ├── auth.py
+│   │   ├── rate_limiter.py
+│   │   └── validator.py
+│   └── guardrails/
+│       ├── input_filters.py
+│       ├── output_filters.py
+│       └── compliance.py
+│
+└── 11-memory-context/
     ├── README.md
-    └── optimization_example.py
+    ├── requirements.txt
+    └── memory/
+        ├── short_term.py
+        ├── long_term.py
+        ├── working.py
+        └── hierarchical.py
 ```
 
 ## Key Concepts Summary
@@ -239,14 +303,23 @@ pip install evaluate ragas
 ❌ Not monitoring in production (surprise failures)
 ❌ One-size-fits-all approach (suboptimal results)
 
+## Capstone Project
+
+After completing all modules, build the **Knowledge Assistant** — a full-stack LLM app that wires every module together:
+
+```
+RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + Evaluation (04)
+```
+
+📁 Location: [`capstone/`](capstone/)  
+▶ Quick start: `cd capstone && python seed_knowledge.py && uvicorn app:app --port 8000`
+
 ## Next Steps
 
-After completing all modules:
-
-1. **Build a Capstone Project**: Combine all concepts into one application
-2. **Contribute**: Share your learnings and improvements
-3. **Stay Current**: Follow arXiv, Twitter, and LLM communities
-4. **Specialize**: Dive deeper into areas relevant to your work
+1. **Complete the capstone**: run the Knowledge Assistant end-to-end
+2. **Contribute**: fix a broken example or add an exercise — see [CONTRIBUTING.md](CONTRIBUTING.md)
+3. **Stay current**: [arXiv cs.CL](https://arxiv.org/list/cs.CL/recent), Hugging Face blog, LangChain changelog
+4. **Specialize**: dive deeper into whichever module is most relevant to your work
 
 ## Resources
 
