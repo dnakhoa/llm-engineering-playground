@@ -73,3 +73,23 @@ capstone/
 ├── chat_client.py       # Terminal chat UI
 └── requirements.txt
 ```
+
+## Exercises & Stretch Goals
+
+### Core Challenges
+1. **Streaming Responses**: Modify `app.py` to stream tokens back to the client using Server-Sent Events. Update `chat_client.py` to display them in real-time.
+
+2. **Add a New Guardrail**: Implement a "topic restriction" guardrail that only allows questions about LLM engineering. Test it with off-topic queries.
+
+3. **Persistent Memory**: Replace the in-memory `ConversationMemory` with a SQLite-backed version that survives server restarts.
+
+4. **Rate Limiting**: Add per-session rate limiting (max 20 requests/minute). Return a 429 status with a retry-after header when exceeded.
+
+### Advanced Challenges
+5. **Multi-Model Routing**: Route simple questions to a cheap model (gpt-4o-mini) and complex ones to a capable model (gpt-4o). Use the `ModelRouter` pattern from Module 06.
+
+6. **Evaluation Dashboard**: Build a `/eval` endpoint that returns the last 50 evaluation scores, average quality, and a breakdown by category.
+
+7. **Document Upload**: Add a `POST /upload` endpoint that accepts PDFs or text files, chunks them, and adds them to the ChromaDB knowledge base.
+
+8. **Authentication**: Wire up the `AuthManager` from Module 10 so only authenticated users can chat. Issue tokens via a `/login` endpoint.

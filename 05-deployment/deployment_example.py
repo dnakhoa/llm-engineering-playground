@@ -97,7 +97,7 @@ async def create_chat_completion(request: ChatRequest):
     
     # Create cache key
     cache_key = hashlib.md5(
-        json.dumps([m.dict() for m in request.messages], sort_keys=True).encode()
+        json.dumps([m.model_dump() for m in request.messages], sort_keys=True).encode()
     ).hexdigest()
     
     # Check cache
@@ -129,7 +129,7 @@ async def create_chat_completion(request: ChatRequest):
     )
     
     # Cache response
-    cache.set(cache_key, response.dict())
+    cache.set(cache_key, response.model_dump())
     
     return response
 

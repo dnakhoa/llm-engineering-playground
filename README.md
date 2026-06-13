@@ -10,19 +10,19 @@ This playground provides a structured, step-by-step curriculum covering all esse
 
 **11 Comprehensive Modules** covering the complete LLM engineering lifecycle:
 
-| Module | Topic | Key Focus | Status |
-|--------|-------|-----------|--------|
-| 01 | Prompt Engineering | Foundation communication | ✅ |
-| 02 | RAG Systems | Knowledge augmentation | ✅ |
-| 03 | Fine-Tuning | Model adaptation | ✅ |
-| 04 | Evaluation | Quality assurance | ✅ |
-| 05 | Deployment | Production serving | ✅ |
-| 06 | Optimization | Performance & efficiency | ✅ |
-| 07 | Agentic Workflows | Multi-agent systems | ✅ |
-| 08 | LLM Ops | Observability & monitoring | ✅ |
-| 09 | EvalOps | Continuous evaluation | ✅ |
-| 10 | Gateway & Guardrails | Security & compliance | ✅ |
-| 11 | Memory & Context | Persistent intelligence | ✅ |
+| Module | Topic | Key Focus | Time | Status |
+|--------|-------|-----------|------|--------|
+| 01 | Prompt Engineering | Foundation communication | ~1h | ✅ |
+| 02 | RAG Systems | Knowledge augmentation | ~2h | ✅ |
+| 03 | Fine-Tuning | Model adaptation | ~2h | ✅ |
+| 04 | Evaluation | Quality assurance | ~1.5h | ✅ |
+| 05 | Deployment | Production serving | ~2h | ✅ |
+| 06 | Optimization | Performance & efficiency | ~1.5h | ✅ |
+| 07 | Agentic Workflows | Multi-agent systems | ~3h | ✅ |
+| 08 | LLM Ops | Observability & monitoring | ~2h | ✅ |
+| 09 | EvalOps | Continuous evaluation | ~1.5h | ✅ |
+| 10 | Gateway & Guardrails | Security & compliance | ~2h | ✅ |
+| 11 | Memory & Context | Persistent intelligence | ~2h | ✅ |
 
 ### 📚 Module 1: Prompt Engineering
 **Foundation** - Learn to communicate effectively with LLMs
@@ -165,8 +165,21 @@ jupyter notebook
 
 ### Prerequisites
 - Basic Python programming knowledge
-- An OpenAI or Anthropic API key (most modules use `gpt-4o-mini` — very cheap)
+- An API key from any supported provider: **OpenAI**, **Anthropic**, **DeepSeek**, **Grok (xAI)**, **Qwen (Alibaba)**, or **Ollama** (local)
 - GPU optional (Module 03 fine-tuning only — use Google Colab if needed)
+
+### Supported Providers
+
+The course works with any LLM provider. Just set one key in `.env`:
+
+| Provider | Env Variable | Default Model | Cost |
+|----------|-------------|---------------|------|
+| OpenAI | `OPENAI_API_KEY` | gpt-4o-mini | Pay-as-you-go |
+| Anthropic | `ANTHROPIC_API_KEY` | claude-sonnet-4-20250514 | Pay-as-you-go |
+| DeepSeek | `DEEPSEEK_API_KEY` | deepseek-chat | Very cheap |
+| xAI Grok | `GROK_API_KEY` | grok-3-mini | Pay-as-you-go |
+| Qwen | `QWEN_API_KEY` | qwen-plus | Cheap |
+| Ollama | `OPENAI_BASE_URL=http://localhost:11434/v1` | llama3.2 | Free (local) |
 
 ### Learning Path
 
@@ -198,6 +211,9 @@ llm-engineering-playground/
 ├── SETUP.md                           # Environment setup guide
 ├── requirements.txt                   # All dependencies
 ├── .env.example                       # API key template → copy to .env
+│
+├── shared/
+│   └── provider.py                    # ★ Multi-provider LLM helper (OpenAI, Anthropic, DeepSeek, etc.)
 │
 ├── 01-prompt-engineering/
 │   ├── README.md                      # Concepts and theory

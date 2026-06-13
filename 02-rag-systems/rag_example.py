@@ -155,27 +155,28 @@ def create_qa_chain(retriever, prompt):
     """
     Create the RetrievalQA chain that combines retrieval + generation.
     
-    For this example, we'll use a local model via HuggingFace Hub.
-    In production, you might use OpenAI, Anthropic, or a self-hosted model.
+    Uses the shared provider — works with OpenAI, Anthropic, DeepSeek, etc.
+    Set your API key in .env and run.
     """
-    # Option 1: Use HuggingFace Hub (free, but rate-limited)
-    # llm = HuggingFaceHub(
-    #     repo_id="mistralai/Mistral-7B-Instruct-v0.1",
-    #     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
-    #     task="text-generation",
-    #     model_kwargs={"max_new_tokens": 512, "temperature": 0.7}
-    # )
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from shared.provider import chat, get_client, get_model_name
     
-    # Option 2: Mock LLM for demonstration (no API key needed)
-    from langchain_community.llms import FakeListLLM
+    # Wrap the shared chat() in a LangChain-compatible LLM
+    from langchain_core.language_models.llms import LLM
+    from langchain_core.callbacks import CallbackManagerForLLMRun
     
-    llm = FakeListLLM(
-        responses=[
-            "Based on the context, AI refers to machine intelligence that perceives its environment and takes actions to achieve goals.",
-            "Machine Learning is a subset of AI that enables systems to learn from data without explicit programming.",
-            "Deep Learning uses multi-layered neural networks and excels at image and language tasks."
-        ]
-    )
+    class SharedLLM(LLM):
+        model_name: str = ""
+        
+        def _call(self, prompt: str, stop=None, run_manager=None, **kwargs) -> str:
+            return chat(prompt)
+        
+        @property
+        def _llm_type(self) -> str:
+            return "shared-provider"
+    
+    llm = SharedLLM(model_name=get_model_name())
     
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,

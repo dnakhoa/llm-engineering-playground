@@ -8,6 +8,7 @@ Prerequisites:
 """
 
 import json
+from math import exp
 from typing import List, Dict
 from dataclasses import dataclass
 
@@ -428,5 +429,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from math import exp
     main()
