@@ -819,6 +819,18 @@ memory:
     audit_logging: true
 ```
 
+## 🧪 Hands-On Exercises
+
+1. **Conversation Buffer Test**: Create a `ConversationBuffer` with max_messages=10. Add 25 messages and verify that only the most recent 10 are kept. What happens when you add a message that exceeds max_tokens?
+
+2. **Memory Retrieval Quality**: Store 50 memories about a fictional user. Query with 10 different questions. Measure retrieval precision@3 — how often are the top 3 results actually relevant?
+
+3. **Context Assembly**: Given a 4000-token limit, assemble context from: system prompt (200 tokens), 20 conversation turns (2000 tokens), 10 retrieved memories (1500 tokens), and tool results (800 tokens). Which items get cut? Is the right priority order?
+
+4. **Forgetting Mechanism**: Store 100 memories with varying access counts and timestamps. Run `forget_memories(older_than_days=30, min_access_count=2)`. How many survive? Is the right balance between keeping useful info and pruning noise?
+
+5. **Multi-Session Continuity**: Simulate 3 separate sessions with the same user. After session 1, the user says "I prefer dark mode." After session 2, they ask "What's my UI preference?" Does the system remember across sessions?
+
 ---
 
 **Effective memory management is crucial for building intelligent, personalized LLM applications!**

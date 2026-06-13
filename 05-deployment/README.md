@@ -209,6 +209,20 @@ User → Queue → Worker → LLM → Store Result → Notify User
 
 See `deployment_example.py` for a complete FastAPI service.
 
+**Interactive notebook**: Open `deployment.ipynb` for step-by-step walkthrough.
+
+## Hands-On Exercises
+
+1. **Latency Benchmark**: Run 100 identical requests to your LLM API and measure p50, p95, p99 latencies. What's the variance? What causes spikes?
+
+2. **Caching Strategy**: Implement exact-match caching for a Q&A endpoint. Then upgrade to semantic caching. Measure the hit rate difference on a realistic query set.
+
+3. **Cost Calculator**: Build a function that takes model name, input tokens, and output tokens and returns the cost. Test it against 3 different models and 3 different use cases.
+
+4. **Streaming Response**: Modify the FastAPI endpoint to stream tokens back to the client using Server-Sent Events. Measure the improvement in time-to-first-token.
+
+5. **Graceful Degradation**: Design a fallback strategy: if the primary model is down, route to a backup model. If that's also down, return a cached response. If no cache, return a helpful error message. Implement it.
+
 ## Monitoring & Observability
 
 **Key Metrics to Track:**

@@ -133,6 +133,20 @@ Specifically for RAG systems:
 
 See `evaluation_example.py` for practical evaluation code.
 
+**Interactive notebook**: Open `evaluation.ipynb` for step-by-step walkthrough.
+
+## Hands-On Exercises
+
+1. **Metric Comparison**: Evaluate the same 5 model outputs using ROUGE, BLEU, and BERTScore. When do the metrics disagree? Which correlates best with your human judgment?
+
+2. **Build a Golden Dataset**: Create 20 test cases for a customer support chatbot. Include 5 easy, 10 medium, and 5 hard cases. Label each with expected quality score.
+
+3. **LLM-as-Judge Calibration**: Write an evaluation prompt for GPT-4 to score responses on a 1-5 scale. Run it on 10 examples and compare with your own ratings. What's the agreement rate?
+
+4. **Red Team a Chatbot**: Spend 15 minutes trying to make a chatbot produce harmful, incorrect, or nonsensical outputs. Document every successful attack vector.
+
+5. **A/B Test Design**: Design an A/B test comparing two prompt strategies. How many samples do you need for statistical significance at p=0.05? What metrics would you track?
+
 ## Evaluation Best Practices
 
 1. **Define Clear Objectives**: What does "good" mean for your use case?

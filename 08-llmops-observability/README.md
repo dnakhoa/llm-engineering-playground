@@ -815,6 +815,18 @@ This module connects to:
 4. **Learn**: Use feedback to improve prompts and models
 5. **Scale**: Build dashboards for stakeholders
 
+## 🧪 Hands-On Exercises
+
+1. **Trace a Request**: Instrument a simple LLM call with the `Tracer` class. Create spans for the API call, retrieval, and generation. Export to JSONL and visualize the trace.
+
+2. **Cost Budget Alert**: Set up a daily cost budget of $5. Simulate 50 requests and trigger an alert when you exceed 80% of the budget. What happens at 100%?
+
+3. **Drift Detection**: Record 100 quality metric values, then inject 10 degraded values. Does the drift detection catch it? What's the latency between degradation and detection?
+
+4. **Prompt Version A/B Test**: Register two prompt versions. Route 50% of traffic to each. After 20 requests, which version has better quality scores? Which is cheaper?
+
+5. **Feedback Loop**: Build a pipeline that collects thumbs-up/down feedback, identifies the 5 worst-rated responses, and generates a fine-tuning dataset from the 5 best-rated ones.
+
 ## 📚 Recommended Tools
 
 | Category | Open Source | Commercial |

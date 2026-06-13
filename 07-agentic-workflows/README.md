@@ -169,44 +169,24 @@ def build_multi_agent_graph():
 
 ```
 agentic-workflows/
-├── configs/
-│   ├── agent_configs.yaml      # Agent definitions
-│   ├── tool_registry.json      # Available tools
-│   └── routing_rules.yaml      # Routing logic
 ├── skills/
 │   ├── __init__.py
-│   ├── search_skills.py        # Search capabilities
-│   ├── code_skills.py          # Code execution
-│   └── analysis_skills.py      # Data analysis
+│   └── skill_library.py         # Search, code, analysis, knowledge skills
 ├── tools/
-│   ├── __init__.py
-│   ├── api_wrappers.py         # External APIs
-│   └── custom_tools.py         # Domain-specific tools
+│   └── __init__.py
 ├── knowledge/
-│   ├── __init__.py
-│   ├── loader.py               # Document loading
-│   └── indexer.py              # Vector indexing
+│   └── __init__.py
 ├── agents/
-│   ├── __init__.py
-│   ├── base_agent.py           # Base agent class
-│   ├── specialists.py          # Specialist agents
-│   └── supervisor.py           # Supervisor agent
+│   └── __init__.py
 ├── router/
-│   ├── __init__.py
-│   ├── classifier.py           # Intent classification
-│   └── state_machine.py        # State-based routing
+│   └── __init__.py
 ├── orchestrator/
-│   ├── __init__.py
-│   ├── workflow.py             # LangGraph workflows
-│   └── checkpoints.py          # Human-in-the-loop
+│   └── __init__.py
 ├── examples/
-│   ├── simple_agent.py         # Single agent example
-│   ├── multi_agent_collab.py   # Collaborative agents
-│   └── human_in_loop.py        # HITL workflow
-└── tests/
-    ├── test_skills.py
-    ├── test_routing.py
-    └── test_workflows.py
+│   ├── __init__.py
+│   ├── multi_agent_workflow.py   # ★ Multi-agent LangGraph demo
+│   └── human_in_loop.py          # ★ HITL workflow
+└── agentic_workflows.ipynb       # ★ Interactive notebook
 ```
 
 ## 🔧 Best Practices
@@ -292,4 +272,18 @@ pip install pydantic pyyaml
 
 ---
 
-**Ready to build?** Start with `examples/simple_agent.py` and work up to complex multi-agent systems!
+## 🧪 Hands-On Exercises
+
+1. **Single Agent with Tools**: Build a single agent with 3 tools (calculator, web search, text summarizer). Give it a complex query that requires using all 3 tools. How does it decide which tool to use?
+
+2. **Multi-Agent Debate**: Create two agents with opposing viewpoints. Have them debate a topic for 5 rounds. Who "wins"? How would you evaluate the quality of the debate?
+
+3. **LangGraph State Machine**: Build a LangGraph workflow with at least 3 nodes and 2 conditional edges. Add a loop that retries up to 3 times before giving up.
+
+4. **Router Improvement**: Replace the keyword-based router in `multi_agent_workflow.py` with an LLM-based classifier. Compare routing accuracy on 20 test queries.
+
+5. **Human-in-the-Loop**: Add a checkpoint before the "review" step that requires human approval. What happens if the human rejects? What if they suggest changes?
+
+---
+
+**Ready to build?** Start with `examples/multi_agent_workflow.py` and work up to complex multi-agent systems!

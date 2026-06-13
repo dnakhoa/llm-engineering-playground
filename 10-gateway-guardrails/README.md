@@ -637,6 +637,18 @@ monitoring:
 4. Configure alerting rules
 5. Regular security audits
 
+## 🧪 Hands-On Exercises
+
+1. **Injection Attack Suite**: Write 10 different prompt injection techniques (delimiter manipulation, role-playing, instruction override, encoding tricks). Test them against the `InputGuardrail`. How many get through?
+
+2. **PII Redaction**: Build a redactor that handles emails, phone numbers, SSNs, credit cards, and street addresses. Test it on a paragraph containing all 5 types. Does it miss anything?
+
+3. **Rate Limiter Under Load**: Simulate 200 requests from 10 users with a limit of 20 requests/minute per user. Track which requests get blocked and verify the counts are correct.
+
+4. **Output Hallucination Detector**: Build a simple fact-checker that compares LLM output against a list of known facts. How many hallucinated claims does it catch on 20 test outputs?
+
+5. **Full Gateway Integration**: Wire up auth, rate limiting, input guardrails, and output guardrails into a single FastAPI middleware chain. Test it end-to-end with valid requests, injection attempts, and quota-exceeded scenarios.
+
 ---
 
 **Production-ready LLM systems need robust gateways and guardrails!**

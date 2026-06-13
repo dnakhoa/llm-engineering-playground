@@ -178,6 +178,20 @@ Cost:
 
 See `optimization_example.py` for practical optimization code.
 
+**Interactive notebook**: Open `optimization.ipynb` for step-by-step walkthrough.
+
+## Hands-On Exercises
+
+1. **Prompt Compression**: Take a 200-token prompt and reduce it to under 50 tokens while preserving the same quality output. Measure the cost savings.
+
+2. **Semantic Cache Implementation**: Build a semantic cache using sentence-transformers and cosine similarity. Test it with 20 semantically similar but syntactically different queries. What's your hit rate at threshold 0.85 vs 0.95?
+
+3. **Model Router**: Build a simple router that classifies queries as "simple", "medium", or "complex" using keyword matching or a small model. Route simple queries to gpt-4o-mini, complex to gpt-4o. Estimate the cost savings.
+
+4. **Token Budget**: Given a 4000-token context window, allocate tokens across: system prompt (10%), conversation history (40%), retrieved documents (40%), response (10%). Build a function that trims content to fit each budget.
+
+5. **Batch vs Streaming**: Compare batch processing (collect 10 requests, process together) vs streaming (process immediately). Which has lower latency? Which has higher throughput?
+
 ## Best Practices Checklist
 
 ### Quick Wins (1-2 days)
@@ -229,7 +243,7 @@ See `optimization_example.py` for practical optimization code.
 
 ## Next Steps
 
-You've now completed all 6 modules of the LLM Engineering Playground! 
+**Next:** Move to Module 7: Agentic Workflows, where you'll learn how to build multi-agent collaborative systems with LangGraph.
 
 **Continue Your Journey:**
 1. Build a complete project combining all concepts

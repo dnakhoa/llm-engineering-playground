@@ -284,6 +284,11 @@ llm-engineering-playground/
 | **Evaluation** | Measure performance | Before/after any change |
 | **Deployment** | Production serving | When ready for users |
 | **Optimization** | Improve efficiency | Cost/performance issues |
+| **Agentic Workflows** | Multi-agent systems | Complex multi-step tasks |
+| **LLM Ops & Observability** | Monitor and trace production | After deployment, always |
+| **EvalOps** | Continuous automated evaluation | CI/CD pipelines |
+| **Gateway & Guardrails** | Security, rate limiting, compliance | Production protection layer |
+| **Memory & Context** | Persistent memory across sessions | Conversational and personalized apps |
 
 ## Best Practices
 

@@ -43,14 +43,15 @@ User question
 ## Running the app
 
 ```bash
+# From the repo root
 cd capstone
 pip install -r requirements.txt
 cp ../.env.example ../.env   # add OPENAI_API_KEY
 
-# Seed the knowledge base
+# Seed the knowledge base with 10 LLM engineering topics
 python seed_knowledge.py
 
-# Start the API
+# Start the API server
 uvicorn app:app --reload --port 8000
 
 # In another terminal — interactive chat

@@ -140,6 +140,25 @@ training_args = {
 
 See `finetune_example.py` for a complete LoRA fine-tuning script.
 
+**Interactive notebook**: Open `fine_tuning.ipynb` for step-by-step walkthrough.
+
+## Hands-On Exercises
+
+1. **Data Format Conversion**: Take 10 Q&A pairs and convert them to Alpaca instruction format, ChatML format, and completion format. What are the trade-offs?
+
+2. **Hyperparameter Sweep**: Run `finetune_example.py` with 3 different learning rates (1e-5, 2e-4, 1e-3). Which produces the best results and why?
+
+3. **LoRA Rank Experiment**: Change the LoRA rank from 8 to 32 and 64. How does rank affect training time, model size, and quality?
+
+4. **When NOT to Fine-Tune**: Given these 5 scenarios, decide whether to use prompt engineering, RAG, or fine-tuning for each:
+   - Company wants its chatbot to always respond in a pirate accent
+   - Legal team needs answers grounded in their 10,000-page policy manual
+   - Startup needs to ship a Q&A bot by Friday
+   - Hospital wants a model that understands rare disease terminology
+   - E-commerce site needs product descriptions in a specific format
+
+5. **Dataset Quality Audit**: Download a public fine-tuning dataset from HuggingFace. Find 3 examples with issues (duplicates, contradictory instructions, PII) and explain how you'd fix them.
+
 ## Common Pitfalls
 
 1. **Overfitting**: Model memorizes training data
