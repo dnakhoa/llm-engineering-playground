@@ -1,8 +1,80 @@
 # Module 3: Fine-Tuning LLMs
 
+> ⚠️ **Read this first.** Fine-tuning is powerful but almost always the wrong first move. Most teams that fine-tune when they shouldn't waste weeks and thousands of dollars. Work through the decision tree below before writing any training code.
+
+---
+
+## Should You Fine-Tune? — Decision Tree
+
+```
+START: You want your LLM to do something it doesn't do well today.
+          │
+          ▼
+┌─────────────────────────────────────────────┐
+│ Have you tried a well-crafted system prompt │
+│ with 3–5 few-shot examples?                 │
+└─────────────────────────────────────────────┘
+          │ NO → Do this first. It's free and takes 1 hour.
+          │ YES ↓
+          ▼
+┌─────────────────────────────────────────────┐
+│ Is the problem missing KNOWLEDGE            │
+│ (facts the model doesn't know, recent info, │
+│ your proprietary docs)?                     │
+└─────────────────────────────────────────────┘
+          │ YES → Use RAG (Module 02). Fine-tuning doesn't add facts reliably.
+          │ NO ↓
+          ▼
+┌─────────────────────────────────────────────┐
+│ Is the problem STYLE or FORMAT?             │
+│ (tone, length, schema, specific phrasing)   │
+└─────────────────────────────────────────────┘
+          │ YES — is it consistent and describable in a prompt?
+          │       → Yes: prompt engineering or structured output first
+          │       → No / needs > 5 pages of examples: consider fine-tuning
+          │ NO ↓
+          ▼
+┌─────────────────────────────────────────────┐
+│ Do you have > 100 high-quality labeled      │
+│ examples you can curate?                    │
+└─────────────────────────────────────────────┘
+          │ NO → You don't have enough data. Collect first.
+          │ YES ↓
+          ▼
+┌─────────────────────────────────────────────┐
+│ Do you have a strong eval that will tell    │
+│ you if fine-tuning helped or hurt?          │
+└─────────────────────────────────────────────┘
+          │ NO → Build eval first (Module 04). Blind fine-tuning is gambling.
+          │ YES ↓
+          ▼
+       Fine-tuning is probably the right tool. Continue below.
+```
+
+### When fine-tuning IS the right answer
+
+| Signal | Example |
+|--------|---------|
+| Consistent output format that prompting can't enforce | Always return a specific XML schema with 10 fields |
+| Domain-specific style that requires > 50 examples | Legal writing in a specific firm's voice |
+| Latency/cost sensitive at high volume | 10M calls/day where a smaller fine-tuned model replaces a large one |
+| Task where the base model genuinely lacks capability | Specialized medical coding (ICD-10) with proprietary taxonomy |
+
+### When fine-tuning is NOT the answer
+
+- ❌ "The model doesn't know our company's data" → Use RAG
+- ❌ "We want it to sound more professional" → System prompt + few-shot
+- ❌ "We have 20 examples" → Not enough; collect more or use few-shot
+- ❌ "GPT-4 does it, we want a cheaper model" → Try gpt-4o-mini first; it's 16× cheaper
+- ❌ "We want to add new knowledge from 2025" → RAG or use a newer model
+
+---
+
 ## What is Fine-Tuning?
 
 Fine-tuning is the process of adapting a pre-trained LLM to specific tasks or domains by continuing training on specialized data. Unlike prompt engineering (which changes inputs) or RAG (which adds context), fine-tuning actually modifies the model's weights.
+
+## Approach Comparison
 
 ## When to Fine-Tune vs Other Approaches
 

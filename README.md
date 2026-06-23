@@ -8,10 +8,11 @@ This playground provides a structured, step-by-step curriculum covering all esse
 
 ## Curriculum Structure
 
-**14 Comprehensive Modules** covering the complete LLM engineering lifecycle:
+**15 Comprehensive Modules** covering the complete LLM engineering lifecycle:
 
 | Module | Topic | Key Focus | Time | Status |
 |--------|-------|-----------|------|--------|
+| 00 | LLM Foundations | Tokens, embeddings, context, sampling, cost | ~1h | ✅ |
 | 01 | Prompt Engineering | Foundation communication + extended thinking | ~1.5h | ✅ |
 | 02 | RAG Systems | Knowledge augmentation | ~2h | ✅ |
 | 03 | Fine-Tuning | Model adaptation | ~2h | ✅ |
@@ -26,6 +27,18 @@ This playground provides a structured, step-by-step curriculum covering all esse
 | 12 | Context Engineering | Window anatomy, caching, compression | ~2h | ✅ |
 | 13 | Agent Harness | Loop engineering, durable journals, repair | ~3h | ✅ |
 | 14 | MCP & Tool Design | Model Context Protocol, tool interfaces | ~2h | ✅ |
+
+### 🧱 Module 0: LLM Foundations
+**Start Here** - The mental models every LLM engineer needs
+- What tokens are (and why the model can't count characters)
+- Embeddings as geometry — why semantic search works
+- Context window anatomy: input tokens, output tokens, limits
+- Sampling parameters: temperature, top-p, max_tokens
+- API call anatomy: system prompt, user, assistant, parameters
+- Model selection: when to use small/medium/large
+- Cost estimation before you build
+
+📁 Location: `00-llm-foundations/`
 
 ### 📚 Module 1: Prompt Engineering
 **Foundation** - Learn to communicate effectively with LLMs
@@ -180,6 +193,33 @@ This playground provides a structured, step-by-step curriculum covering all esse
 - Multi-session conversation support
 
 📁 Location: `11-memory-context/`
+
+## 🗺️ Learning Paths
+
+### ⚡ Minimum Viable Path — "I want to ship my first AI product"
+**~10 hours | 6 modules | Gets you to a working, deployed LLM application**
+
+```
+Module 00 → Module 01 → Module 02 → Module 05 → Module 07 → Capstone
+Foundations  Prompting    RAG        Deployment  Agents     Full app
+```
+
+Do these six, build the capstone, and you'll have shipped something real. Then come back for the rest.
+
+### 📈 Full Curriculum — "I want to be production-ready"
+Work through all 15 modules in order. Each builds on the previous.
+
+### 🔧 Practitioner Path — "I already build with LLMs, fill my gaps"
+| Gap | Go to |
+|-----|-------|
+| Agent loops are flaky | Module 13 (Harness) |
+| High API costs | Module 06 + Module 12 |
+| No eval system | Module 04 + Module 09 |
+| Tool/MCP integration | Module 14 |
+| Production incidents | Module 08 |
+| Fine-tuning questions | Module 03 |
+
+---
 
 ## Getting Started
 

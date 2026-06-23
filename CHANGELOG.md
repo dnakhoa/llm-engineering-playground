@@ -4,6 +4,38 @@ All notable changes to this project are documented here.
 
 ---
 
+## [3.1.0] — 2026-06-24
+
+### Added — Module 00: LLM Foundations (new entry point for career-changers)
+- `README.md` — Tokens, embeddings, context window anatomy, sampling params, API anatomy, model tiers, cost estimation
+- `llm_foundations.py` — Runnable demos: tiktoken token counting, embedding cosine similarity + semantic search, API anatomy with latency/cost, temperature effect, cost estimator across model tiers
+
+### Added — Three Learning Paths in root README
+- **Minimum Viable Path**: Modules 0→1→2→5→7→Capstone (~10h, gets to first shipped product)
+- **Full Curriculum**: all 15 modules in order
+- **Practitioner Path**: gap-targeting table for engineers already building with LLMs
+
+### Updated — Module 01: Prompt Engineering
+- **Structured Output**: Added native JSON Schema approach (OpenAI `response_format`, Pydantic `.parse()`), Anthropic tool-use extraction, `instructor` library — replacing "ask for JSON in the prompt"
+- **Multimodal / Vision**: Added image inputs for both OpenAI (URL + base64) and Anthropic (content blocks), `detail` parameter, token cost guidance
+- **Debugging LLM Failures**: Added four failure modes with diagnosis and fix: refusals, confident hallucinations, instruction ignoring, output truncation; quick debugging checklist
+
+### Updated — Module 03: Fine-Tuning
+- **Decision Tree first**: Added "Should You Fine-Tune?" decision tree as the opening section — walks through prompting → RAG → data requirements → eval before reaching fine-tuning. Added explicit "When NOT to fine-tune" list.
+
+### Updated — Module 04: Evaluation
+- **LLM-as-Judge leads (70%)**: Restructured into Part 1 (LLM-as-judge: direct scoring, pairwise comparison, bias mitigation table, calibration), Part 2 (task-specific eval harnesses), Part 3 (classical metrics — now clearly labeled as the minority case)
+
+### Updated — Module 05: Deployment
+- **Streaming as full section**: Added complete streaming treatment — `stream=True`, TTFT measurement, FastAPI SSE endpoint, JavaScript EventSource consumer
+- **Error handling & retry**: Added exponential backoff with jitter, rate limit handling with `Retry-After`, timeout handling, fallback model pattern, graceful degradation hierarchy
+- **Caching**: Removed duplicate caching content — redirected to Module 06 with an explicit note
+
+### Updated — Module 08: LLM Ops & Observability
+- **Prompt management workflow**: Added three practical approaches — (A) file-based Git workflow with pinned versions and diff-reviewable PRs, (B) LangSmith push/pull with tagged production pins, (C) Promptfoo for test-driven prompt development and CI integration; added checklist
+
+---
+
 ## [3.0.0] — 2026-06-23
 
 ### Added — 3 New Modules (12–14)

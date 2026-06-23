@@ -88,28 +88,196 @@ Use cloud APIs for some tasks, self-hosted for others:
 - Self-hosted 7B: 100-500ms (with proper hardware)
 - Self-hosted 70B: 500ms - 2s
 
-### 2. Cost Management
+### 2. Streaming — The Most Important Latency Fix
 
-**Cost Factors:**
-- Compute (GPU hours)
-- Memory (VRAM requirements)
-- API calls (if using cloud)
-- Storage (model weights, cache)
+Streaming returns tokens to the user as they're generated instead of waiting for the full response. For a 500-token response, this converts a 5-second wait into a response that starts in under 500ms.
 
-**Optimization Strategies:**
-1. **Right-size your model**: Don't use GPT-4 for simple tasks
-2. **Implement caching**: Cache frequent queries
-3. **Use quantization**: 4-bit or 8-bit models use less memory
-4. **Batch requests**: Process multiple queries together
-5. **Monitor usage**: Track cost per request
+**Why it matters**: Users abandon apps that feel slow. Streaming is the single biggest perceived-latency improvement for chat and generation features — and it costs nothing extra.
 
-**Example Cost Comparison (per 1M tokens):**
-| Model | Cost | Best For |
-|-------|------|----------|
-| GPT-4 | $30-60 | Complex reasoning |
-| GPT-3.5 | $2-4 | General tasks |
-| Llama 2 70B (self-hosted) | ~$5 | High volume |
-| Llama 2 7B (self-hosted) | ~$0.50 | Simple tasks |
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+# Without streaming: user waits 3-8 seconds for full response
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Write a short poem about Python."}]
+)
+print(response.choices[0].message.content)   # whole response at once
+
+# With streaming: user sees first tokens in <500ms
+stream = client.chat.completions.create(
+    model="gpt-4o",
+    stream=True,   # ← the only change
+    messages=[{"role": "user", "content": "Write a short poem about Python."}]
+)
+
+full_text = ""
+for chunk in stream:
+    delta = chunk.choices[0].delta.content
+    if delta:
+        print(delta, end="", flush=True)   # print as it arrives
+        full_text += delta
+
+print()   # newline after stream ends
+```
+
+**Measuring Time-to-First-Token (TTFT)**:
+
+```python
+import time
+
+def stream_with_ttft(prompt: str) -> dict:
+    """Stream a response and measure TTFT and total latency."""
+    start = time.time()
+    first_token_time = None
+    full_text = ""
+
+    stream = client.chat.completions.create(
+        model="gpt-4o", stream=True,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            if first_token_time is None:
+                first_token_time = time.time()
+            full_text += delta
+
+    end = time.time()
+    return {
+        "ttft_ms":    round((first_token_time - start) * 1000) if first_token_time else None,
+        "total_ms":   round((end - start) * 1000),
+        "chars":      len(full_text),
+    }
+
+result = stream_with_ttft("Explain the CAP theorem in 3 sentences.")
+print(f"TTFT: {result['ttft_ms']}ms | Total: {result['total_ms']}ms")
+```
+
+**Streaming in FastAPI (Server-Sent Events)**:
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import asyncio
+
+app = FastAPI()
+
+@app.post("/chat/stream")
+async def chat_stream(body: dict):
+    """Stream LLM response as SSE to the client."""
+    async def generate():
+        stream = client.chat.completions.create(
+            model="gpt-4o", stream=True,
+            messages=body["messages"]
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                # SSE format: "data: <content>\n\n"
+                yield f"data: {delta}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+```
+
+**Frontend JavaScript** to consume SSE:
+```javascript
+const es = new EventSource('/chat/stream');
+es.onmessage = (e) => {
+  if (e.data === '[DONE]') { es.close(); return; }
+  document.getElementById('output').textContent += e.data;
+};
+```
+
+---
+
+### 3. Error Handling & Retry Patterns
+
+Rate limit errors, timeouts, and transient failures are inevitable in production. Handle them gracefully or your app will be fragile.
+
+```python
+import time
+import random
+from openai import OpenAI, RateLimitError, APITimeoutError, APIConnectionError
+
+client = OpenAI()
+
+def llm_call_with_retry(
+    messages: list,
+    model: str = "gpt-4o",
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+) -> str:
+    """
+    LLM call with exponential backoff + jitter.
+    Retries on rate limits and transient errors.
+    Fails fast on non-retriable errors (bad request, auth).
+    """
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                timeout=30.0,   # always set a timeout
+            )
+            return response.choices[0].message.content
+
+        except RateLimitError as e:
+            if attempt == max_retries - 1:
+                raise
+            # Respect Retry-After header if present
+            retry_after = getattr(e, 'retry_after', None)
+            wait = retry_after or (base_delay * (2 ** attempt) + random.uniform(0, 1))
+            print(f"  Rate limited — waiting {wait:.1f}s (attempt {attempt+1}/{max_retries})")
+            time.sleep(wait)
+
+        except APITimeoutError:
+            if attempt == max_retries - 1:
+                raise
+            wait = base_delay * (2 ** attempt)
+            print(f"  Timeout — retrying in {wait:.1f}s")
+            time.sleep(wait)
+
+        except APIConnectionError:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(base_delay * (2 ** attempt))
+
+        # Don't retry: BadRequestError (400), AuthenticationError (401), etc.
+
+    raise RuntimeError("Max retries exceeded")
+
+
+def llm_with_fallback(messages: list, primary: str = "gpt-4o", fallback: str = "gpt-4o-mini") -> str:
+    """Try primary model; fall back to cheaper model on failure."""
+    try:
+        return llm_call_with_retry(messages, model=primary)
+    except Exception as e:
+        print(f"  Primary model failed ({e}), trying fallback: {fallback}")
+        return llm_call_with_retry(messages, model=fallback)
+```
+
+**Graceful degradation hierarchy**:
+```
+1. Try primary model (e.g. gpt-4o)
+2. On failure → try fallback model (e.g. gpt-4o-mini)
+3. On failure → try cached response if available
+4. On failure → return a helpful error message (never expose stack traces)
+```
+
+> **Note on caching**: Response caching (semantic cache, prompt caching) is covered in Module 06, which focuses specifically on cost and performance optimization. This module covers the serving infrastructure; Module 06 covers the optimization layer on top.
+
+---
+
+### 4. Cost Management
 
 ### 3. Scalability
 

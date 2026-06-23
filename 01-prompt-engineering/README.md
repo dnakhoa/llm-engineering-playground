@@ -51,17 +51,90 @@ Assigning a specific role or persona to the model.
 You are an expert Python developer with 10 years of experience. Review the following code and suggest improvements...
 ```
 
-### 5. Structured Output
-Requesting output in a specific format (JSON, XML, Markdown, etc.)
+### 5. Structured Output — Modern Approach
 
-**Example:**
+There are three ways to get structured output from an LLM, from least to most reliable:
+
+**Method A — Ask nicely in the prompt (fragile, avoid in production)**
 ```
-Extract the following information from the text and return as JSON:
-- Name
-- Age
-- Occupation
+Extract information and return as JSON: {"name": ..., "age": ...}
+```
+Problem: model may add markdown fences, prose, or deviate from the schema.
 
-Text: "John Smith is a 35-year-old software engineer..."
+**Method B — Native JSON Schema (OpenAI, recommended)**
+```python
+from pydantic import BaseModel
+from openai import OpenAI
+
+client = OpenAI()
+
+class Person(BaseModel):
+    name: str
+    age: int
+    occupation: str
+
+# .parse() + response_format=Pydantic model → guaranteed schema-conformant output
+completion = client.beta.chat.completions.parse(
+    model="gpt-4o-mini",
+    response_format=Person,
+    messages=[{
+        "role": "user",
+        "content": "John Smith is a 35-year-old software engineer."
+    }]
+)
+person: Person = completion.choices[0].message.parsed
+print(person.name, person.age)  # → "John Smith", 35
+```
+With `strict=True`, OpenAI **guarantees** the output matches the schema.
+
+**Method C — Tool use for extraction (Anthropic)**
+```python
+import anthropic, json
+
+client = anthropic.Anthropic()
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=256,
+    tools=[{
+        "name": "extract_person",
+        "description": "Extract structured person data",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age":  {"type": "integer"},
+            },
+            "required": ["name", "age"]
+        }
+    }],
+    tool_choice={"type": "tool", "name": "extract_person"},  # force this tool
+    messages=[{"role": "user", "content": "John Smith is a 35-year-old engineer."}]
+)
+tool_block = next(b for b in response.content if b.type == "tool_use")
+data = tool_block.input   # → {"name": "John Smith", "age": 35}
+```
+
+**The `instructor` library — provider-agnostic extraction**
+```python
+import instructor
+from openai import OpenAI
+from pydantic import BaseModel
+
+client = instructor.from_openai(OpenAI())
+
+class Person(BaseModel):
+    name: str
+    age: int
+
+# Works identically for Anthropic via instructor.from_anthropic(Anthropic())
+person = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_model=Person,
+    messages=[{"role": "user", "content": "Jane is 33 years old."}]
+)
+# → Person(name='Jane', age=33)
+# Automatic retry on validation failure
 ```
 
 ## Best Practices
@@ -87,7 +160,176 @@ Two ways to learn hands-on:
 
 ---
 
-## 6. Extended Thinking / Reasoning Models
+## 6. Multimodal — Vision Inputs
+
+Modern models accept images alongside text. This is essential for document parsing, screenshot analysis, UI review, and visual Q&A.
+
+```python
+import base64
+from openai import OpenAI
+
+client = OpenAI()
+
+# Option A: URL (simplest)
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What does this chart show?"},
+            {"type": "image_url", "image_url": {"url": "https://example.com/chart.png"}},
+        ]
+    }]
+)
+
+# Option B: Local file (base64)
+with open("screenshot.png", "rb") as f:
+    b64 = base64.b64encode(f.read()).decode()
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "List all the error messages visible."},
+            {"type": "image_url", "image_url": {
+                "url": f"data:image/png;base64,{b64}",
+                "detail": "high"   # "low" for faster/cheaper, "high" for dense images
+            }},
+        ]
+    }]
+)
+print(response.choices[0].message.content)
+```
+
+**Anthropic vision** (same concepts, different shape):
+```python
+import anthropic, base64
+
+client = anthropic.Anthropic()
+
+with open("screenshot.png", "rb") as f:
+    b64 = base64.standard_b64encode(f.read()).decode()
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=512,
+    messages=[{
+        "role": "user",
+        "content": [
+            {
+                "type": "image",
+                "source": {"type": "base64", "media_type": "image/png", "data": b64}
+            },
+            {"type": "text", "text": "List all the error messages visible."}
+        ]
+    }]
+)
+```
+
+**Cost note**: Images are billed as tokens. A 1024×1024 image at `detail=high` costs ~765 input tokens on OpenAI. Keep `detail=low` for thumbnails; use `high` only when small text or detail matters.
+
+---
+
+## 7. Debugging LLM Failures
+
+Career-changers often have no mental model for *why* an LLM output went wrong. Here are the most common failure modes and how to diagnose and fix each.
+
+### Failure 1: Refusals
+
+The model refuses to help with a legitimate request.
+
+```
+Symptom: "I can't assist with that." on a benign task.
+Cause:   Overly broad safety training; "dangerous" words in a safe context.
+
+Diagnosis: Is your prompt using ambiguous framing?
+  ❌ "How do I kill this process?"
+  ✅ "How do I terminate a running OS process in Python?"
+
+Fix:
+  1. Reframe with explicit, specific context
+  2. Add a system prompt: "You are a developer assistant for internal tools."
+  3. Use Anthropic if OpenAI over-refuses for your domain (or vice versa)
+```
+
+### Failure 2: Confident Hallucination
+
+The model states false facts with full confidence.
+
+```
+Symptom: Plausible-sounding answer that is factually wrong.
+Cause:   Model fills gaps in its training data with "likely" completions.
+
+Diagnosis: Ask the model to cite sources. Does it? Are they real?
+
+Fix:
+  1. Provide the facts in the prompt (RAG — Module 02)
+  2. Add: "Only use information from the provided context. If uncertain, say so."
+  3. Ask for confidence: "How confident are you? Rate 1-5."
+  4. Add evaluation: cross-check key claims with a second LLM call
+```
+
+### Failure 3: Instruction Ignoring
+
+The model ignores part of the system prompt.
+
+```
+Symptom: "Respond only in JSON" produces prose + JSON.
+Cause:   Competing instructions; instruction buried in context middle;
+         instruction is vague ("try to" / "when possible").
+
+Diagnosis:
+  - Is the instruction unambiguous? "ONLY JSON, no prose" vs "please use JSON"
+  - Is it near the start or end of the system prompt? (Middle gets least attention)
+  - Does a later turn contradict it?
+
+Fix:
+  1. Use imperative, absolute language: "ONLY return valid JSON. No other text."
+  2. Move the instruction to the first or last line of the system prompt
+  3. Repeat in the user turn: "...return as JSON only"
+  4. Use native structured output (Method B/C above) — bypasses this entirely
+```
+
+### Failure 4: Output Truncation
+
+Response cuts off mid-sentence.
+
+```
+Symptom: Response ends abruptly; finish_reason="length"
+Cause:   Hit max_tokens limit.
+
+Diagnosis: Check response.choices[0].finish_reason
+  - "stop"   → natural end ✓
+  - "length" → hit max_tokens cap — increase it
+
+Fix:
+  1. Increase max_tokens
+  2. Ask for a shorter response: "In under 200 words, ..."
+  3. For long outputs, stream and detect mid-sentence cuts
+```
+
+### Quick Debugging Checklist
+
+```python
+response = client.chat.completions.create(...)
+
+# Always check these first
+finish_reason = response.choices[0].finish_reason
+tokens_used   = response.usage.total_tokens
+content       = response.choices[0].message.content
+
+if finish_reason == "length":
+    print("⚠️  Truncated — increase max_tokens")
+if not content or len(content.strip()) < 10:
+    print("⚠️  Near-empty response — check for refusal")
+if finish_reason == "content_filter":
+    print("⚠️  Safety filter triggered — reframe prompt")
+```
+
+---
+
+## 8. Extended Thinking / Reasoning Models
 
 Some tasks benefit from the model spending time "thinking" before answering — especially multi-step math, logic problems, complex architecture decisions, and careful analysis.
 

@@ -4,9 +4,176 @@
 
 Evaluation is critical for understanding model performance, identifying weaknesses, and making informed decisions about which models or approaches to use in production.
 
-## Types of Evaluation
+> **The 70/30 rule**: In modern LLM evaluation, ~70% of your eval effort should go toward LLM-as-judge and task-specific eval harnesses. Classical NLP metrics (BLEU, ROUGE) are useful in ~30% of cases — mostly for translation and summarization with known reference outputs. Start with LLM-as-judge; add classical metrics only if your use case specifically warrants them.
 
-### 1. Automated Metrics
+---
+
+## Part 1: LLM-as-Judge (Primary Pattern)
+
+Use a capable LLM to evaluate outputs from another LLM. This is the standard for open-ended generation, Q&A, reasoning, and most production use cases.
+
+### Why LLM-as-judge beats classical metrics
+
+```
+Classical metrics require a "gold standard" reference answer.
+For open-ended generation, there is no single correct answer.
+
+Question: "Explain transformers to a 10-year-old."
+Reference: "A transformer is a neural network architecture..."
+
+Does the model's creative explanation score well on BLEU?
+→ No, even if it's a better, clearer explanation.
+
+Does an LLM judge evaluate it correctly?
+→ Yes — it can assess accuracy, clarity, age-appropriateness.
+```
+
+### Direct Scoring with a Rubric
+
+```python
+import json
+from openai import OpenAI
+
+client = OpenAI()
+
+RUBRIC = """
+1. Accuracy (1-5): Is the information factually correct?
+2. Relevance (1-5): Does it directly answer the question?
+3. Clarity (1-5): Is it easy to understand for the target audience?
+4. Completeness (1-5): Does it cover the key points without being excessive?
+"""
+
+def llm_judge(question: str, response: str, rubric: str = RUBRIC) -> dict:
+    prompt = f"""You are an expert evaluator. Score this response objectively.
+
+RUBRIC:
+{rubric}
+
+IMPORTANT: Score based on quality, NOT length. A short accurate answer beats a long vague one.
+
+QUESTION: {question}
+RESPONSE: {response}
+
+Output JSON only:
+{{"accuracy": int, "relevance": int, "clarity": int, "completeness": int, "overall": int, "reason": str}}"""
+
+    result = client.chat.completions.create(
+        model="gpt-4o",
+        response_format={"type": "json_object"},
+        temperature=0.0,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return json.loads(result.choices[0].message.content)
+
+# Usage
+scores = llm_judge(
+    question="What is prompt injection?",
+    response="Prompt injection is when a user embeds malicious instructions..."
+)
+print(f"Overall: {scores['overall']}/5 — {scores['reason']}")
+```
+
+### Pairwise Comparison (More Reliable)
+
+Pairwise removes calibration bias — the judge only says which is better, not a number.
+
+```python
+import random
+
+def pairwise_compare(question: str, response_a: str, response_b: str) -> str:
+    # Randomize position to neutralize position bias
+    if random.random() < 0.5:
+        first, second, mapping = response_a, response_b, {"first": "A", "second": "B"}
+    else:
+        first, second, mapping = response_b, response_a, {"first": "B", "second": "A"}
+
+    result = client.chat.completions.create(
+        model="gpt-4o",
+        response_format={"type": "json_object"},
+        temperature=0.0,
+        messages=[{"role": "user", "content": f"""Which response better answers the question? Be objective.
+
+QUESTION: {question}
+RESPONSE 1: {first}
+RESPONSE 2: {second}
+
+JSON: {{"winner": "first"|"second"|"tie", "reason": str}}"""}]
+    )
+    data = json.loads(result.choices[0].message.content)
+    return mapping.get(data.get("winner", "tie"), "tie")
+```
+
+### Known Biases and How to Mitigate Them
+
+| Bias | What happens | Fix |
+|------|-------------|-----|
+| **Position bias** | Prefers whichever response appears first | Randomize order; run both orderings |
+| **Length bias** | Prefers longer responses | Add "length is irrelevant" to rubric |
+| **Verbosity bias** | Rewards confident-sounding prose | Use concrete rubric criteria |
+| **Self-preference** | GPT-4 prefers GPT-4 outputs | Use a diverse panel or third model |
+| **Anchoring** | First score affects subsequent scores | Score each response independently |
+
+### Calibrate Your Judge Against Humans
+
+Before trusting your judge in production, measure its agreement with human labels:
+
+```python
+def calibrate(human_examples: list[dict]) -> dict:
+    """human_examples: [{"question", "response", "human_score"}]"""
+    agreements = []
+    for ex in human_examples:
+        judge_scores = llm_judge(ex["question"], ex["response"])
+        diff = abs(judge_scores["overall"] - ex["human_score"])
+        agreements.append(diff <= 1)   # within 1 point = agree
+
+    rate = sum(agreements) / len(agreements)
+    return {
+        "agreement_rate": rate,
+        "quality": "reliable" if rate > 0.75 else "needs refinement",
+        "recommendation": (
+            "Use for production evals" if rate > 0.75
+            else "Refine rubric or use different judge model"
+        )
+    }
+```
+
+**Rule of thumb**: 75%+ agreement on ±1 scale point → reliable for automation.
+
+---
+
+## Part 2: Task-Specific Eval Harnesses
+
+For deterministic tasks (classification, extraction, code), write a test harness:
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class EvalCase:
+    input: str
+    expected: str
+    category: str  # "easy", "medium", "hard", "adversarial"
+
+def run_eval(cases: list[EvalCase], llm_fn) -> dict:
+    results = {"pass": 0, "fail": 0, "by_category": {}}
+    for case in cases:
+        output = llm_fn(case.input)
+        passed = case.expected.lower() in output.lower()
+        if passed: results["pass"] += 1
+        else:      results["fail"] += 1
+        results["by_category"].setdefault(case.category, []).append(passed)
+
+    results["pass_rate"] = results["pass"] / len(cases)
+    return results
+```
+
+---
+
+## Part 3: Classical Metrics (When Reference Answers Exist)
+
+Use these **only** when you have known-correct reference outputs — typically translation, summarization benchmarks, or information extraction with a fixed schema.
+
+### Automated Metrics
 
 **Traditional NLP Metrics:**
 - **Perplexity**: Measures how well the model predicts text (lower is better)

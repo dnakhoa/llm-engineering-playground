@@ -729,6 +729,147 @@ print(f"Suggested Actions: {insights['suggested_actions']}")
 
 ---
 
+---
+
+## Step 6: Prompt Management Workflow
+
+Prompt management is the **day-to-day workflow** for evolving prompts safely: version them, test changes before shipping, and roll back when something regresses.
+
+### Option A — File-Based (Git, no SaaS required)
+
+The simplest production-ready approach: prompts are plain text files, versioned in Git.
+
+```
+prompts/
+  summarizer/
+    v1.txt          # original
+    v2.txt          # improved — separate file or git tag
+    v3.txt          # current production
+  classifier/
+    system.txt
+    few_shot.txt
+```
+
+```python
+# llmops/prompt_registry.py
+from pathlib import Path
+
+PROMPT_DIR = Path(__file__).parent.parent / "prompts"
+
+def load_prompt(name: str, version: str = "latest") -> str:
+    """Load a prompt by name. 'latest' resolves to highest-numbered vN.txt."""
+    prompt_path = PROMPT_DIR / name
+    if version == "latest":
+        versions = sorted(prompt_path.glob("v*.txt"))
+        if not versions:
+            raise FileNotFoundError(f"No versions found for prompt '{name}'")
+        path = versions[-1]
+    else:
+        path = prompt_path / f"{version}.txt"
+    return path.read_text().strip()
+
+# Pin production version explicitly — never use "latest" in production
+PROD_PROMPTS = {
+    "summarizer":  load_prompt("summarizer", "v3"),
+    "classifier":  load_prompt("classifier", "v1"),
+}
+```
+
+**Git workflow for prompt changes**:
+```bash
+# 1. Create new version as a file (not overwrite)
+cp prompts/summarizer/v2.txt prompts/summarizer/v3.txt
+# Edit v3.txt
+
+# 2. Run eval before merging
+python -m pytest tests/test_prompts.py::test_summarizer
+
+# 3. PR diff shows exactly what changed — reviewable like code
+git diff HEAD~1 prompts/
+
+# 4. Tag stable production versions
+git tag prompts/summarizer-v3-prod
+```
+
+### Option B — LangSmith (Cloud versioning + A/B testing)
+
+LangSmith's Prompt Hub stores prompts as versioned objects with a server-side commit history.
+
+```python
+from langsmith import Client
+from langchain_core.prompts import ChatPromptTemplate
+
+ls_client = Client()   # requires LANGCHAIN_API_KEY
+
+# Push a new version (creates a commit in the Hub)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a concise summarizer. Context: {context}"),
+    ("human", "Summarize in {max_words} words: {text}")
+])
+ls_client.push_prompt("my-org/summarizer", object=prompt, description="Added word limit param")
+
+# Pull at runtime — pin to a tag for production stability
+prod_prompt = ls_client.pull_prompt("my-org/summarizer:production")
+# Never pull 'latest' in production — pin to a specific commit hash or tag
+
+# A/B test: serve v2 to 50% of traffic, v3 to 50%
+# Track quality scores in LangSmith tracing — compare in the Hub UI
+```
+
+### Option C — Promptfoo (Open-source prompt testing + CI)
+
+Promptfoo runs prompts against test cases and produces a comparison matrix. Ideal for catching regressions before they reach production.
+
+```yaml
+# promptfooconfig.yaml
+prompts:
+  - file://prompts/summarizer/v2.txt
+  - file://prompts/summarizer/v3.txt
+
+providers:
+  - openai:chat:gpt-4o-mini
+
+tests:
+  - vars:
+      text: "The quarterly report shows revenue grew 24% YoY..."
+      max_words: "50"
+    assert:
+      - type: javascript
+        value: "output.split(' ').length <= 60"   # under word limit
+      - type: llm-rubric
+        value: "The summary is accurate and captures the key financial metric"
+
+  - vars:
+      text: "The product launch was delayed due to supply chain issues."
+      max_words: "20"
+    assert:
+      - type: contains
+        value: "delay"
+      - type: javascript
+        value: "output.split(' ').length <= 25"
+```
+
+```bash
+# Run locally
+npx promptfoo@latest eval
+
+# In CI (blocks merge if pass rate drops)
+npx promptfoo@latest eval --ci --pass-rate 0.90
+
+# Open comparison UI
+npx promptfoo@latest view
+```
+
+### The Prompt Management Checklist
+
+- [ ] Prompts are files in version control, not hardcoded strings
+- [ ] Production uses a pinned version, not `latest`
+- [ ] Changes go through a PR with an eval run before merge
+- [ ] CI blocks on prompt regression (pass rate threshold)
+- [ ] A rollback plan exists: revert the prompt file and redeploy
+
+---
+
 ## 🚀 Production Deployment Checklist
 
 ### Infrastructure Setup
