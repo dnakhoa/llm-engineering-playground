@@ -192,6 +192,99 @@ See `optimization_example.py` for practical optimization code.
 
 5. **Batch vs Streaming**: Compare batch processing (collect 10 requests, process together) vs streaming (process immediately). Which has lower latency? Which has higher throughput?
 
+---
+
+## 7. Provider-Level Prompt Caching
+
+Prompt caching lets you pay **once** for a large, stable context prefix (system prompt, few-shot examples, reference documents) and reuse it across many requests at a fraction of the cost.
+
+### Anthropic Cache Control
+
+| Price tier | Cost multiplier | TTL |
+|-----------|----------------|-----|
+| Cache WRITE (5-min) | 1.25× input | 5 minutes (resets on each read) |
+| Cache WRITE (1-hour) | 2.0× input  | 1 hour |
+| Cache READ  | **0.1× input** | — |
+
+Minimum tokens: 1,024 (Haiku), 2,048 (Sonnet/Opus).
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+# Structure: stable prefix → cache boundary → dynamic suffix
+response = client.messages.create(
+    model="claude-opus-4-8",
+    max_tokens=1024,
+    system=[
+        {"type": "text", "text": "You are an expert analyst."},
+        {
+            "type": "text",
+            "text": large_reference_document,       # stable, large
+            "cache_control": {"type": "ephemeral"}  # 5-min TTL cache boundary
+        }
+    ],
+    messages=[
+        {"role": "user", "content": user_question}  # dynamic — NOT cached
+    ]
+)
+
+# First call: WRITE (1.25× price)
+print(f"Cache write: {response.usage.cache_creation_input_tokens:,} tokens")
+# Subsequent calls within 5 min: READ (0.1× price — 90% discount)
+print(f"Cache read:  {response.usage.cache_read_input_tokens:,} tokens")
+```
+
+**Cost example**: 5,000-token system prompt, 100 req/day:
+- Without caching: 100 × 5,000 = 500,000 input tokens/day
+- With caching:    1 × 5,000 × 1.25 (write) + 99 × 5,000 × 0.1 (read) = 55,750 tokens
+- **Savings: 89%** after the first request per cache window
+
+### OpenAI Automatic Caching
+
+OpenAI automatically caches the first 1,024+ token prefix — no API changes needed.
+
+```python
+from openai import OpenAI
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are..." + large_stable_context},
+        {"role": "user",   "content": user_question}   # dynamic suffix
+    ]
+)
+cached = response.usage.prompt_tokens_details.cached_tokens
+print(f"Cached tokens: {cached}")
+```
+
+Optionally pass `prompt_cache_key` to improve routing when many users share the same prefix.
+
+### Cache-Friendly Design Rules
+
+```
+✅ DO: Stable prefix at top, dynamic content at bottom
+   System Prompt (stable)        ← cached
+   Reference Docs (stable)       ← cached
+   Few-shot Examples (stable)    ← cached
+   ── cache boundary ──
+   Conversation History          ← NOT cached
+   User Question (changes)       ← NOT cached
+
+❌ DON'T: Put timestamps or session IDs at the top
+   "Current time: 2026-06-23 11:30:22"   ← invalidates EVERYTHING below
+   System Prompt                          ← not cached (prefix broken)
+```
+
+Additional rules:
+- Keep call cadence steady — cache evicts on inactivity (5–10 min)
+- Longer TTL entries must appear before shorter TTL entries (Anthropic)
+- Never add per-request noise (request IDs, timestamps) before the cache boundary
+
+---
+
 ## Best Practices Checklist
 
 ### Quick Wins (1-2 days)

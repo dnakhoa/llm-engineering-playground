@@ -147,6 +147,182 @@ See `evaluation_example.py` for practical evaluation code.
 
 5. **A/B Test Design**: Design an A/B test comparing two prompt strategies. How many samples do you need for statistical significance at p=0.05? What metrics would you track?
 
+---
+
+## Advanced: LLM-as-Judge Systems
+
+LLM-as-judge has become the standard for scalable evaluation of open-ended outputs. But naive implementations introduce systematic bias. Here's how to build reliable judge systems.
+
+### Direct Scoring
+
+```python
+def llm_judge_direct(
+    question: str,
+    response: str,
+    rubric: str,
+    judge_model: str = "gpt-4o",
+) -> dict:
+    """
+    Single-call direct scoring with a detailed rubric.
+    """
+    prompt = f"""You are an expert evaluator. Score the following response.
+
+RUBRIC:
+{rubric}
+
+QUESTION: {question}
+
+RESPONSE: {response}
+
+Score each rubric dimension 1-5 and provide brief justification.
+Output JSON: {{"dimensions": {{"dim_name": {{"score": int, "reason": str}}}}, "overall": int}}"""
+
+    response_obj = client.chat.completions.create(
+        model=judge_model,
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return json.loads(response_obj.choices[0].message.content)
+```
+
+### Pairwise Comparison (More Reliable Than Direct Scoring)
+
+Pairwise comparison removes absolute calibration bias — the judge only needs to say which is better, not assign a number.
+
+```python
+import random
+
+def pairwise_compare(
+    question: str,
+    response_a: str,
+    response_b: str,
+    judge_model: str = "gpt-4o",
+) -> str:  # "A", "B", or "tie"
+    """
+    Compare two responses — winner is better.
+    Randomize order to neutralize position bias.
+    """
+    # Randomize to prevent position bias (judges prefer first item)
+    if random.random() < 0.5:
+        first, second = response_a, response_b
+        mapping = {"first": "A", "second": "B"}
+    else:
+        first, second = response_b, response_a
+        mapping = {"first": "B", "second": "A"}
+
+    prompt = f"""Which response better answers the question? Be objective.
+
+QUESTION: {question}
+
+RESPONSE 1: {first}
+
+RESPONSE 2: {second}
+
+Output JSON: {{"winner": "first"|"second"|"tie", "reason": str}}"""
+
+    result = client.chat.completions.create(
+        model=judge_model,
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": prompt}]
+    )
+    data = json.loads(result.choices[0].message.content)
+    winner_label = data.get("winner", "tie")
+    return mapping.get(winner_label, "tie")
+
+
+def tournament_eval(responses: list[str], question: str, rounds: int = 3) -> list:
+    """Run round-robin tournament and rank by win rate."""
+    wins = {i: 0 for i in range(len(responses))}
+
+    for _ in range(rounds):
+        for i in range(len(responses)):
+            for j in range(i+1, len(responses)):
+                winner = pairwise_compare(question, responses[i], responses[j])
+                if winner == "A": wins[i] += 1
+                elif winner == "B": wins[j] += 1
+
+    return sorted(wins.items(), key=lambda x: x[1], reverse=True)
+```
+
+### Evaluator Bias Mitigation
+
+Known biases in LLM judges and how to address them:
+
+| Bias | Description | Mitigation |
+|------|-------------|------------|
+| **Position bias** | Prefers first item in pairwise | Randomize order, run both orderings |
+| **Length bias** | Prefers longer responses | Add "length is irrelevant" to rubric; normalize by length |
+| **Verbosity bias** | Rewards confident-sounding prose | Use rubrics with concrete criteria, not "quality" |
+| **Self-preference** | GPT-4 prefers GPT-4 outputs | Use a diverse panel of judges or a third model |
+| **Anchoring** | First score anchors subsequent ones | Score each response independently |
+
+```python
+def debiased_judge(question: str, response: str, reference: str) -> dict:
+    """
+    Judge with explicit anti-bias instructions.
+    """
+    prompt = f"""Rate this response on the following criteria. 
+
+IMPORTANT ANTI-BIAS RULES:
+- Score based on factual accuracy and helpfulness, NOT length
+- A short accurate answer is better than a long vague one
+- Do not favor responses that sound confident but lack substance
+- Score this response independently — ignore any prior scores you've given
+
+QUESTION: {question}
+REFERENCE ANSWER: {reference}
+RESPONSE TO EVALUATE: {response}
+
+Rate 1-5 on: accuracy, relevance, completeness, conciseness.
+JSON: {{"accuracy": int, "relevance": int, "completeness": int, "conciseness": int, "overall": int}}"""
+
+    result = client.chat.completions.create(
+        model="gpt-4o",
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return json.loads(result.choices[0].message.content)
+```
+
+### Rubric Calibration
+
+Before using an LLM judge in production, calibrate it against human labels:
+
+```python
+def calibrate_judge(human_labeled_examples: list[dict]) -> dict:
+    """
+    Measure agreement between LLM judge and human labels.
+    Returns calibration metrics.
+    """
+    agreements = []
+    for example in human_labeled_examples:
+        judge_score = llm_judge_direct(
+            question=example["question"],
+            response=example["response"],
+            rubric=RUBRIC
+        )
+        human_score = example["human_score"]
+
+        # Normalize both to 1-5 scale
+        diff = abs(judge_score["overall"] - human_score)
+        agreements.append(diff <= 1)  # within 1 point = agree
+
+    agreement_rate = sum(agreements) / len(agreements)
+    return {
+        "agreement_rate": agreement_rate,
+        "calibration_quality": "good" if agreement_rate > 0.75 else "poor",
+        "n_examples": len(human_labeled_examples),
+        "recommendation": (
+            "Judge is reliable for production use" if agreement_rate > 0.75
+            else "Refine rubric or use different judge model"
+        )
+    }
+```
+
+**Calibration rule of thumb**: 75%+ agreement on ±1 scale point = reliable for automation. Below 75%: refine rubric, add examples, or use human review as a gate.
+
+---
+
 ## Evaluation Best Practices
 
 1. **Define Clear Objectives**: What does "good" mean for your use case?

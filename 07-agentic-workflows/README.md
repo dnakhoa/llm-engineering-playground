@@ -244,6 +244,160 @@ Generate → Critique → Revise → Validate → Deploy
 - Agents propose, humans decide
 - Audit trail for compliance
 
+---
+
+## 🚀 Advanced Multi-Agent Patterns (2025-2026)
+
+### Supervisor / Worker Architecture
+
+The supervisor holds the task decomposition and coordination logic. Workers are stateless executors that receive only the context slice they need.
+
+```python
+# Pattern: supervisor with isolated workers
+async def supervisor_workflow(task: str, workers: dict) -> str:
+    """
+    Supervisor breaks down task, dispatches to specialist workers,
+    synthesizes results. Workers never see each other's context.
+    """
+    # Step 1: Supervisor decomposes
+    subtasks = await supervisor_agent.plan(task)
+
+    # Step 2: Dispatch in parallel — each worker gets ONLY its slice
+    results = await asyncio.gather(*[
+        worker_agent.execute(
+            task=subtask,
+            context=subtask.relevant_context  # NOT the full parent context
+        )
+        for subtask in subtasks
+    ])
+
+    # Step 3: Supervisor synthesizes
+    return await supervisor_agent.synthesize(task, results)
+
+
+# Context isolation is critical — passing full context to every worker:
+#   ✗ Wastes tokens (workers see irrelevant history)
+#   ✗ Increases error rate (noise → confused worker)
+#   ✗ Breaks privacy (worker A sees worker B's results before synthesis)
+```
+
+### Pipeline vs Barrier Synchronization
+
+**Pipeline** (default): Output of stage A flows directly into stage B without waiting for other items. Item 1 can be in stage 3 while Item 2 is in stage 1.
+
+**Barrier**: All items must complete stage N before any item starts stage N+1.
+
+```python
+# ✅ Pipeline — correct for most tasks
+# Item A flows through all stages independently of Item B
+# Wall-clock = slowest single item, not sum-of-slowest-per-stage
+
+async def pipeline(items, *stages):
+    """Each item progresses through stages independently."""
+    tasks = [run_item_through_stages(item, stages) for item in items]
+    return await asyncio.gather(*tasks)
+
+async def run_item_through_stages(item, stages):
+    result = item
+    for stage in stages:
+        result = await stage(result)
+    return result
+
+
+# ✅ Barrier — only when synthesis needs ALL prior results
+# Use when: dedup across full result set, cross-item comparison, voting
+
+async def barrier_workflow(items, find_fn, verify_fn):
+    # All finders run in parallel (independent)
+    all_findings = await asyncio.gather(*[find_fn(item) for item in items])
+
+    # Barrier: dedup across ALL findings before verification
+    flat = [f for findings in all_findings for f in findings]
+    unique = dedup_by_key(flat, key="id")           # genuinely needs ALL
+
+    # Now verify each unique finding (pipeline again)
+    verified = await asyncio.gather(*[verify_fn(f) for f in unique])
+    return [v for v in verified if v.is_real]
+```
+
+**Decision rule**: if your code would write `await parallel(all_items)` then immediately `for result in results:` — that's a pipeline, not a barrier. Rewrite as pipeline.
+
+### Adversarial Verification
+
+For high-stakes agent outputs, spawn N independent agents to try to REFUTE each finding:
+
+```python
+async def adversarial_verify(finding: str, n_voters: int = 3) -> bool:
+    """
+    Spawn N independent skeptic agents.
+    Claim survives only if majority CANNOT refute it.
+    """
+    votes = await asyncio.gather(*[
+        skeptic_agent(
+            f"Try hard to refute this claim. "
+            f"Default refuted=True if uncertain.\n"
+            f"Claim: {finding}"
+        )
+        for _ in range(n_voters)
+    ])
+    refuted = sum(1 for v in votes if v.refuted)
+    return refuted < n_voters // 2 + 1  # majority must fail to refute
+
+
+# Perspective-diverse verification (stronger than identical skeptics):
+LENSES = ["correctness", "security", "reproducibility"]
+
+async def diverse_verify(finding: str) -> dict:
+    """Each verifier uses a different failure lens."""
+    verdicts = await asyncio.gather(*[
+        verifier_agent(f"Verify via {lens} lens: {finding}")
+        for lens in LENSES
+    ])
+    return {
+        "finding": finding,
+        "passes": sum(1 for v in verdicts if v.passes),
+        "verdicts": verdicts
+    }
+```
+
+### Swarm Coordination
+
+Agents operate peer-to-peer, picking tasks from a shared queue — no central coordinator. Scales horizontally for embarrassingly parallel workloads.
+
+```python
+import asyncio
+from asyncio import Queue
+
+async def swarm_worker(agent_id: int, task_queue: Queue, results: list):
+    """Worker pulls tasks until queue is empty."""
+    while True:
+        try:
+            task = task_queue.get_nowait()
+        except asyncio.QueueEmpty:
+            break
+        result = await agent.execute(task)
+        results.append(result)
+        task_queue.task_done()
+
+async def swarm(tasks: list, n_workers: int = 5) -> list:
+    queue = Queue()
+    for task in tasks:
+        queue.put_nowait(task)
+
+    results = []
+    workers = [
+        asyncio.create_task(swarm_worker(i, queue, results))
+        for i in range(n_workers)
+    ]
+    await asyncio.gather(*workers)
+    return results
+```
+
+**Use supervisor/worker when**: task decomposition is complex, subtask dependencies exist, or you need a synthesis step.  
+**Use swarm when**: tasks are independent, uniform, and embarrassingly parallel (e.g., analyze 1,000 documents).
+
+---
+
 ## 📖 Next Steps
 
 1. **Start Simple**: Build a single agent with 2-3 tools

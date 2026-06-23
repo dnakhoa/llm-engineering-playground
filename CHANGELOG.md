@@ -4,6 +4,49 @@ All notable changes to this project are documented here.
 
 ---
 
+## [3.0.0] — 2026-06-23
+
+### Added — 3 New Modules (12–14)
+
+**Module 12: Context Engineering** (`12-context-engineering/`)
+- `README.md` — U-shaped attention curve, context failure modes (poisoning, confusion, clash, bloat), observation masking, prefix caching, token budgets, context compression
+- `context_engineering.py` — Runnable demos: `TokenBudget`, `ObservationMasker`, sliding window compression, Anthropic prefix caching (cache_control, 5-min/1-hr TTLs), extended thinking, context quality audit
+
+**Module 13: Agent Harness & Loop Engineering** (`13-agent-harness/`)
+- `README.md` — Loop-until-dry, budget-aware loops, durable journals, self-repair, human checkpoints, pipeline vs barrier, adversarial verification
+- `harness/novelty_gate.py` — `NoveltyGate` class for deduplication and dry-round counting
+- `harness/journal.py` — `Journal` class: append-only JSONL, idempotent step execution, crash-proof resume
+- `loops/research_loop.py` — `ResearchLoop`: combines novelty gate + journal + budget tracking
+- `loops/budget_loop.py` — `BudgetLoop` + `BudgetTracker`: context-hint injection, warn/stop thresholds
+- `harness_example.py` — Full demos of all 5 harness patterns
+
+**Module 14: MCP & Tool Design** (`14-mcp-tool-design/`)
+- `README.md` — MCP spec 2025-06-18, FastMCP Python server, tool description principles, schema design, error handling, split vs consolidate, resources, prompts
+- `servers/example_server.py` — Complete MCP server (notes knowledge base) with 4 tools, 2 resources, 1 prompt
+- `tools/tool_design.py` — `ToolValidator` (scores description quality, naming, schema, return type), `describe_tool()` helper
+- `mcp_example.py` — Standalone demos: tool audit, routing comparison, error handling, schema design
+
+### Updated — 4 Existing Modules
+
+**Module 01 — Prompt Engineering**: Added "Extended Thinking / Reasoning Models" section
+- When to use vs standard mode, budget guidelines, adaptive vs enabled mode, inter-tool thinking on Claude 4+ models, prompt patterns that work well with thinking
+
+**Module 04 — Evaluation**: Added "Advanced: LLM-as-Judge Systems" section
+- Direct scoring with rubrics, pairwise comparison (position-bias-aware), tournament evaluation, evaluator bias table (position, length, verbosity, self-preference, anchoring), rubric calibration with agreement rate threshold
+
+**Module 06 — Optimization**: Added "Provider-Level Prompt Caching" section
+- Anthropic cache_control with 5-min (1.25×) and 1-hr (2×) TTLs, 90% discount on cache reads, OpenAI automatic caching with `prompt_cache_key`, cache-friendly design rules, cost calculation example (89% savings)
+
+**Module 07 — Agentic Workflows**: Added "Advanced Multi-Agent Patterns" section
+- Supervisor/worker with context isolation, pipeline vs barrier with decision rules, adversarial verification (N-voter + perspective-diverse), swarm coordination with asyncio queue
+
+### Updated — README.md
+- Curriculum table expanded from 11 to 14 modules
+- Key concepts table updated with new modules
+- Module descriptions for 12, 13, 14 added
+
+---
+
 ## [2.0.0] — 2026-06-12
 
 ### Added — Interactive Notebooks (11 modules)

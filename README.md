@@ -8,21 +8,24 @@ This playground provides a structured, step-by-step curriculum covering all esse
 
 ## Curriculum Structure
 
-**11 Comprehensive Modules** covering the complete LLM engineering lifecycle:
+**14 Comprehensive Modules** covering the complete LLM engineering lifecycle:
 
 | Module | Topic | Key Focus | Time | Status |
 |--------|-------|-----------|------|--------|
-| 01 | Prompt Engineering | Foundation communication | ~1h | ✅ |
+| 01 | Prompt Engineering | Foundation communication + extended thinking | ~1.5h | ✅ |
 | 02 | RAG Systems | Knowledge augmentation | ~2h | ✅ |
 | 03 | Fine-Tuning | Model adaptation | ~2h | ✅ |
-| 04 | Evaluation | Quality assurance | ~1.5h | ✅ |
+| 04 | Evaluation | Quality assurance + LLM-as-judge | ~2h | ✅ |
 | 05 | Deployment | Production serving | ~2h | ✅ |
-| 06 | Optimization | Performance & efficiency | ~1.5h | ✅ |
-| 07 | Agentic Workflows | Multi-agent systems | ~3h | ✅ |
+| 06 | Optimization | Performance, efficiency & prompt caching | ~2h | ✅ |
+| 07 | Agentic Workflows | Multi-agent systems + supervisor/swarm | ~3.5h | ✅ |
 | 08 | LLM Ops | Observability & monitoring | ~2h | ✅ |
 | 09 | EvalOps | Continuous evaluation | ~1.5h | ✅ |
 | 10 | Gateway & Guardrails | Security & compliance | ~2h | ✅ |
 | 11 | Memory & Context | Persistent intelligence | ~2h | ✅ |
+| 12 | Context Engineering | Window anatomy, caching, compression | ~2h | ✅ |
+| 13 | Agent Harness | Loop engineering, durable journals, repair | ~3h | ✅ |
+| 14 | MCP & Tool Design | Model Context Protocol, tool interfaces | ~2h | ✅ |
 
 ### 📚 Module 1: Prompt Engineering
 **Foundation** - Learn to communicate effectively with LLMs
@@ -129,6 +132,41 @@ This playground provides a structured, step-by-step curriculum covering all esse
 - Monitoring metrics and alerting
 
 📁 Location: `10-gateway-guardrails/`
+
+### 🧠 Module 12: Context Engineering
+**Context as a Resource** - Design what enters the context window, not just fill it
+- Context window anatomy and the U-shaped attention curve
+- Context poisoning, confusion, and clash — failure modes and fixes
+- Observation masking — compress tool outputs before they hit context
+- Provider-level prefix caching (Anthropic cache_control, OpenAI auto-cache)
+- Token budget management and per-slot allocation
+- Context compression: sliding window, LLM-based summarization
+
+📁 Location: `12-context-engineering/`
+
+### 🔄 Module 13: Agent Harness & Loop Engineering
+**Reliable Autonomy** - Build agents that don't get stuck, crash, or over-run
+- Loop-until-dry with novelty gates (exhaustive without infinite loops)
+- Budget-aware loops — token budget injected into each agent call
+- Durable journals — crash-proof resume without replaying completed steps
+- Self-repair loops — retry with error context fed back to the agent
+- Human approval checkpoints for irreversible actions
+- Deterministic orchestration vs model-driven autonomy
+- Pipeline vs barrier synchronization, adversarial verification
+
+📁 Location: `13-agent-harness/`
+
+### 🔌 Module 14: MCP & Tool Design
+**Tool Interfaces** - Build tools agents can actually use correctly
+- Model Context Protocol (MCP spec 2025-06-18) — architecture and primitives
+- Building MCP servers in Python with FastMCP (stdio + HTTP transport)
+- Tool descriptions as routing signals — what makes an agent call the right tool
+- Schema design to eliminate ambiguous arguments
+- Error handling: protocol vs business-logic errors, actionable messages
+- When to split vs consolidate tools
+- Resources, prompts, and the MCP ecosystem
+
+📁 Location: `14-mcp-tool-design/`
 
 ### 🧠 Module 11: Memory & Context Management
 **Persistent Intelligence** - Build memory-enabled applications
@@ -294,17 +332,20 @@ llm-engineering-playground/
 
 | Concept | Description | When to Use |
 |---------|-------------|-------------|
-| **Prompt Engineering** | Craft effective inputs | Always - first line of defense |
+| **Prompt Engineering** | Craft effective inputs + extended thinking | Always - first line of defense |
 | **RAG** | Add external knowledge | Domain-specific Q&A, current info |
 | **Fine-Tuning** | Adapt model weights | Style, format, specialized tasks |
-| **Evaluation** | Measure performance | Before/after any change |
+| **Evaluation** | Measure performance + LLM-as-judge | Before/after any change |
 | **Deployment** | Production serving | When ready for users |
-| **Optimization** | Improve efficiency | Cost/performance issues |
-| **Agentic Workflows** | Multi-agent systems | Complex multi-step tasks |
+| **Optimization** | Performance, efficiency + prompt caching | Cost/performance issues |
+| **Agentic Workflows** | Multi-agent + supervisor/swarm patterns | Complex multi-step tasks |
 | **LLM Ops & Observability** | Monitor and trace production | After deployment, always |
 | **EvalOps** | Continuous automated evaluation | CI/CD pipelines |
 | **Gateway & Guardrails** | Security, rate limiting, compliance | Production protection layer |
 | **Memory & Context** | Persistent memory across sessions | Conversational and personalized apps |
+| **Context Engineering** | Design context quality, not just quantity | Every LLM call in production |
+| **Agent Harness** | Loop engineering, durable execution | Any long-running autonomous agent |
+| **MCP & Tool Design** | Standard tool interfaces for agents | When building agent tool ecosystems |
 
 ## Best Practices
 
