@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY capstone/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY shared/ shared/
+COPY capstone/ capstone/
+
+WORKDIR /app/capstone
+RUN python seed_knowledge.py
+
+EXPOSE 7860
+
+CMD ["python", "ui.py"]

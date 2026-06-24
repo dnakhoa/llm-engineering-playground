@@ -1,13 +1,19 @@
 """Seed the ChromaDB knowledge base with LLM engineering docs."""
-import os
-import shutil
+import os, sys, shutil
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-load_dotenv(dotenv_path="../.env")
+# Use OpenAI-compatible embeddings (works for all providers)
+from langchain_openai import OpenAIEmbeddings
+
+EMBED_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
 DOCS = [
     ("prompt_engineering", "Prompt engineering is the practice of designing inputs to LLMs to get reliable, high-quality outputs. Key techniques include zero-shot prompting (direct instruction), few-shot prompting (examples in the prompt), chain-of-thought prompting (asking for step-by-step reasoning), and structured output prompting (requesting JSON). The most important principle: be specific. Vague instructions produce vague answers."),
@@ -23,8 +29,9 @@ DOCS = [
 ]
 
 def main():
-    if os.path.exists("./chroma_db"):
-        shutil.rmtree("./chroma_db")
+    chroma_dir = Path(__file__).resolve().parent / "chroma_db"
+    if chroma_dir.exists():
+        shutil.rmtree(chroma_dir)
         print("Cleared existing vector store")
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=40)
@@ -34,14 +41,14 @@ def main():
         for chunk in chunks:
             documents.append(Document(page_content=chunk, metadata={"source": source}))
 
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = OpenAIEmbeddings(model=EMBED_MODEL)
     vectorstore = Chroma.from_documents(
         documents=documents,
         embedding=embeddings,
-        persist_directory="./chroma_db",
+        persist_directory=str(chroma_dir),
         collection_name="knowledge_base",
     )
-    print(f"✅ Seeded {vectorstore._collection.count()} vectors from {len(DOCS)} topics")
+    print(f"Seeded {vectorstore._collection.count()} vectors from {len(DOCS)} topics")
 
 if __name__ == "__main__":
     main()

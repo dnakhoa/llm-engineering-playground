@@ -4,7 +4,52 @@ All notable changes to this project are documented here.
 
 ---
 
-## [3.1.0] — 2026-06-24
+## [4.0.0] — 2026-06-24
+
+### Added — Module 15: Multimodal LLMs (`15-multimodal/`)
+- `README.md` — Vision APIs (GPT-4V, Claude), image generation (DALL-E 3), Whisper transcription, CLIP embeddings, multimodal RAG pipeline
+- `multimodal_example.py` — Runnable demos: image analysis, OCR, DALL-E generation, Whisper TTS→transcription round-trip, structured JSON from images
+- `requirements.txt` — Module-specific dependencies
+
+### Added — `demo.py` (repo root)
+- 60-second standalone demo showing the full pipeline: provider auto-detection, RAG retrieval, input guardrails, semantic caching, output guardrails, cost tracking
+- Works with OpenAI, Anthropic, DeepSeek, Ollama — auto-detects from env vars
+- No server needed — runs as a single script
+
+### Added — Capstone Web UI & Streaming
+- `capstone/ui.py` — Gradio web UI with chat (streaming), document upload, observability stats tabs
+- `capstone/app.py` — Added `/chat/stream` SSE endpoint for real-time token streaming
+- `capstone/rag.py` — Added `stream_answer()` and `prepare_context()` methods
+
+### Added — Multi-Provider Support
+- `capstone/rag.py` — Provider-aware LLM building (OpenAI, Anthropic, DeepSeek, Grok, Qwen, Ollama)
+- `capstone/cache.py` — Provider-aware embedding client
+- `capstone/evaluator.py` — Provider-aware async evaluation
+- `capstone/seed_knowledge.py` — Provider-aware embeddings for seeding
+
+### Added — Docker Compose
+- `capstone/docker-compose.yml` — Multi-service setup (API + UI + knowledge base)
+- `capstone/Dockerfile` — Containerized capstone app
+- `capstone/Spacefile` — Hugging Face Space deployment config
+
+### Added — Kaggle Publishing
+- `kaggle/README.md` — Publishing instructions and notebook series overview
+
+### Updated — README.md
+- Added "Why This Course" comparison table vs Microsoft and awesome-llm-apps
+- Added Quick Start section with `python demo.py`
+- Added Docker Compose instructions for capstone
+- Updated project structure tree with new files
+- Added Module 15 to curriculum table and module descriptions
+- Added badges (Python, License, HF, Kaggle)
+
+### Updated — `requirements.txt` (root)
+- Added `gradio>=4.0.0` for web UI
+
+### Updated — `capstone/requirements.txt`
+- Added `gradio>=4.0.0`
+
+---
 
 ### Added — Module 00: LLM Foundations (new entry point for career-changers)
 - `README.md` — Tokens, embeddings, context window anatomy, sampling params, API anatomy, model tiers, cost estimation

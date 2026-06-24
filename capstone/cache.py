@@ -1,9 +1,25 @@
-"""Semantic cache — Module 06 applied."""
-from openai import OpenAI
-import numpy as np
+"""Semantic cache — Module 06 applied, multi-provider aware."""
+import os, sys
+from pathlib import Path
 from typing import Optional
 
-client = OpenAI()
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared.provider import _detect_provider
+
+
+def _get_embed_client():
+    """Get an OpenAI-compatible client for embeddings.
+    All providers use OpenAI embeddings API format."""
+    from openai import OpenAI
+    provider = _detect_provider()
+    api_key = os.getenv("OPENAI_API_KEY") or os.getenv(f"{provider.upper()}_API_KEY", "no-key")
+    base_url = os.getenv("OPENAI_BASE_URL")
+    kwargs = {"api_key": api_key}
+    if base_url:
+        kwargs["base_url"] = base_url
+    return OpenAI(**kwargs)
 
 
 class SemanticCache:
@@ -15,7 +31,9 @@ class SemanticCache:
         self.misses = 0
 
     def _embed(self, text: str) -> list[float]:
-        return client.embeddings.create(model="text-embedding-3-small", input=text).data[0].embedding
+        client = _get_embed_client()
+        model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+        return client.embeddings.create(model=model, input=text).data[0].embedding
 
     def _sim(self, a, b) -> float:
         a, b = np.array(a), np.array(b)

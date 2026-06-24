@@ -1,12 +1,13 @@
 """
 Knowledge Assistant — Capstone FastAPI App
-==========================================
+=========================================
 Combines: RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + Evaluation (04)
 
 Run:
     uvicorn app:app --reload --port 8000
 """
 import asyncio
+import json
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -15,6 +16,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 load_dotenv(dotenv_path="../.env")
@@ -133,6 +135,78 @@ async def chat(req: ChatRequest):
         cache_hit=False,
         session_id=req.session_id,
     )
+
+
+@app.post("/chat/stream")
+async def chat_stream(req: ChatRequest):
+    """Streaming SSE endpoint — yields tokens as they arrive."""
+    start = time.time()
+    request_id = str(uuid.uuid4())[:8]
+
+    guard = check_input(req.question)
+    if not guard.allowed:
+        raise HTTPException(status_code=400, detail=guard.reason)
+
+    cached, query_emb = cache.get(req.question)
+    if cached:
+        metrics = RequestMetrics(
+            request_id=request_id, question=req.question[:100],
+            cache_hit=True, latency_ms=(time.time() - start) * 1000,
+        )
+        tracker.record(metrics)
+
+        async def cached_stream():
+            yield f"data: {json.dumps({'type': 'metadata', 'sources': cached['sources']})}\n\n"
+            yield f"data: {json.dumps({'type': 'token', 'content': cached['answer']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        return StreamingResponse(cached_stream(), media_type="text/event-stream")
+
+    if req.session_id not in sessions:
+        if len(sessions) >= MAX_SESSIONS:
+            sessions.pop(next(iter(sessions)))
+        sessions[req.session_id] = ConversationMemory(max_turns=6)
+    memory = sessions[req.session_id]
+    history = memory.to_string()
+
+    async def stream_response():
+        answer_parts = []
+        sources = []
+        context = ""
+
+        for event in rag.stream_answer(req.question, history=history):
+            if event["type"] == "metadata":
+                sources = event["sources"]
+                yield f"data: {json.dumps(event)}\n\n"
+            elif event["type"] == "token":
+                answer_parts.append(event["content"])
+                yield f"data: {json.dumps(event)}\n\n"
+            elif event["type"] == "done":
+                context = event.get("context", "")
+
+        full_answer = "".join(answer_parts)
+
+        out_guard = check_output(full_answer)
+        if not out_guard.allowed:
+            full_answer = "I cannot provide that response."
+
+        memory.add("user", req.question)
+        memory.add("assistant", full_answer)
+
+        cache.set({"answer": full_answer, "sources": sources}, query_emb)
+
+        latency_ms = (time.time() - start) * 1000
+        metrics = RequestMetrics(
+            request_id=request_id, question=req.question[:100],
+            model="gpt-4o-mini", latency_ms=latency_ms, cache_hit=False,
+        )
+        tracker.record(metrics)
+
+        asyncio.create_task(evaluate_response(req.question, full_answer, context))
+
+        yield f"data: {json.dumps({'type': 'done', 'latency_ms': round(latency_ms)})}\n\n"
+
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
 
 
 @app.get("/stats")

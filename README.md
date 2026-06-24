@@ -1,10 +1,51 @@
 # LLM Engineering Playground
 
-A comprehensive, hands-on learning resource for mastering Large Language Model (LLM) engineering and development.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/spaces)
+[![Kaggle](https://img.shields.io/badge/Kaggle-Notebooks-blue)](https://www.kaggle.com/)
 
-## Overview
+> **The only open-source course that covers the full production lifecycle of LLM engineering** — from foundations through context engineering, agent harness, MCP, guardrails, and eval ops.
 
-This playground provides a structured, step-by-step curriculum covering all essential aspects of LLM engineering, from basic prompt engineering to advanced optimization techniques. Each module includes conceptual explanations and practical code examples.
+## Why This Course?
+
+| What you learn | Microsoft (112k⭐) | awesome-llm-apps (115k⭐) | This course |
+|----------------|-------------------|--------------------------|-------------|
+| Context Engineering (U-curve, caching) | ❌ | ❌ | ✅ Module 12 |
+| Agent Harness (crash-proof resume) | ❌ | ❌ | ✅ Module 13 |
+| EvalOps (CI/CD for LLMs) | ❌ | ❌ | ✅ Module 9 |
+| LLM Ops (tracing, drift detection) | Partial | ❌ | ✅ Module 8 |
+| MCP Tool Design | Separate course | Templates only | ✅ Module 14 |
+| Gateway & Guardrails | One lesson | ❌ | ✅ Module 10 |
+| Multi-provider (6+ providers) | Azure-only | Varies | ✅ All modules |
+| **Total coverage** | 21 lessons, ~12h | 100+ standalone demos | **15 modules, ~30h** |
+
+## Quick Start
+
+```bash
+git clone https://github.com/yourname/llm-engineering-playground.git
+cd llm-engineering-playground
+pip install -r requirements.txt
+cp .env.example .env    # add ONE API key (OpenAI, Anthropic, DeepSeek, Ollama...)
+python demo.py          # see the full pipeline in 60 seconds
+```
+
+The demo auto-detects your LLM provider and runs RAG + guardrails + caching + observability — no server needed.
+
+## Run the Full Capstone
+
+```bash
+cd capstone
+pip install -r requirements.txt
+python seed_knowledge.py
+python ui.py            # Gradio web UI on http://localhost:7860
+```
+
+Or with Docker:
+```bash
+cd capstone
+docker compose up       # starts API + UI + knowledge base
+```
 
 ## Curriculum Structure
 
@@ -27,6 +68,7 @@ This playground provides a structured, step-by-step curriculum covering all esse
 | 12 | Context Engineering | Window anatomy, caching, compression | ~2h | ✅ |
 | 13 | Agent Harness | Loop engineering, durable journals, repair | ~3h | ✅ |
 | 14 | MCP & Tool Design | Model Context Protocol, tool interfaces | ~2h | ✅ |
+| 15 | Multimodal | Vision, image generation, audio, CLIP | ~2h | ✅ |
 
 ### 🧱 Module 0: LLM Foundations
 **Start Here** - The mental models every LLM engineer needs
@@ -181,6 +223,16 @@ This playground provides a structured, step-by-step curriculum covering all esse
 
 📁 Location: `14-mcp-tool-design/`
 
+### 🖼️ Module 15: Multimodal LLMs
+**Vision, Audio & Image Generation** - Handle more than just text
+- Vision APIs (GPT-4V, Claude Vision) for image analysis and OCR
+- Image generation with DALL-E 3
+- Audio transcription with Whisper and text-to-speech
+- CLIP embeddings for image retrieval
+- Multimodal RAG combining text and images
+
+📁 Location: `15-multimodal/`
+
 ### 🧠 Module 11: Memory & Context Management
 **Persistent Intelligence** - Build memory-enabled applications
 - Short-term conversation buffers
@@ -286,6 +338,7 @@ The course works with any LLM provider. Just set one key in `.env`:
 ```
 llm-engineering-playground/
 ├── README.md                          # This file
+├── demo.py                            # ★ 60-second demo (auto-detects provider)
 ├── SETUP.md                           # Environment setup guide
 ├── requirements.txt                   # All dependencies
 ├── .env.example                       # API key template → copy to .env
@@ -293,79 +346,40 @@ llm-engineering-playground/
 ├── shared/
 │   └── provider.py                    # ★ Multi-provider LLM helper (OpenAI, Anthropic, DeepSeek, etc.)
 │
-├── 01-prompt-engineering/
-│   ├── README.md                      # Concepts and theory
-│   ├── requirements.txt
-│   ├── prompt_engineering.ipynb       # ★ Interactive notebook
-│   └── prompt_examples.py             # Runnable script
+├── 00-llm-foundations/                # Tokens, embeddings, context windows
+├── 01-prompt-engineering/             # Zero-shot, few-shot, chain-of-thought
+├── 02-rag-systems/                    # Vector DB, chunking, retrieval
+├── 03-fine-tuning/                    # LoRA, QLoRA, data preparation
+├── 04-evaluation/                     # Metrics, LLM-as-judge, benchmarks
+├── 05-deployment/                     # APIs, latency, cost management
+├── 06-optimization/                   # Caching, quantization, routing
+├── 07-agentic-workflows/              # LangGraph, multi-agent, HITL
+├── 08-llmops-observability/           # Tracing, monitoring, drift detection
+├── 09-eval-ops/                       # CI/CD for LLMs, regression testing
+├── 10-gateway-guardrails/             # Auth, rate limiting, injection detection
+├── 11-memory-context/                 # Short/long-term memory, hierarchical
+├── 12-context-engineering/            # U-curve, observation masking, prefix caching
+├── 13-agent-harness/                  # Loop engineering, durable journals
+├── 14-mcp-tool-design/                # Model Context Protocol, tool schemas
+├── 15-multimodal/                     # Vision, image gen, audio, CLIP
 │
-├── 02-rag-systems/
-│   ├── README.md
-│   ├── requirements.txt
-│   ├── rag_systems.ipynb              # ★ Interactive notebook
-│   └── rag_example.py
+├── capstone/
+│   ├── app.py                         # FastAPI app (main entry point)
+│   ├── ui.py                          # ★ Gradio web UI with streaming
+│   ├── rag.py                         # RAG pipeline (multi-provider)
+│   ├── cache.py                       # Semantic cache
+│   ├── memory.py                      # Conversation memory
+│   ├── guardrails.py                  # Input/output validation
+│   ├── observability.py               # Cost + latency tracking
+│   ├── evaluator.py                   # Async quality scoring
+│   ├── seed_knowledge.py              # Populate the knowledge base
+│   ├── chat_client.py                 # Terminal chat UI
+│   ├── docker-compose.yml             # ★ Docker setup
+│   ├── Dockerfile
+│   └── requirements.txt
 │
-├── 03-fine-tuning/
-│   ├── README.md
-│   ├── requirements.txt
-│   └── finetune_example.py
-│
-├── 04-evaluation/
-│   ├── README.md
-│   ├── requirements.txt
-│   └── evaluation_example.py
-│
-├── 05-deployment/
-│   ├── README.md
-│   ├── requirements.txt
-│   └── deployment_example.py
-│
-├── 06-optimization/
-│   ├── README.md
-│   ├── requirements.txt
-│   └── optimization_example.py
-│
-├── 07-agentic-workflows/
-│   ├── README.md
-│   ├── requirements.txt
-│   ├── agents/
-│   ├── examples/
-│   │   ├── multi_agent_workflow.py
-│   │   └── human_in_loop.py
-│   ├── skills/
-│   ├── router/
-│   └── configs/
-│
-├── 08-llmops-observability/
-│   ├── README.md
-│   ├── requirements.txt
-│   └── observability_example.py
-│
-├── 09-eval-ops/
-│   ├── README.md
-│   ├── requirements.txt
-│   └── eval_ops_example.py
-│
-├── 10-gateway-guardrails/
-│   ├── README.md
-│   ├── requirements.txt
-│   ├── gateway/
-│   │   ├── auth.py
-│   │   ├── rate_limiter.py
-│   │   └── validator.py
-│   └── guardrails/
-│       ├── input_filters.py
-│       ├── output_filters.py
-│       └── compliance.py
-│
-└── 11-memory-context/
-    ├── README.md
-    ├── requirements.txt
-    └── memory/
-        ├── short_term.py
-        ├── long_term.py
-        ├── working.py
-        └── hierarchical.py
+└── kaggle/                            # ★ Kaggle notebook series
+    └── README.md
 ```
 
 ## Key Concepts Summary
@@ -386,6 +400,7 @@ llm-engineering-playground/
 | **Context Engineering** | Design context quality, not just quantity | Every LLM call in production |
 | **Agent Harness** | Loop engineering, durable execution | Any long-running autonomous agent |
 | **MCP & Tool Design** | Standard tool interfaces for agents | When building agent tool ecosystems |
+| **Multimodal** | Vision, image gen, audio, CLIP | When working with images or audio |
 
 ## Best Practices
 

@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: capstone/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    volumes:
+      - ./chroma_db:/app/capstone/chroma_db
+      - ./request_log.jsonl:/app/capstone/request_log.jsonl
+    command: >
+      sh -c "python seed_knowledge.py && uvicorn app:app --host 0.0.0.0 --port 8000"
+
+  ui:
+    build:
+      context: ..
+      dockerfile: capstone/Dockerfile
+    ports:
+      - "7860:7860"
+    env_file:
+      - ../.env
+    volumes:
+      - ./chroma_db:/app/capstone/chroma_db
+    command: python ui.py
+    depends_on:
+      - app
