@@ -23,7 +23,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/yourname/llm-engineering-playground.git
+git clone https://github.com/dnakhoa/llm-engineering-playground.git
 cd llm-engineering-playground
 pip install -r requirements.txt
 cp .env.example .env    # add ONE API key (OpenAI, Anthropic, DeepSeek, Ollama...)
@@ -32,20 +32,77 @@ python demo.py          # see the full pipeline in 60 seconds
 
 The demo auto-detects your LLM provider and runs RAG + guardrails + caching + observability — no server needed.
 
-## Run the Full Capstone
+## Run the Demo Locally
+
+### Prerequisites
+
+- Python 3.10+
+- An API key from one of:
+  | Provider | Env Variable | Cost |
+  |----------|-------------|------|
+  | OpenAI | `OPENAI_API_KEY` | Pay-as-you-go |
+  | Anthropic | `ANTHROPIC_API_KEY` | Pay-as-you-go |
+  | DeepSeek | `DEEPSEEK_API_KEY` | Very cheap |
+  | xAI Grok | `GROK_API_KEY` | Pay-as-you-go |
+  | Qwen | `QWEN_API_KEY` | Cheap |
+  | Ollama | `OPENAI_BASE_URL=http://localhost:11434/v1` | Free (local) |
+
+### Step 1: Clone and install
+
+```bash
+git clone https://github.com/dnakhoa/llm-engineering-playground.git
+cd llm-engineering-playground
+python3 -m venv .venv && source .venv/bin/activate  # optional but recommended
+pip install -r requirements.txt
+```
+
+### Step 2: Set your API key
+
+```bash
+cp .env.example .env
+# Edit .env and uncomment + fill in ONE provider key, e.g.:
+# OPENAI_API_KEY=sk-your-key-here
+```
+
+### Step 3: Run the 60-second demo
+
+```bash
+python demo.py
+```
+
+This runs a self-contained pipeline that shows:
+1. **Provider auto-detection** — finds your key and selects the model
+2. **RAG retrieval** — embeds 6 docs, retrieves relevant chunks for a query
+3. **Input guardrails** — detects and blocks prompt injection attempts
+4. **Semantic caching** — demonstrates cache hit on similar queries
+5. **Output guardrails** — filters PII (SSNs, credit cards) from responses
+6. **Cost tracking** — estimates token usage and dollar cost
+
+No server, no database — just `python demo.py`.
+
+### Step 4: Run the full capstone (optional)
 
 ```bash
 cd capstone
 pip install -r requirements.txt
-python seed_knowledge.py
-python ui.py            # Gradio web UI on http://localhost:7860
+python seed_knowledge.py          # seed ChromaDB with 10 LLM topics
+python ui.py                      # Gradio web UI at http://localhost:7860
 ```
 
 Or with Docker:
 ```bash
 cd capstone
-docker compose up       # starts API + UI + knowledge base
+docker compose up                 # starts API on :8000 + UI on :7860
 ```
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `ModuleNotFoundError: No module named 'dotenv'` | Run `pip install python-dotenv` |
+| `openai.AuthenticationError` | Check your `.env` has a valid API key |
+| `chromadb` install fails on Mac | Use `pip install chromadb --no-cache-dir` |
+| Ollama connection refused | Start Ollama first: `ollama serve` |
 
 ## Curriculum Structure
 

@@ -64,3 +64,6 @@ chroma_db/
 
 # Coverage
 coverage/
+
+# Agent tooling
+.mimocode/
