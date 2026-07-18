@@ -4,6 +4,32 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.6.0] — 2026-07-17
+
+### Expanded — Module 02: RAG Systems (184 -> 330 lines)
+- Added 4 chunking strategies with code: fixed, recursive, semantic, parent-child
+- Added embedding model comparison (6 models) with best practices
+- Added vector database comparison (7 databases) with ChromaDB example
+- Added hybrid retrieval with reciprocal rank fusion code
+- Added re-ranking with cross-encoder implementation
+- Expanded HyDE, CRAG, Graph RAG, Self-RAG with code examples
+- Added production RAG architecture diagram
+- Added cost optimization table
+- Added 7 hands-on exercises
+
+### Expanded — Module 15: Multimodal (304 -> 486 lines)
+- Added vision API comparison with detail parameter guidance
+- Added image generation platforms comparison (DALL-E, SD, Flux, Midjourney)
+- Added speaker diarization with pyannote.audio
+- Added TTS voice comparison table (6 voices)
+- Added voice agent architecture diagram
+- Added document AI section (table extraction, PDF parsing pipeline)
+- Added cost analysis for vision, audio, and generation
+- Added cost optimization tips (up to 90% savings)
+- Added 7 hands-on exercises
+
+---
+
 ## [5.5.0] — 2026-07-17
 
 ### Added — Glossary
