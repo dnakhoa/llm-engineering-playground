@@ -4,6 +4,28 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.4.0] — 2026-07-17
+
+### Added — Difficulty Ratings
+- Added ⭐/⭐⭐/⭐⭐⭐ difficulty ratings to curriculum table in README
+- Beginners: Modules 00, 01
+- Intermediate: Modules 02-06, 08-11, 15
+- Advanced: Modules 07, 12, 13, 14
+
+### Added — "Why this matters" Intros
+- Every module README now opens with a 2-3 sentence hook explaining real-world impact
+- Helps students understand context before diving into technical content
+
+### Added — Resource Links
+- Every module README now includes a "📚 Resources" section with 3 curated links
+- Links to official docs, tools, papers, and guides relevant to each module
+- Total: 48 new resource links across 16 modules
+
+### Updated — README
+- Curriculum table now shows difficulty ratings instead of just ✅ status
+
+---
+
 ## [5.3.0] — 2026-07-17
 
 ### Added — Module 03: Model Merging & Interpretability

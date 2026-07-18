@@ -1,5 +1,9 @@
 # Module 13: Agent Harness & Loop Engineering
 
+
+> **Why this matters:** Autonomous agents crash, loop infinitely, and waste budgets. The harness is what makes agents reliable enough for production — stopping conditions, crash recovery, and cost control.
+
+
 ## 🎯 Learning Objectives
 - Understand what an agent harness is and why it's necessary
 - Implement loop-until-dry research loops with novelty gates
@@ -492,6 +496,13 @@ for finding in raw_findings:
     ├── research_loop.py         Full autonomous research loop
     └── budget_loop.py           Budget-aware execution loop
 ```
+
+
+## 📚 Resources
+
+- [LangGraph Checkpointing](https://langchain-ai.github.io/langgraph/concepts/persistence/) — durable agent state
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — agent patterns
+- [CrewAI](https://docs.crewai.com/) — multi-agent orchestration
 
 ## 🧪 Hands-On Exercises
 

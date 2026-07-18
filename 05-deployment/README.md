@@ -1,5 +1,9 @@
 # Module 5: LLM Deployment
 
+
+> **Why this matters:** Deployment is where LLM apps meet reality — latency, cost, reliability, and user experience all collide. Getting this right means the difference between a demo and a product.
+
+
 ## Overview
 
 Deploying LLMs to production requires careful consideration of infrastructure, performance, cost, and user experience. This module covers the key aspects of putting LLMs into production.
@@ -428,6 +432,13 @@ See `deployment_example.py` for a complete FastAPI service.
 | Not monitoring costs | Set up alerts |
 | Single point of failure | Redundancy and failover |
 | No versioning | Version your models and APIs |
+
+
+## 📚 Resources
+
+- [vLLM](https://github.com/vllm-project/vllm) — high-throughput LLM serving
+- [MLC LLM](https://github.com/mlc-ai/mlc-llm) — edge deployment framework
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) — CPU inference
 
 ## Next Steps
 

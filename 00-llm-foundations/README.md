@@ -1,5 +1,9 @@
 # Module 00: LLM Foundations
 
+
+> **Why this matters:** Every LLM application is built on tokens, embeddings, and context windows. Understanding these fundamentals lets you estimate costs before building, debug token-related issues, and choose the right model tier for your use case.
+
+
 > **Start here.** This module builds the mental models you need before touching any code. If you're coming from software engineering or ML, you'll have some of this — but the LLM-specific details (tokens, context windows, sampling) are different from what you're used to.
 
 ## 🎯 Learning Objectives
@@ -328,6 +332,14 @@ Now you can read any LLM system and understand what's happening:
 Every module in this course deepens one part of this pipeline.
 
 ---
+
+
+## 📚 Resources
+
+- [OpenAI Tokenizer](https://platform.openai.com/tokenizer) — visualize how text splits into tokens
+- [Anthropic Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — understand caching mechanics
+- [OpenAI Reasoning Models](https://platform.openai.com/docs/guides/reasoning) — effort levels and pro mode
+- [3Blue1Brown: But what is a GPT?](https://www.youtube.com/watch?v=wjZofJX0v4M) — visual intro to transformers
 
 ## 🧪 Hands-On Exercises
 

@@ -1,5 +1,9 @@
 # Module 14: MCP & Tool Design
 
+
+> **Why this matters:** Tools are how agents interact with the world. Bad tool design causes routing failures, hallucinated arguments, and unreliable agents. Good ACI design has higher ROI than prompt engineering.
+
+
 ## 🎯 Learning Objectives
 - Understand the Model Context Protocol (MCP) architecture and primitives
 - Build a complete MCP server in Python using FastMCP
@@ -416,6 +420,13 @@ def code_review_prompt(language: str, focus: str = "correctness") -> str:
     ├── __init__.py
     └── tool_design.py           Tool design helpers and validators
 ```
+
+
+## 📚 Resources
+
+- [MCP Specification](https://modelcontextprotocol.io/) — Model Context Protocol
+- [A2A Protocol](https://a2a-protocol.org/) — Agent-to-Agent standard
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — ACI principles
 
 ## 🧪 Hands-On Exercises
 

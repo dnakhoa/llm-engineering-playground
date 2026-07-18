@@ -1,5 +1,9 @@
 # API Gateway & Guardrails for LLM Systems
 
+
+> **Why this matters:** LLM apps face unique security risks — prompt injection, data leakage, PII exposure. Guardrails protect your users, your data, and your reputation.
+
+
 ## 🎯 Learning Objectives
 - Implement production API gateways for LLM services
 - Build comprehensive guardrails for safety and compliance
@@ -636,6 +640,13 @@ monitoring:
 3. Set up monitoring dashboards
 4. Configure alerting rules
 5. Regular security audits
+
+
+## 📚 Resources
+
+- [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/) — critical vulnerabilities
+- [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails) — NVIDIA's guardrail framework
+- [Guardrails AI](https://www.guardrailsai.com/) — output validation
 
 ## 🧪 Hands-On Exercises
 

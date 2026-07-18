@@ -1,5 +1,9 @@
 # Module 3: Fine-Tuning LLMs
 
+
+> **Why this matters:** Fine-tuning lets you adapt models to your domain, style, or format. But it's expensive and often unnecessary — this module helps you decide when to fine-tune, merge, or just prompt better.
+
+
 > ⚠️ **Read this first.** Fine-tuning is powerful but almost always the wrong first move. Most teams that fine-tune when they shouldn't waste weeks and thousands of dollars. Work through the decision tree below before writing any training code.
 
 ---
@@ -269,6 +273,13 @@ See `finetune_example.py` for a complete LoRA fine-tuning script.
 6. ✅ Evaluate on held-out test set
 7. ✅ Version your models and datasets
 8. ✅ Document training configuration
+
+
+## 📚 Resources
+
+- [MergeKit](https://github.com/arcee-ai/mergekit) — model merging toolkit
+- [Axolotl](https://github.com/OpenAccess-AI-Collective/axolotl) — fine-tuning framework
+- [mlabonne: Merge LLMs](https://mlabonne.github.io/blog/posts/2024-01-08_Merge_LLMs_with_mergekit%20copy.html) — merging guide
 
 ## Next Steps
 

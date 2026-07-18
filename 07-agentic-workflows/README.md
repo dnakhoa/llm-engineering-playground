@@ -1,5 +1,9 @@
 # Agentic Development with LangChain & LangGraph
 
+
+> **Why this matters:** Agents are the future of LLM applications — systems that reason, plan, use tools, and recover from errors. Getting agent architecture right determines whether your system is reliable or a liability.
+
+
 ## 🎯 Learning Objectives
 - Master the agentic development workflow
 - Build multi-agent systems with specialized roles
@@ -466,6 +470,13 @@ pip install pydantic pyyaml
 5. **Content Creation**: Research → Draft → Edit → Publish
 
 ---
+
+
+## 📚 Resources
+
+- [LangGraph](https://langchain-ai.github.io/langgraph/) — state machine agents
+- [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) — OpenAI's agent framework
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — ACI principles
 
 ## 🧪 Hands-On Exercises
 

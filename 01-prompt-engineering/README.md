@@ -1,5 +1,9 @@
 # Module 1: Prompt Engineering
 
+
+> **Why this matters:** Prompt engineering is the highest-ROI skill in LLM engineering. A well-crafted prompt can replace fine-tuning, reduce costs by 10x, and improve accuracy without any infrastructure changes.
+
+
 ## What is Prompt Engineering?
 
 Prompt engineering is the art and science of designing effective prompts to guide Large Language Models (LLMs) to produce desired outputs. It's the foundation of working with LLMs without modifying their weights.
@@ -460,6 +464,13 @@ note that uncertainty explicitly in your response."
 ```
 
 ---
+
+
+## 📚 Resources
+
+- [OpenAI Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering) — official best practices
+- [Anthropic Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering) — Claude-specific patterns
+- [Learn Prompting](https://learnprompting.org/) — comprehensive free course
 
 ## Next Steps
 

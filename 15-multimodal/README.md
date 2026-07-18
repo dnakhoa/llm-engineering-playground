@@ -1,5 +1,9 @@
 # Module 15: Multimodal LLMs
 
+
+> **Why this matters:** The world isn't text-only. Multimodal LLMs let you analyze images, generate visuals, transcribe audio, and build voice interfaces — expanding what LLM apps can do.
+
+
 ## 🎯 Learning Objectives
 - Use vision APIs to analyze images with LLMs
 - Generate images with DALL-E and Stable Diffusion
@@ -251,6 +255,13 @@ def embed_text(text: str) -> list[float]:
 | Generating marketing videos | Emerging | Quality improving rapidly; review needed |
 | Voice-based agent interfaces | Yes | Realtime API enables low-latency voice UX |
 | Real-time video analysis | Expensive | Cost scales with frame count |
+
+
+## 📚 Resources
+
+- [OpenAI Vision Guide](https://platform.openai.com/docs/guides/vision) — image analysis
+- [CLIP Paper](https://arxiv.org/abs/2103.00020) — image-text embeddings
+- [Whisper](https://github.com/openai/whisper) — speech recognition
 
 ## 🧪 Hands-On Exercises
 

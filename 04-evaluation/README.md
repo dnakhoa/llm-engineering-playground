@@ -1,5 +1,9 @@
 # Module 4: LLM Evaluation
 
+
+> **Why this matters:** You can't improve what you can't measure. Evaluation is the backbone of LLM engineering — without it, you're guessing whether changes help or hurt.
+
+
 ## Why Evaluate LLMs?
 
 Evaluation is critical for understanding model performance, identifying weaknesses, and making informed decisions about which models or approaches to use in production.
@@ -543,6 +547,13 @@ Systematic testing for vulnerabilities:
 3. **Bias Testing**: Check for unfair treatment
 4. **Privacy**: Test for information leakage
 5. **Adversarial Examples**: Crafted inputs to cause failures
+
+
+## 📚 Resources
+
+- [DeepEval](https://github.com/confident-ai/deepeval) — LLM evaluation framework
+- [OpenAI Evals](https://github.com/openai/evals) — evaluation framework
+- [LM Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness) — EleutherAI's eval suite
 
 ## Next Steps
 

@@ -108,24 +108,24 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 **16 Comprehensive Modules** covering the complete LLM engineering lifecycle — all with interactive notebooks:
 
-| Module | Topic | Key Focus | Time | Status |
-|--------|-------|-----------|------|--------|
-| 00 | LLM Foundations | Tokens, embeddings, context, sampling, cost + Responses API | ~1h | ✅ |
-| 01 | Prompt Engineering | Foundation communication + reasoning models | ~1.5h | ✅ |
-| 02 | RAG Systems | Knowledge augmentation + advanced patterns + evaluation | ~2h | ✅ |
-| 03 | Fine-Tuning | Model adaptation + merging + interpretability | ~2h | ✅ |
-| 04 | Evaluation | Quality assurance + LLM-as-judge | ~2h | ✅ |
-| 05 | Deployment | Production serving + edge deployment | ~2h | ✅ |
-| 06 | Optimization | Performance, efficiency & prompt caching | ~2h | ✅ |
-| 07 | Agentic Workflows | Multi-agent systems + Agent SDKs + ACI | ~3.5h | ✅ |
-| 08 | LLM Ops | Observability & monitoring | ~2h | ✅ |
-| 09 | EvalOps | Continuous evaluation | ~1.5h | ✅ |
-| 10 | Gateway & Guardrails | Security & compliance | ~2h | ✅ |
-| 11 | Memory & Context | Persistent intelligence | ~2h | ✅ |
-| 12 | Context Engineering | Window anatomy, caching, reasoning context | ~2h | ✅ |
-| 13 | Agent Harness | Loop engineering, durable journals, phase management | ~3h | ✅ |
-| 14 | MCP & Tool Design | MCP, A2A, ACI, Secure Tunnels | ~2h | ✅ |
-| 15 | Multimodal | Vision, image gen, audio, video, voice agents | ~2h | ✅ |
+| Module | Topic | Key Focus | Time | Difficulty |
+|--------|-------|-----------|------|------------|
+| 00 | LLM Foundations | Tokens, embeddings, context, Responses API, reasoning | ~1h | ⭐ Beginner |
+| 01 | Prompt Engineering | Zero/few-shot, CoT, structured output, reasoning models | ~1.5h | ⭐ Beginner |
+| 02 | RAG Systems | Vector DB, chunking, HyDE, CRAG, evaluation | ~2h | ⭐⭐ Intermediate |
+| 03 | Fine-Tuning | LoRA, QLoRA, model merging, interpretability | ~2h | ⭐⭐ Intermediate |
+| 04 | Evaluation | LLM-as-judge, benchmarks, A/B testing | ~2h | ⭐⭐ Intermediate |
+| 05 | Deployment | Cloud APIs, streaming, edge deployment, SLMs | ~2h | ⭐⭐ Intermediate |
+| 06 | Optimization | Prompt caching, quantization, model routing | ~2h | ⭐⭐ Intermediate |
+| 07 | Agentic Workflows | LangGraph, Agent SDKs, ACI, multi-agent | ~3.5h | ⭐⭐⭐ Advanced |
+| 08 | LLM Ops | Tracing, drift detection, prompt versioning | ~2h | ⭐⭐ Intermediate |
+| 09 | EvalOps | CI/CD for LLMs, synthetic data, regression testing | ~1.5h | ⭐⭐ Intermediate |
+| 10 | Gateway & Guardrails | Auth, rate limiting, injection detection, PII | ~2h | ⭐⭐ Intermediate |
+| 11 | Memory & Context | Short/long-term memory, hierarchical systems | ~2h | ⭐⭐ Intermediate |
+| 12 | Context Engineering | U-curve, observation masking, prefix caching | ~2h | ⭐⭐⭐ Advanced |
+| 13 | Agent Harness | Loop engineering, durable journals, budget loops | ~3h | ⭐⭐⭐ Advanced |
+| 14 | MCP & Tool Design | MCP, A2A, ACI, Secure Tunnels, Computer Use | ~2h | ⭐⭐⭐ Advanced |
+| 15 | Multimodal | Vision, image gen, video, audio, voice agents | ~2h | ⭐⭐ Intermediate |
 
 ### 🧱 Module 0: LLM Foundations
 **Start Here** - The mental models every LLM engineer needs

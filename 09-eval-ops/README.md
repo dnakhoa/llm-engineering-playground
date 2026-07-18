@@ -1,5 +1,9 @@
 # Module 09: Advanced Evaluation Ops (EvalOps)
 
+
+> **Why this matters:** EvalOps is CI/CD for LLMs — automated testing that catches regressions before they reach users. Without it, every prompt change is a roll of the dice.
+
+
 ## 🎯 Learning Objectives
 - Build automated evaluation pipelines
 - Implement continuous evaluation in CI/CD
@@ -263,6 +267,13 @@ Create a dashboard showing:
 - [ ] Integrate with CI/CD
 - [ ] Build dashboard for visibility
 - [ ] Schedule regular review meetings
+
+
+## 📚 Resources
+
+- [Promptfoo](https://www.promptfoo.dev/) — prompt testing and evaluation
+- [DeepEval](https://github.com/confident-ai/deepeval) — LLM metrics
+- [RAGAS](https://github.com/explodinggradients/ragas) — RAG evaluation
 
 ## 🧪 Hands-On Exercises
 

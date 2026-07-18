@@ -1,5 +1,9 @@
 # Memory & Context Management for LLM Systems
 
+
+> **Why this matters:** LLMs are stateless — they forget everything between calls. Memory systems give your app persistence, personalization, and the ability to learn from past interactions.
+
+
 ## 🎯 Learning Objectives
 - Implement short-term and long-term memory for agents
 - Manage conversation context efficiently
@@ -818,6 +822,13 @@ memory:
     auto_delete_on_request: true
     audit_logging: true
 ```
+
+
+## 📚 Resources
+
+- [LangChain Memory](https://python.langchain.com/docs/how_to/chatbots_memory/) — memory types
+- [Zep](https://www.getzep.com/) — LLM memory platform
+- [Mem0](https://mem0.ai/) — memory layer for AI apps
 
 ## 🧪 Hands-On Exercises
 

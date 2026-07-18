@@ -1,5 +1,9 @@
 # Module 6: LLM Optimization
 
+
+> **Why this matters:** LLM costs scale linearly with usage. Optimization techniques — caching, routing, quantization — can reduce costs by 50-90% without sacrificing quality.
+
+
 ## Overview
 
 Optimization is about making your LLM applications faster, cheaper, and more efficient without sacrificing quality. This module covers advanced techniques used in production systems.
@@ -378,6 +382,13 @@ Additional rules:
 - **LangSmith**: End-to-end LLM platform
 - **Arize Phoenix**: Observability and debugging
 - **Weights & Biases**: Experiment tracking
+
+
+## 📚 Resources
+
+- [OpenAI Prompt Caching](https://platform.openai.com/docs/guides/prompt-caching) — automatic caching
+- [Anthropic Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — explicit breakpoints
+- [vLLM](https://github.com/vllm-project/vllm) — PagedAttention for efficient serving
 
 ## Next Steps
 

@@ -1,5 +1,9 @@
 # Module 2: RAG (Retrieval-Augmented Generation) Systems
 
+
+> **Why this matters:** RAG is how most production LLM apps add knowledge without fine-tuning. Getting retrieval right — chunking, embedding, re-ranking — is the difference between a chatbot that hallucinates and one that cites sources.
+
+
 ## 🎯 Learning Objectives
 - Understand RAG architecture and when to use it
 - Design effective chunking strategies
@@ -147,6 +151,13 @@ Model learns when to retrieve vs answer from memory. Adds "reflection tokens" to
 Use [RAGAS](https://github.com/explodinggradients/ragas) for automated RAG evaluation.
 
 ---
+
+
+## 📚 Resources
+
+- [LangChain RAG Tutorial](https://python.langchain.com/docs/tutorials/rag/) — step-by-step RAG pipeline
+- [RAGAS](https://github.com/explodinggradients/ragas) — automated RAG evaluation
+- [Pinecone RAG Guide](https://www.pinecone.io/learn/retrieval-augmented-generation/) — concepts and patterns
 
 ## 🧪 Hands-On Exercises
 
