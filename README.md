@@ -106,13 +106,13 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 ## Curriculum Structure
 
-**15 Comprehensive Modules** covering the complete LLM engineering lifecycle:
+**16 Comprehensive Modules** covering the complete LLM engineering lifecycle — all with interactive notebooks:
 
 | Module | Topic | Key Focus | Time | Status |
 |--------|-------|-----------|------|--------|
-| 00 | LLM Foundations | Tokens, embeddings, context, sampling, cost | ~1h | ✅ |
+| 00 | LLM Foundations | Tokens, embeddings, context, sampling, cost + Responses API | ~1h | ✅ |
 | 01 | Prompt Engineering | Foundation communication + reasoning models | ~1.5h | ✅ |
-| 02 | RAG Systems | Knowledge augmentation | ~2h | ✅ |
+| 02 | RAG Systems | Knowledge augmentation + advanced patterns + evaluation | ~2h | ✅ |
 | 03 | Fine-Tuning | Model adaptation | ~2h | ✅ |
 | 04 | Evaluation | Quality assurance + LLM-as-judge | ~2h | ✅ |
 | 05 | Deployment | Production serving | ~2h | ✅ |
@@ -153,10 +153,10 @@ docker compose up                 # starts API on :8000 + UI on :7860
 ### 🔍 Module 2: RAG Systems
 **Knowledge Augmentation** - Connect LLMs to external data
 - Vector databases and embeddings
-- Document chunking strategies
-- Retrieval techniques
-- Building complete RAG pipelines
-- Advanced patterns (HyDE, re-ranking)
+- Document chunking strategies (fixed, recursive, semantic)
+- Dense, sparse, and hybrid retrieval
+- Advanced patterns (HyDE, Corrective RAG, Graph RAG)
+- RAG evaluation (Recall@k, faithfulness, relevancy)
 
 📁 Location: `02-rag-systems/`
 

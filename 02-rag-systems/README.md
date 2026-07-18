@@ -1,94 +1,163 @@
 # Module 2: RAG (Retrieval-Augmented Generation) Systems
 
+## 🎯 Learning Objectives
+- Understand RAG architecture and when to use it
+- Design effective chunking strategies
+- Implement retrieval with vector databases
+- Apply advanced RAG patterns (HyDE, re-ranking, corrective RAG)
+- Evaluate RAG pipeline quality
+
+---
+
 ## What is RAG?
 
-RAG (Retrieval-Augmented Generation) is a technique that combines LLMs with external knowledge bases. Instead of relying solely on the model's training data, RAG retrieves relevant information from your own documents and feeds it to the LLM as context.
+RAG (Retrieval-Augmented Generation) combines LLMs with external knowledge bases. Instead of relying solely on training data, RAG retrieves relevant documents and feeds them as context.
+
+```
+User Query → Embed → Vector Search → Retrieve Docs → LLM + Context → Answer
+```
 
 ## Why Use RAG?
 
-1. **Up-to-date Information**: Access current data beyond the model's training cutoff
-2. **Domain-Specific Knowledge**: Use your organization's proprietary information
-3. **Reduced Hallucinations**: Ground responses in factual, retrieved documents
-4. **Cost-Effective**: No need to fine-tune for every new knowledge domain
-5. **Traceability**: Users can see which documents informed the answer
+| Benefit | Description |
+|---------|-------------|
+| **Up-to-date** | Access data beyond training cutoff |
+| **Domain-specific** | Use proprietary organizational knowledge |
+| **Reduced hallucination** | Ground responses in factual documents |
+| **Cost-effective** | No fine-tuning for every knowledge domain |
+| **Traceable** | Users can see which documents informed the answer |
 
-## RAG Architecture Overview
+---
 
+## 1. Document Chunking Strategies
+
+Chunking is the most impactful decision in RAG. Too small loses context; too large dilutes relevance.
+
+### Fixed-Size Chunking
+```python
+def fixed_chunk(text: str, chunk_size: int = 512, overlap: int = 50) -> list[str]:
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), chunk_size - overlap):
+        chunk = " ".join(words[i:i + chunk_size])
+        chunks.append(chunk)
+    return chunks
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   User      │────▶│   Retriever  │────▶│  Vector DB  │
-│   Query     │     │   (Embedding)│     │  (Documents)│
-└─────────────┘     └──────────────┘     └─────────────┘
-       │                                       ▲
-       │                                       │
-       ▼                                       │
-┌─────────────┐     ┌──────────────┐           │
-│   Answer    │◀────│     LLM      │◀──────────┘
-│             │     │ (Generation) │  Retrieved
-└─────────────┘     └──────────────┘  Context
+
+### Recursive Chunking (Recommended)
+Split by paragraphs first, then sentences, then words — preserving natural boundaries.
+
+### Semantic Chunking
+Use embeddings to find natural break points where meaning shifts.
+
+### Chunk Size Guidelines
+
+| Content Type | Recommended Size | Overlap |
+|-------------|-----------------|---------|
+| Technical docs | 256–512 tokens | 10–20% |
+| Legal/contracts | 128–256 tokens | 20–30% |
+| Conversations | 512–1024 tokens | 5–10% |
+| Code | 128–256 tokens | 10% |
+
+---
+
+## 2. Embedding Models
+
+| Model | Dimensions | Speed | Quality |
+|-------|-----------|-------|---------|
+| text-embedding-3-small | 1536 | Fast | Good |
+| text-embedding-3-large | 3072 | Medium | Better |
+| BGE-M3 | 1024 | Fast | Excellent (multilingual) |
+| Cohere Embed v3 | 1024 | Fast | Excellent |
+
+---
+
+## 3. Vector Databases
+
+| Database | Best For | Key Feature |
+|----------|---------|-------------|
+| ChromaDB | Prototyping | Simple, embedded |
+| Pinecone | Production | Managed, scalable |
+| Qdrant | Performance | Rust-based, fast |
+| FAISS | Research | Facebook's library |
+| Weaviate | Hybrid search | Supports BM25 + vectors |
+
+---
+
+## 4. Retrieval Strategies
+
+### Dense Retrieval (Semantic)
+Embed query + documents, find nearest neighbors. Great for meaning-based matching.
+
+### Sparse Retrieval (BM25)
+Keyword-based. Catches exact matches that embeddings miss.
+
+### Hybrid Retrieval
+Combine dense + sparse with reciprocal rank fusion. Best of both worlds.
+
+### Re-ranking
+After initial retrieval, use a cross-encoder to re-score results for relevance. Often the single biggest quality improvement.
+
+---
+
+## 5. Advanced RAG Patterns
+
+### HyDE (Hypothetical Document Embeddings)
+Generate a hypothetical answer first, then use its embedding to search for real documents.
+
+```python
+# 1. Ask LLM to generate a hypothetical answer
+hypothetical = llm("Answer this question: " + query)
+# 2. Embed the hypothetical answer
+hyde_embedding = embed(hypothetical)
+# 3. Search for similar real documents
+results = vector_db.search(hyde_embedding, top_k=5)
 ```
 
-## Key Components
+### Corrective RAG (CRAG)
+Grade retrieval quality and retry if insufficient.
 
-### 1. Document Processing
-- **Chunking**: Breaking documents into manageable pieces
-- **Cleaning**: Removing noise, formatting issues
-- **Metadata**: Adding source, date, author information
+```python
+retrieved_docs = retrieve(query)
+grade = grade_retrieval(query, retrieved_docs)
 
-### 2. Embedding Models
-- Convert text into vector representations
-- Popular choices: OpenAI embeddings, Hugging Face models, Cohere
-- Store vectors in a vector database
+if grade == "insufficient":
+    # Rewrite query and retry
+    improved_query = rewrite_query(query, retrieved_docs)
+    retrieved_docs = retrieve(improved_query)
+```
 
-### 3. Vector Databases
-- **ChromaDB**: Simple, lightweight, great for prototyping
-- **Pinecone**: Managed service, production-ready
-- **Weaviate**: Feature-rich, supports hybrid search
-- **FAISS**: Facebook's library for similarity search
-- **Qdrant**: Rust-based, high performance
+### Graph RAG
+Build a knowledge graph from documents, traverse relationships for multi-hop answers.
 
-### 4. Retrieval Strategies
-- **Dense Retrieval**: Semantic similarity using embeddings
-- **Sparse Retrieval**: Keyword-based (BM25)
-- **Hybrid Retrieval**: Combine both approaches
-- **Re-ranking**: Re-order results for better relevance
+### Self-RAG
+Model learns when to retrieve vs answer from memory. Adds "reflection tokens" to decide.
 
-### 5. Generation
-- Feed retrieved context + user query to LLM
-- Prompt engineering crucial for quality responses
-- Include citations and source attribution
+---
 
-## Hands-On Implementation
+## 6. Evaluation
 
-See `rag_example.py` for a complete working example using LangChain and ChromaDB.
+| Metric | What It Measures |
+|--------|-----------------|
+| **Recall@k** | How many relevant docs are in top-k results |
+| **MRR** | Rank of first relevant result |
+| **Faithfulness** | Does answer match retrieved context? |
+| **Answer relevancy** | Does answer address the question? |
 
-## Best Practices
+Use [RAGAS](https://github.com/explodinggradients/ragas) for automated RAG evaluation.
 
-1. **Chunk Size Matters**: Too small loses context, too large dilutes relevance (typical: 256-512 tokens)
-2. **Overlap Chunks**: Add 10-20% overlap to maintain context across boundaries
-3. **Quality Over Quantity**: Retrieve fewer, more relevant documents
-4. **Metadata Filtering**: Filter by date, source, type before semantic search
-5. **Evaluate Retrieval**: Measure recall and precision of your retrieval system
-6. **Handle Edge Cases**: What if no relevant documents are found?
+---
 
-## Common Challenges
+## 🧪 Hands-On Exercises
 
-| Challenge | Solution |
-|-----------|----------|
-| Irrelevant retrievals | Improve chunking strategy, add re-ranking |
-| Lost in the middle | Place key info at beginning/end of context |
-| Multi-hop reasoning | Implement iterative retrieval |
-| Large context windows | Use summarization or map-reduce |
-| Stale data | Implement document update pipelines |
+1. **Chunk Size Experiment**: Index the same document at 128, 256, 512, 1024 tokens. Query each. Which size gives best answers?
+2. **HyDE vs Standard**: Compare standard retrieval vs HyDE on 10 queries. When does HyDE help?
+3. **Re-ranking Impact**: Add a cross-encoder re-ranker. Measure precision@3 before and after.
+4. **Hybrid Search**: Combine BM25 + semantic search. Does it beat semantic-only?
+5. **Failure Analysis**: Find 5 queries where RAG fails. Diagnose: bad chunking? bad retrieval? bad generation?
 
-## Advanced RAG Patterns
-
-1. **Query Transformation**: Rewrite/expand queries for better retrieval
-2. **HyDE (Hypothetical Document Embeddings)**: Generate hypothetical answer, then search
-3. **Parent-Child Chunking**: Retrieve small chunks, feed larger parent context
-4. **RAG Fusion**: Multiple queries + reciprocal rank fusion
-5. **Self-RAG**: Model learns to retrieve when needed
+---
 
 ## Next Steps
 
-After understanding RAG, move to Module 3: Fine-Tuning, where you'll learn how to adapt LLM weights for specific tasks.
+**Next:** Module 03 — Fine-Tuning, where you'll learn how to adapt LLM weights for specific tasks.

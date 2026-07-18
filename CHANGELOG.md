@@ -4,6 +4,32 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.1.0] — 2026-07-17
+
+### Added — Notebooks for 5 Modules
+- `00-llm-foundations/llm_foundations.ipynb` — Tokens, embeddings, context windows, sampling, cost estimation
+- `12-context-engineering/context_engineering.ipynb` — Token budgets, observation masking, sliding window compression
+- `13-agent-harness/harness_example.ipynb` — Novelty gates, budget loops, durable journals
+- `14-mcp-tool-design/mcp_example.ipynb` — Tool descriptions, schema design, error handling, ACI principles
+- `15-multimodal/multimodal_example.ipynb` — Vision, OCR, DALL-E, Whisper TTS, multimodal pipelines
+
+All 16 modules now have interactive notebooks (previously 11/16).
+
+### Updated — Module 02: RAG Systems
+- Expanded README from 94 to 163 lines
+- Added chunking strategy guidelines with code examples
+- Added embedding model comparison table
+- Added advanced RAG patterns: HyDE, Corrective RAG, Graph RAG, Self-RAG
+- Added evaluation metrics section (Recall@k, MRR, faithfulness, relevancy)
+- Added 5 hands-on exercises
+
+### Updated — Course Review
+- Competitor analysis: mlabonne/llm-course, microsoft/generative-ai-for-beginners, awesome-llm-apps
+- Identified unique differentiators: multi-provider, context engineering, agent harness, evalOps
+- Gap analysis: missing notebooks, thin Module 02, no model merging/interpretability coverage
+
+---
+
 ## [5.0.0] — 2026-07-17
 
 ### Updated — Course-wide Model References
