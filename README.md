@@ -362,7 +362,7 @@ jupyter notebook
 ```
 
 ### Prerequisites
-- Basic Python programming knowledge
+- Basic Python or TypeScript knowledge
 - An API key from any supported provider: **OpenAI**, **Anthropic**, **DeepSeek**, **Grok (xAI)**, **Qwen (Alibaba)**, or **Ollama** (local)
 - GPU optional (Module 03 fine-tuning only — use Google Colab if needed)
 
@@ -446,6 +446,13 @@ llm-engineering-playground/
 │   ├── Dockerfile
 │   └── requirements.txt
 │
+├── typescript/                        # ★ TypeScript examples (chat, RAG, agents)
+│   ├── README.md
+│   ├── chat.ts
+│   ├── rag.ts
+│   ├── agent.ts
+│   └── streaming.ts
+│
 └── kaggle/                            # ★ Kaggle notebook series
     └── README.md
 ```
@@ -526,6 +533,35 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 ### Research
 - [arXiv cs.CL](https://arxiv.org/list/cs.CL/recent) (Computation and Language)
 - [Papers With Code](https://paperswithcode.com/area/natural-language-processing)
+
+
+## 📖 Glossary
+
+| Term | Definition |
+|------|-----------|
+| **LLM** | Large Language Model — neural network trained on text to generate/understand language |
+| **Token** | Subword unit the model processes; ~1.3 tokens per English word |
+| **Embedding** | Vector representation of text meaning; enables semantic search |
+| **Context Window** | Maximum tokens the model can process in one call (input + output) |
+| **RAG** | Retrieval-Augmented Generation — adding external knowledge to LLM prompts |
+| **Fine-Tuning** | Updating model weights on domain-specific data |
+| **LoRA** | Low-Rank Adaptation — efficient fine-tuning by updating small matrices |
+| **QLoRA** | Quantized LoRA — fine-tuning with 4-bit quantization to save memory |
+| **Agent** | LLM that can reason, plan, and use tools autonomously |
+| **MCP** | Model Context Protocol — standard for connecting agents to tools |
+| **A2A** | Agent-to-Agent — standard for agent-to-agent communication |
+| **ACI** | Agent-Computer Interface — principles for designing tools agents use well |
+| **Guardrails** | Safety filters that validate LLM inputs and outputs |
+| **Prompt Injection** | Attack that tricks LLM into ignoring instructions |
+| **PII** | Personally Identifiable Information — data that identifies a person |
+| **Hallucination** | Model generating plausible-sounding but factually incorrect information |
+| **Latency** | Time from request to first response token (TTFT) |
+| **Streaming** | Sending tokens to client as they're generated, not all at once |
+| **Temperature** | Controls randomness in output; 0.0=deterministic, 1.0=creative |
+| **Top-p** | Nucleus sampling; restricts token selection to probability mass p |
+| **Reasoning Tokens** | Hidden tokens the model uses to "think" before answering |
+| **SLM** | Small Language Model — <10B parameter models for edge deployment |
+| **GGUF** | Quantized model format for llama.cpp and CPU inference |
 
 ## License
 

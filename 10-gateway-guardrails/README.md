@@ -642,6 +642,16 @@ monitoring:
 5. Regular security audits
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Rate limiter blocks legitimate traffic | Increase bucket size; use per-user quotas |
+| PII detector has false positives | Whitelist common false positives; tune regex patterns |
+| Prompt injection bypasses guard | Use layered defense; combine rule-based + LLM-based detection |
+| JWT token expired | Implement refresh token flow; check token expiry logic |
+
 ## 📚 Resources
 
 - [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/) — critical vulnerabilities

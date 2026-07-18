@@ -257,6 +257,16 @@ def embed_text(text: str) -> list[float]:
 | Real-time video analysis | Expensive | Cost scales with frame count |
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Vision API can't read text in image | Use `detail: "high"` for dense images |
+| Image generation produces poor results | Be specific about style, composition, lighting |
+| Whisper transcription is inaccurate | Specify `language` parameter; use `verbose_json` for confidence |
+| Audio file too large | Compress with ffmpeg; split into chunks |
+
 ## 📚 Resources
 
 - [OpenAI Vision Guide](https://platform.openai.com/docs/guides/vision) — image analysis

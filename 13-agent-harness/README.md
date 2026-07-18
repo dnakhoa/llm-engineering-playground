@@ -498,6 +498,16 @@ for finding in raw_findings:
 ```
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Agent crashes and loses progress | Implement durable journal with JSONL checkpointing |
+| Budget exhausted too quickly | Inject remaining budget into agent prompt for self-regulation |
+| Novelty gate stops too early | Increase dry_threshold; check fingerprint function |
+| Journal replay is slow | Use deterministic step IDs; skip completed steps efficiently |
+
 ## 📚 Resources
 
 - [LangGraph Checkpointing](https://langchain-ai.github.io/langgraph/concepts/persistence/) — durable agent state

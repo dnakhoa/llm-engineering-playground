@@ -4,6 +4,33 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.5.0] — 2026-07-17
+
+### Added — Glossary
+- Added 25-term glossary to root README
+- Covers: LLM, tokens, embeddings, RAG, fine-tuning, LoRA, agents, MCP, A2A, ACI, guardrails, SLMs, GGUF, and more
+
+### Added — Per-Module Troubleshooting
+- Added troubleshooting table to every module README (4 common problems each)
+- Covers: import errors, API issues, quality problems, configuration mistakes
+- Total: 64 troubleshooting entries across 16 modules
+
+### Added — TypeScript Examples
+- `typescript/` directory with 5 runnable examples
+- `chat.ts` — Basic LLM call (OpenAI + Anthropic)
+- `structured-output.ts` — JSON schema extraction with Zod
+- `rag.ts` — Simple RAG pipeline
+- `agent.ts` — Tool-calling agent loop
+- `streaming.ts` — SSE streaming response
+- Run with `npx tsx <file>`
+
+### Updated — README
+- Added glossary section
+- Added TypeScript directory to project structure
+- Updated prerequisites to mention TypeScript
+
+---
+
 ## [5.4.0] — 2026-07-17
 
 ### Added — Difficulty Ratings

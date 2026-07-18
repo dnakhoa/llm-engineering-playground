@@ -384,6 +384,16 @@ Additional rules:
 - **Weights & Biases**: Experiment tracking
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Cache hit rate is low | Ensure stable prefix at top; avoid timestamps before cache boundary |
+| Quantized model quality is bad | Try less aggressive quantization (INT8 vs INT4) |
+| Model routing accuracy is low | Use a stronger classifier for routing decisions |
+| Cost still high after caching | Check if cache boundary is on a block that changes every request |
+
 ## 📚 Resources
 
 - [OpenAI Prompt Caching](https://platform.openai.com/docs/guides/prompt-caching) — automatic caching

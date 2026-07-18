@@ -269,6 +269,16 @@ Create a dashboard showing:
 - [ ] Schedule regular review meetings
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Synthetic test data is low quality | Use better seed prompts; manually verify samples |
+| Eval suite is flaky | Add deterministic test cases; use temperature=0 for evals |
+| CI pipeline is slow | Run evals on subset in PR; full suite on main |
+| Regression not detected | Ensure eval metrics have clear pass/fail thresholds |
+
 ## 📚 Resources
 
 - [Promptfoo](https://www.promptfoo.dev/) — prompt testing and evaluation

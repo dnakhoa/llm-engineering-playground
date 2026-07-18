@@ -466,6 +466,16 @@ note that uncertainty explicitly in your response."
 ---
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Model ignores JSON format request | Use native structured output (Method B/C) instead of prompt |
+| Model refuses legitimate request | Reframe prompt with explicit context, add system role |
+| Output truncated mid-sentence | Increase `max_tokens` or ask for shorter response |
+| Inconsistent outputs at same temp | Normal — LLMs are stochastic; lower temperature for consistency |
+
 ## 📚 Resources
 
 - [OpenAI Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering) — official best practices

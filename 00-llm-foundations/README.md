@@ -334,6 +334,16 @@ Every module in this course deepens one part of this pipeline.
 ---
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `ModuleNotFoundError: No module named 'tiktoken'` | `pip install tiktoken` |
+| Embedding API returns empty list | Check your API key in `.env` |
+| Token count seems wrong | Different models use different tokenizers; `cl100k_base` is for GPT-4+ |
+| Cost estimate too high | Verify model pricing — prices change frequently |
+
 ## 📚 Resources
 
 - [OpenAI Tokenizer](https://platform.openai.com/tokenizer) — visualize how text splits into tokens

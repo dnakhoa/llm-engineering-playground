@@ -434,6 +434,16 @@ See `deployment_example.py` for a complete FastAPI service.
 | No versioning | Version your models and APIs |
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| High TTFT (time to first token) | Use streaming, reduce context length, try faster model |
+| Rate limit errors (429) | Implement exponential backoff with jitter |
+| Streaming cuts off mid-response | Check `finish_reason`; "length" means hit max_tokens |
+| Ollama connection refused | Start Ollama first: `ollama serve` |
+
 ## 📚 Resources
 
 - [vLLM](https://github.com/vllm-project/vllm) — high-throughput LLM serving

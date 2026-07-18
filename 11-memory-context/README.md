@@ -824,6 +824,16 @@ memory:
 ```
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Memory retrieval returns irrelevant items | Reduce similarity threshold; try different embedding model |
+| Conversation buffer too large | Implement sliding window or summarization |
+| Memory not persisting across sessions | Check database connection; ensure write-ahead logging |
+| Context window overflow | Use token budget to enforce limits per component |
+
 ## 📚 Resources
 
 - [LangChain Memory](https://python.langchain.com/docs/how_to/chatbots_memory/) — memory types

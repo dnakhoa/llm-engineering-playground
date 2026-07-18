@@ -549,6 +549,16 @@ Systematic testing for vulnerabilities:
 5. **Adversarial Examples**: Crafted inputs to cause failures
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| LLM-as-judge gives inconsistent scores | Add rubric examples, use pairwise comparison instead |
+| ROUGE score seems low | ROUGE measures overlap, not quality; combine with LLM judge |
+| Eval suite takes too long | Run subset in CI, full suite nightly |
+| Metric doesn't correlate with human judgment | Try different metrics; no single metric works for all tasks |
+
 ## 📚 Resources
 
 - [DeepEval](https://github.com/confident-ai/deepeval) — LLM evaluation framework

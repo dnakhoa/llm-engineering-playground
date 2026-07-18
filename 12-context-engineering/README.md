@@ -483,6 +483,16 @@ Before injecting anything into context, ask:
 ---
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Cache misses on every request | Move `cache_control` to last stable block, not varying block |
+| Token budget truncates important content | Reallocate budget; reduce less critical slots |
+| Observation masking removes key info | Increase `max_tokens`; use LLM-based summarization instead |
+| U-shaped attention causes missed facts | Move critical info to start or end of context |
+
 ## 📚 Resources
 
 - [Anthropic: Context Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — caching and context management

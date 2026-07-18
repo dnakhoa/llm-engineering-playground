@@ -275,6 +275,16 @@ See `finetune_example.py` for a complete LoRA fine-tuning script.
 8. ✅ Document training configuration
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Out of memory during training | Use QLoRA (4-bit), reduce batch size, use gradient checkpointing |
+| Model output degrades after fine-tuning | Check data quality, reduce learning rate, use fewer epochs |
+| Training loss doesn't decrease | Learning rate too low or data format is wrong |
+| `bitsandbytes` fails on Mac | bitsandbytes requires Linux; use Colab or Docker |
+
 ## 📚 Resources
 
 - [MergeKit](https://github.com/arcee-ai/mergekit) — model merging toolkit

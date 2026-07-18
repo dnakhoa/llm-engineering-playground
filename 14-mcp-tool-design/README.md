@@ -422,6 +422,16 @@ def code_review_prompt(language: str, focus: str = "correctness") -> str:
 ```
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Agent doesn't call the right tool | Rewrite description with clear trigger conditions |
+| Tool arguments are wrong format | Add examples and format hints to parameter descriptions |
+| MCP server won't start | Check `mcp` package version; verify transport type |
+| Error messages not actionable | Include what failed, why, and what to do next |
+
 ## 📚 Resources
 
 - [MCP Specification](https://modelcontextprotocol.io/) — Model Context Protocol

@@ -153,6 +153,16 @@ Use [RAGAS](https://github.com/explodinggradients/ragas) for automated RAG evalu
 ---
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Retrieved docs are irrelevant | Try smaller chunks, add metadata filtering, use re-ranking |
+| Answer doesn't use retrieved context | Strengthen system prompt: "Answer ONLY from provided context" |
+| ChromaDB import fails | `pip install chromadb --no-cache-dir` |
+| Embedding dimension mismatch | Ensure same embedding model for indexing and querying |
+
 ## 📚 Resources
 
 - [LangChain RAG Tutorial](https://python.langchain.com/docs/tutorials/rag/) — step-by-step RAG pipeline

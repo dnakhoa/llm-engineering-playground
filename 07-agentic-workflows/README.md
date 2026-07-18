@@ -472,6 +472,16 @@ pip install pydantic pyyaml
 ---
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Agent loops infinitely | Add max iterations limit and novelty gate |
+| Agent calls wrong tool | Improve tool descriptions; add "Do NOT use for..." disclaimers |
+| LangGraph state not persisting | Add checkpointer to graph compilation |
+| Multi-agent context pollution | Isolate worker context; don't pass full parent context |
+
 ## 📚 Resources
 
 - [LangGraph](https://langchain-ai.github.io/langgraph/) — state machine agents

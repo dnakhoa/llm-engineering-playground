@@ -961,6 +961,16 @@ This module connects to:
 5. **Scale**: Build dashboards for stakeholders
 
 
+
+## 🔧 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Traces not appearing in Langfuse | Check `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` |
+| Cost tracking is inaccurate | Verify token counts; reasoning tokens count as output |
+| Drift detection has false positives | Increase baseline window; use statistical tests |
+| Prompts not versioning correctly | Pin prompt versions in code, not just in UI |
+
 ## 📚 Resources
 
 - [Langfuse](https://langfuse.com/) — LLM observability platform
