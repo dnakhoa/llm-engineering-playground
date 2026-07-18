@@ -273,3 +273,95 @@ See `finetune_example.py` for a complete LoRA fine-tuning script.
 ## Next Steps
 
 After fine-tuning, move to Module 4: Evaluation, where you'll learn how to measure and improve LLM performance systematically.
+
+
+---
+
+## Model Merging — Combine Without Retraining
+
+Model merging combines weights from multiple fine-tuned models into one, without additional training. Tools like **MergeKit** make this accessible.
+
+### Key Techniques
+
+| Technique | How It Works | Best For |
+|-----------|-------------|----------|
+| **SLERP** (Spherical Linear Interpolation) | Interpolates between model weights on a hypersphere | Combining 2 models with similar architecture |
+| **TIES-Merging** | Trims, reduces, and merges only aligned parameters | Combining models with conflicting weights |
+| **DARE** (Drop And REscale) | Randomly drops delta parameters before merging | Combining many models safely |
+| ** FrankenMoE** | Creates Mixture-of-Experts from merged models | Routing between specialized experts |
+
+### When to Merge vs Fine-Tune
+
+```
+Fine-tune when:                Merge when:
+─────────────────              ─────────────────
+You have training data         You have multiple fine-tuned models
+You need deep specialization   You want to combine strengths
+You can afford GPU time        You want a quick combination
+```
+
+### Example: MergeKit Config
+
+```yaml
+# merge_config.yaml
+models:
+  - model: model-a  # Good at coding
+    parameters:
+      weight: 0.5
+  - model: model-b  # Good at reasoning
+    parameters:
+      weight: 0.5
+merge_method: slerp
+dtype: bfloat16
+```
+
+```bash
+mergekit-yaml merge_config.yaml ./merged_model
+```
+
+---
+
+## Interpretability — Understanding What Models Know
+
+Interpretability helps you understand *why* models produce certain outputs — critical for debugging, safety, and alignment.
+
+### Sparse Autoencoders (SAEs)
+
+SAEs decompose model activations into interpretable features. Each feature corresponds to a concept the model has learned.
+
+```python
+# Conceptual: SAE extracts features from model activations
+# In practice, use libraries like:
+# - sae-lens (EleutherAI)
+# - transformer-lens (Neel Nanda)
+# - Anthropic's Claude interpretability tools
+
+# Key insight: Features are often human-interpretable
+# e.g., "code", "python", "security vulnerability", "citation needed"
+```
+
+### Abliteration (Uncensoring)
+
+Remove refusal behaviors from a model by identifying and ablating the "refusal direction" in activation space.
+
+```python
+# Conceptual workflow:
+# 1. Collect responses to harmful and benign prompts
+# 2. Find the refusal direction (difference in activations)
+# 3. Remove that direction from model weights
+# 4. Result: model no longer refuses on those topics
+
+# Use with caution — this removes safety guardrails
+# Only appropriate for research or specific deployment contexts
+```
+
+### When to Use Interpretability
+
+| Use Case | Technique |
+|----------|-----------|
+| Debugging hallucinations | SAE feature analysis |
+| Understanding refusals | Abliteration |
+| Auditing model knowledge | Feature visualization |
+| Improving prompts | Activation analysis |
+| Safety research | Red-teaming + interpretability |
+

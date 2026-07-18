@@ -432,3 +432,67 @@ See `deployment_example.py` for a complete FastAPI service.
 ## Next Steps
 
 After deployment, move to Module 6: Optimization, where you'll learn advanced techniques for making your LLM applications faster, cheaper, and better.
+
+
+---
+
+## Edge Deployment — LLMs on Devices
+
+Running LLMs on edge devices (phones, browsers, embedded systems) is a growing trend. SLMs (Small Language Models) make this practical.
+
+### Why Edge?
+
+| Benefit | Description |
+|---------|-------------|
+| **Privacy** | Data never leaves the device |
+| **Latency** | No network round-trip |
+| **Offline** | Works without internet |
+| **Cost** | No API fees after deployment |
+
+### Frameworks
+
+| Framework | Platform | Key Feature |
+|-----------|----------|-------------|
+| **MLC LLM** | Browser, Android, iOS | Compile to WebAssembly, runs in browser |
+| **mnn-llm** | Mobile (Android/iOS) | Alibaba's lightweight inference engine |
+| **llama.cpp** | CPU (any platform) | GGUF format, runs on anything |
+| **Ollama** | Desktop | Local server, easy API |
+| **ONNX Runtime** | Cross-platform | Optimized for specific hardware |
+
+### SLMs for Edge
+
+| Model | Parameters | Best For |
+|-------|-----------|----------|
+| Phi-3 Mini | 3.8B | General assistant on mobile |
+| Gemma 2B | 2B | Fast, Google-optimized |
+| Llama 3.2 1B | 1B | Ultra-lightweight |
+| SmolLM2 | 1.3B | Hugging Face's tiny model |
+| Qwen2-0.5B | 0.5B | Chinese + English |
+
+### Deployment Pattern
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Train/    │────▶│  Quantize    │────▶│  Deploy to  │
+│   Fine-tune │     │  (GGUF/ONNX) │     │  Edge       │
+└─────────────┘     └──────────────┘     └─────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │ 4-bit quant │
+                    │ (1.5B → ~1GB)│
+                    └─────────────┘
+```
+
+### When to Use Edge vs Cloud
+
+```
+Use edge when:                    Use cloud when:
+─────────────                     ────────────────
+Privacy is critical               Need frontier model quality
+Offline capability needed         Complex reasoning tasks
+Low latency required              Large context windows
+Cost sensitivity (high volume)    Rapid iteration/prototyping
+Simple tasks (classification,     Multi-step agent workflows
+ extraction, summarization)
+```
+

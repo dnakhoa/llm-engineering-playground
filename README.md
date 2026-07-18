@@ -113,9 +113,9 @@ docker compose up                 # starts API on :8000 + UI on :7860
 | 00 | LLM Foundations | Tokens, embeddings, context, sampling, cost + Responses API | ~1h | ✅ |
 | 01 | Prompt Engineering | Foundation communication + reasoning models | ~1.5h | ✅ |
 | 02 | RAG Systems | Knowledge augmentation + advanced patterns + evaluation | ~2h | ✅ |
-| 03 | Fine-Tuning | Model adaptation | ~2h | ✅ |
+| 03 | Fine-Tuning | Model adaptation + merging + interpretability | ~2h | ✅ |
 | 04 | Evaluation | Quality assurance + LLM-as-judge | ~2h | ✅ |
-| 05 | Deployment | Production serving | ~2h | ✅ |
+| 05 | Deployment | Production serving + edge deployment | ~2h | ✅ |
 | 06 | Optimization | Performance, efficiency & prompt caching | ~2h | ✅ |
 | 07 | Agentic Workflows | Multi-agent systems + Agent SDKs + ACI | ~3.5h | ✅ |
 | 08 | LLM Ops | Observability & monitoring | ~2h | ✅ |
@@ -124,7 +124,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 | 11 | Memory & Context | Persistent intelligence | ~2h | ✅ |
 | 12 | Context Engineering | Window anatomy, caching, reasoning context | ~2h | ✅ |
 | 13 | Agent Harness | Loop engineering, durable journals, phase management | ~3h | ✅ |
-| 14 | MCP & Tool Design | Model Context Protocol, ACI, Secure Tunnels | ~2h | ✅ |
+| 14 | MCP & Tool Design | MCP, A2A, ACI, Secure Tunnels | ~2h | ✅ |
 | 15 | Multimodal | Vision, image gen, audio, video, voice agents | ~2h | ✅ |
 
 ### 🧱 Module 0: LLM Foundations
@@ -162,10 +162,11 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 ### 🎯 Module 3: Fine-Tuning
 **Model Adaptation** - Customize LLMs for your needs
-- When to fine-tune vs. other approaches
+- When to fine-tune vs. other approaches (decision tree)
 - LoRA and QLoRA techniques
-- Data preparation
-- Training frameworks
+- Data preparation and training frameworks
+- Model merging (SLERP, TIES, DARE, FrankenMoE)
+- Interpretability (SAEs, abliteration, feature analysis)
 - Evaluation and deployment
 
 📁 Location: `03-fine-tuning/`
@@ -183,10 +184,10 @@ docker compose up                 # starts API on :8000 + UI on :7860
 ### 🚀 Module 5: Deployment
 **Production Ready** - Serve LLMs at scale
 - Cloud APIs vs. self-hosting
-- Latency optimization
+- Latency optimization and streaming
+- Edge deployment (MLC LLM, llama.cpp, SLMs)
 - Cost management
 - Security and privacy
-- Monitoring and observability
 
 📁 Location: `05-deployment/`
 
@@ -295,6 +296,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Error handling: protocol vs business-logic errors, actionable messages
 - When to split vs consolidate tools
 - Agent-Computer Interface (ACI) design principles
+- Agent-to-Agent (A2A) protocol for multi-agent collaboration
 - Secure MCP Tunnels for production deployment
 - Computer Use as a tool type
 
@@ -454,9 +456,9 @@ llm-engineering-playground/
 |---------|-------------|-------------|
 | **Prompt Engineering** | Craft effective inputs + reasoning effort tuning | Always - first line of defense |
 | **RAG** | Add external knowledge | Domain-specific Q&A, current info |
-| **Fine-Tuning** | Adapt model weights | Style, format, specialized tasks |
+| **Fine-Tuning** | Adapt model weights + merging + interpretability | Style, format, specialized tasks |
 | **Evaluation** | Measure performance + LLM-as-judge | Before/after any change |
-| **Deployment** | Production serving (Responses API recommended) | When ready for users |
+| **Deployment** | Production serving + edge deployment | When ready for users |
 | **Optimization** | Performance, efficiency + provider-level prompt caching | Cost/performance issues |
 | **Agentic Workflows** | Multi-agent + supervisor/swarm patterns + Agent SDKs | Complex multi-step tasks |
 | **LLM Ops & Observability** | Monitor and trace production | After deployment, always |
@@ -465,7 +467,7 @@ llm-engineering-playground/
 | **Memory & Context** | Persistent memory across sessions | Conversational and personalized apps |
 | **Context Engineering** | Design context quality + reasoning context management | Every LLM call in production |
 | **Agent Harness** | Loop engineering, durable execution, phase management | Any long-running autonomous agent |
-| **MCP & Tool Design** | Standard tool interfaces + Agent-Computer Interface (ACI) | When building agent tool ecosystems |
+| **MCP & Tool Design** | MCP + A2A + ACI + Secure Tunnels | When building agent tool ecosystems |
 | **Multimodal** | Vision, image gen, audio, video generation | When working with images, audio, or video |
 
 ## Best Practices

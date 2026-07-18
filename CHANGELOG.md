@@ -4,6 +4,32 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.3.0] — 2026-07-17
+
+### Added — Module 03: Model Merging & Interpretability
+- Model merging techniques: SLERP, TIES-Merging, DARE, FrankenMoE
+- MergeKit config example and when to merge vs fine-tune
+- Interpretability: Sparse Autoencoders (SAEs), ablation analysis
+- Abliteration (uncensoring) workflow and use cases
+
+### Added — Module 05: Edge Deployment
+- Edge deployment frameworks: MLC LLM, mnn-llm, llama.cpp, Ollama, ONNX Runtime
+- SLM comparison table: Phi-3 Mini, Gemma 2B, Llama 3.2 1B, SmolLM2, Qwen2-0.5B
+- When to use edge vs cloud decision guide
+
+### Added — Module 14: Agent-to-Agent (A2A) Protocol
+- A2A vs MCP comparison (tool access vs agent collaboration)
+- A2A architecture diagram
+- When to use A2A: multi-agent teams, cross-org collaboration
+- A2A + MCP integration pattern
+- Links to A2A spec, Python SDK, Google blog post
+
+### Updated — README
+- Updated module descriptions for 03, 05, 14
+- Updated curriculum table and Key Concepts table
+
+---
+
 ## [5.2.0] — 2026-07-17
 
 ### Added — Test Suite

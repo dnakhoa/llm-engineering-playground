@@ -454,3 +454,73 @@ def code_review_prompt(language: str, focus: str = "correctness") -> str:
 ---
 
 **Good tools make agents more capable. Bad tools make them unpredictable. Design matters.**
+
+
+---
+
+## Agent-to-Agent (A2A) Protocol
+
+While MCP connects agents to **tools**, the **Agent2Agent (A2A) protocol** enables agents to communicate with **each other**. It's a Google-led standard gaining traction alongside MCP.
+
+### MCP vs A2A
+
+| | MCP | A2A |
+|--|-----|-----|
+| **Connects** | Agent ↔ Tool | Agent ↔ Agent |
+| **Direction** | Agent calls tool | Agents collaborate |
+| **Use case** | Database query, API call | Multi-agent orchestration |
+| **Standard** | Anthropic-led | Google-led |
+
+### A2A Architecture
+
+```
+┌─────────────┐     A2A Protocol     ┌─────────────┐
+│   Agent A   │◄────────────────────▶│   Agent B   │
+│  (Research) │   task delegation     │  (Coding)   │
+└─────────────┘   status updates      └─────────────┘
+       │            results                │
+       ▼                                   ▼
+┌─────────────┐                    ┌─────────────┐
+│  MCP Tools  │                    │  MCP Tools  │
+│  (search,   │                    │  (code exec,│
+│   browse)   │                    │   test)     │
+└─────────────┘                    └─────────────┘
+```
+
+### When to Use A2A
+
+| Scenario | Why A2A |
+|----------|---------|
+| Multi-agent teams | Agents need to delegate subtasks to specialists |
+| Cross-org collaboration | Different orgs' agents work together |
+| Heterogeneous agents | Agents built on different frameworks need to interoperate |
+| Complex workflows | Task decomposition across specialized agents |
+
+### A2A + MCP Together
+
+Most production agent systems use both:
+- **MCP** for tool access (databases, APIs, file systems)
+- **A2A** for agent collaboration (delegation, synthesis, verification)
+
+```python
+# Conceptual: A2A agent interaction
+agent_a = ResearchAgent(mcp_tools=["search", "browse"])
+agent_b = CoderAgent(mcp_tools=["code_exec", "test"])
+
+# Agent A discovers Agent B via A2A
+task = a2a_client.create_task(
+    agent="coder-agent",
+    description="Write a Python function to parse the research findings",
+    context=research_results
+)
+
+# Agent B executes and returns results
+result = a2a_client.wait_for_result(task.id)
+```
+
+### A2A Resources
+
+- [A2A Protocol Spec](https://a2a-protocol.org/) — official specification
+- [Google A2A GitHub](https://github.com/google/a2a-python) — Python SDK
+- [A2A + MCP Integration](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/) — Google blog post
+
