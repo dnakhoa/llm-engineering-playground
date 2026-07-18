@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.2.0] — 2026-07-17
+
+### Added — Test Suite
+- `tests/test_all_modules.py` — 21 unit tests covering core logic from modules 00, 06, 12, 13, 14, 15, and capstone
+- Tests validate: tokenization, cost estimation, caching savings, token budgets, novelty gates, budget trackers, journal idempotency, tool design principles, PII detection
+- All tests run without API calls (no keys needed)
+- Added `unit-tests` job to GitHub Actions CI
+
+### Added — Exercise Cells to All 16 Notebooks
+- Every notebook now ends with a "🧪 Exercises" section containing 3-5 hands-on challenges
+- Exercises encourage experimentation: modify parameters, compare approaches, build variations
+- Covers all modules: 00-15
+
+### Updated — CI Pipeline
+- Added pytest job to `.github/workflows/ci.yml`
+- CI now validates: notebook structure, repo structure, AND unit tests
+
+---
+
 ## [5.1.0] — 2026-07-17
 
 ### Added — Notebooks for 5 Modules
