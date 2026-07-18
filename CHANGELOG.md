@@ -4,6 +4,67 @@ All notable changes to this project are documented here.
 
 ---
 
+## [5.0.0] — 2026-07-17
+
+### Updated — Course-wide Model References
+- Updated Anthropic default from `claude-sonnet-4-20250514` to `claude-sonnet-5`
+- Added Claude Fable 5, Mythos 5, Opus 4.8, Sonnet 5, Haiku 4.5 to model landscape
+- Added GPT-5.6 family (gpt-5.6, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna) references
+- Updated cost ratios and model tier descriptions
+
+### Updated — Module 00: LLM Foundations
+- Added "The Responses API" section — OpenAI's recommended API replacing Chat Completions
+- Added reasoning effort levels (none/low/medium/high/xhigh) and pro reasoning mode
+- Added persisted reasoning (reasoning.context: current_turn/all_turns)
+- Updated model landscape table with current provider lineups
+
+### Updated — Module 01: Prompt Engineering
+- Restructured "Extended Thinking" into "Reasoning Models & Effort Tuning"
+- Added OpenAI GPT-5.x reasoning patterns (effort, pro mode, summaries)
+- Added Anthropic adaptive thinking (always-on for Fable 5)
+- Added reasoning context persistence for multi-turn conversations
+
+### Updated — Module 06: Optimization
+- Added Anthropic automatic caching (single cache_control field)
+- Added explicit cache breakpoints (up to 4 per request)
+- Added OpenAI explicit cache breakpoints (GPT-5.6+)
+- Added `prompt_cache_key` parameter for cache routing
+- Updated minimum token requirements per model
+
+### Updated — Module 07: Agentic Workflows
+- Added Agent SDKs section (OpenAI Agents SDK, Anthropic Agent SDK, Strands, LangGraph)
+- Added Agent-Computer Interface (ACI) design principles from Anthropic research
+- Added ACI checklist and practical examples
+
+### Updated — Module 12: Context Engineering
+- Added Anthropic automatic caching
+- Added OpenAI explicit cache breakpoints (GPT-5.6+)
+- Added reasoning context management (reasoning.context parameter)
+- Updated cache minimum token requirements per model
+
+### Updated — Module 13: Agent Harness
+- Added phase parameter for long-running assistant interactions (commentary/final_answer)
+- Added background mode for long-running tasks
+
+### Updated — Module 14: MCP & Tool Design
+- Added Secure MCP Tunnels section (OpenAI)
+- Added Computer Use as a tool type (Anthropic, OpenAI)
+- Updated MCP ecosystem references
+
+### Updated — Module 15: Multimodal
+- Added video generation section (OpenAI)
+- Added Realtime Audio / Voice Agents section
+- Updated Claude model references to Sonnet 5
+- Expanded "When to Use" table
+
+### Updated — shared/provider.py
+- Updated Anthropic default model to `claude-sonnet-5`
+
+### Updated — .env.example
+- Added new model references (gpt-5.6, claude-opus-4-8, claude-fable-5)
+
+---
+
 ## [4.0.0] — 2026-06-24
 
 ### Added — Module 15: Multimodal LLMs (`15-multimodal/`)

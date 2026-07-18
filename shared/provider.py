@@ -40,7 +40,7 @@ def _detect_provider() -> str:
 def _default_model(provider: str) -> str:
     defaults = {
         "openai": "gpt-4o-mini",
-        "anthropic": "claude-sonnet-4-20250514",
+        "anthropic": "claude-sonnet-5",
         "deepseek": "deepseek-chat",
         "grok": "grok-3-mini",
         "qwen": "qwen-plus",

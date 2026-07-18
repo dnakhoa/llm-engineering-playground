@@ -186,69 +186,113 @@ Prefix caching lets you **pay once for a long stable prefix** (system prompt, fe
 
 ### Anthropic Cache Control
 
-Anthropic charges **full price for cache WRITE** but only **10% of the input token price for cache READ** (with a 5-minute TTL that resets on each use).
+#### Automatic Caching (Simplest)
+
+Add a single `cache_control` at the top level — the system automatically caches the last cacheable block:
 
 ```python
 import anthropic
-
 client = anthropic.Anthropic()
 
-# Cache-friendly message structure:
-# 1. Stable prefix at the top (system prompt + reference docs)
-# 2. Dynamic user turn at the bottom
+response = client.messages.create(
+    model="claude-opus-4-8",
+    max_tokens=1024,
+    cache_control={"type": "ephemeral"},  # automatic caching
+    system="You are an expert legal analyst.",
+    messages=[
+        {"role": "user", "content": "Summarize section 4.2."}
+    ]
+)
+```
+
+#### Explicit Breakpoints (Fine-Grained)
+
+Up to 4 breakpoints for independent cache segments (tools, instructions, RAG docs, conversation):
+
+```python
 response = client.messages.create(
     model="claude-opus-4-8",
     max_tokens=1024,
     system=[
-        {
-            "type": "text",
-            "text": "You are an expert legal analyst.",
-        },
-        {
-            "type": "text",
-            "text": open("legal_reference_doc.txt").read(),  # large stable doc
-            "cache_control": {"type": "ephemeral"}  # mark cache boundary
-        }
+        {"type": "text", "text": "You are an expert legal analyst."},
+        {"type": "text", "text": large_reference_doc,
+         "cache_control": {"type": "ephemeral"}}  # cache boundary
     ],
-    messages=[
-        {"role": "user", "content": "Summarize section 4.2 of the contract."}
-    ]
+    messages=[{"role": "user", "content": "Summarize section 4.2."}]
 )
-
-# First request: cache WRITE — full input token cost
-# Subsequent requests (within 5 min): cache READ — 10% of input token cost
-print(response.usage.cache_creation_input_tokens)  # tokens written to cache
-print(response.usage.cache_read_input_tokens)       # tokens read from cache
 ```
 
+**First request**: cache WRITE — full input token cost. **Subsequent requests (within 5 min)**: cache READ — 10% of input token cost.
+
 **Requirements:**
-- Minimum 1,024 tokens for Claude Haiku, 2,048 for Claude Sonnet/Opus
-- Cache boundary must be at a message boundary (system or full turn)
-- Stable prefix must come BEFORE the cache_control marker
+- Minimum 512 tokens (Fable 5), 1,024 tokens (Opus 4.8, Sonnet 5), 4,096 tokens (Opus 4.5/4.6)
+- Up to 4 cache breakpoints per request
+- 20-block lookback window for finding prior cache entries
 
-### OpenAI Cached Inputs
+### OpenAI Prompt Caching
 
-OpenAI (since late 2024) automatically caches the first 1,024+ token prefix of any prompt. No explicit configuration needed — just ensure your system prompt and stable context comes first.
+#### Automatic Caching
+
+OpenAI automatically caches the first 1,024+ token prefix. No configuration needed.
 
 ```python
 from openai import OpenAI
-
 client = OpenAI()
 
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[
-        # This stable block gets auto-cached after first call
         {"role": "system", "content": "You are an expert..." + large_reference_text},
-        # Dynamic part goes last
         {"role": "user", "content": user_question}
     ]
 )
-
-# Check cache usage in the response
 cached_tokens = response.usage.prompt_tokens_details.cached_tokens
 print(f"Cached tokens: {cached_tokens}")
 ```
+
+#### Explicit Breakpoints (GPT-5.6+)
+
+For GPT-5.6 models, use explicit breakpoints and `prompt_cache_key` for fine-grained control:
+
+```python
+response = client.responses.create(
+    model="gpt-5.6",
+    prompt_cache_key="tenant:acme:knowledge-v1",  # improve routing
+    prompt_cache_options={"mode": "explicit"},     # only explicit breakpoints
+    input=[{
+        "role": "user",
+        "content": [
+            {"type": "input_file", "file_id": "file_123",
+             "prompt_cache_breakpoint": {"mode": "explicit"}},
+            {"type": "input_text", "text": "Answer the question."}
+        ]
+    }]
+)
+```
+
+### Reasoning Context Management
+
+For multi-turn conversations with reasoning models, manage reasoning context to avoid wasting tokens:
+
+```python
+# OpenAI — preserve reasoning across turns
+first = client.responses.create(
+    model="gpt-5.6",
+    reasoning={"effort": "medium", "context": "current_turn"},
+    input="Inspect this codebase."
+)
+
+# Second turn — reuse reasoning from first turn
+second = client.responses.create(
+    model="gpt-5.6",
+    previous_response_id=first.id,
+    reasoning={"context": "all_turns"},  # reuse prior reasoning
+    input="Now fix the bug you found."
+)
+```
+
+- `current_turn`: only reasoning from the active turn (default, cheaper)
+- `all_turns`: reuse reasoning from all prior turns (better quality for complex multi-turn tasks)
 
 ### Cache-Friendly Design Patterns
 
@@ -454,8 +498,9 @@ Before injecting anything into context, ask:
 
 - "Lost in the Middle: How Language Models Use Long Contexts" — Liu et al., 2023
 - "A Long Way to Go: Investigating Length Correlations in RLHF" — Singhal et al., 2023
-- Anthropic Prompt Caching documentation
-- OpenAI Prompt Caching documentation
+- Anthropic Prompt Caching documentation (automatic + explicit breakpoints)
+- OpenAI Prompt Caching documentation (automatic + explicit breakpoints, prompt_cache_key)
+- OpenAI Reasoning Models — reasoning.context for persisted reasoning
 
 ## 🔗 Integration with Other Modules
 

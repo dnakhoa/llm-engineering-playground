@@ -241,25 +241,71 @@ Career-changers often default to the largest model "to be safe." This is wrong. 
 ```
 Task                          → Model tier
 ─────────────────────────────────────────────────────────
-Classify sentiment (simple)   → Small (GPT-4o mini, Haiku)
+Classify sentiment (simple)   → Small (GPT-4o mini, Haiku 4.5)
 Extract JSON from text        → Small / Standard
 Summarize a document          → Small / Standard
-Write production code         → Standard (GPT-4o, Sonnet)
-Reason through a math proof   → Large / Reasoning (o3, Opus)
+Write production code         → Standard (GPT-4o, Sonnet 5)
+Reason through a math proof   → Large / Reasoning (GPT-5.6, Opus 4.8)
 Creative long-form writing    → Standard / Large
-Multi-step research task      → Large
+Multi-step research task      → Large / Reasoning (GPT-5.6-sol, Fable 5)
 ```
 
 **Cost ratio example (approximate)**:
 - Small: $0.15/1M input tokens
-- Standard: $2.50/1M input tokens
-- Large: $15–75/1M input tokens
+- Standard: $2.50–3/1M input tokens
+- Large: $5–10/1M input tokens
+- Reasoning: $10–75/1M input tokens (+ reasoning token costs)
 
 A task that runs 10,000 times/day costs $1.50/day on small vs $25–750/day on large. Right-sizing is an economic decision, not just a technical one.
 
+### Model Landscape (July 2026)
+
+| Provider | Small | Standard | Large / Reasoning |
+|----------|-------|----------|-------------------|
+| OpenAI | gpt-4o-mini | gpt-4o | gpt-5.6, gpt-5.6-sol |
+| Anthropic | Haiku 4.5 | Sonnet 5 | Opus 4.8, Fable 5 |
+| DeepSeek | deepseek-chat | deepseek-v3 | deepseek-r1 |
+
 ---
 
-## 7. Putting It Together — Reading a Real System
+## 7. The Responses API (Recommended for OpenAI)
+
+OpenAI's **Responses API** is now the recommended way to build with their models, replacing Chat Completions as the primary interface. It provides better state management, reasoning support, and multi-agent orchestration.
+
+```python
+from openai import OpenAI
+client = OpenAI()
+
+# Responses API — recommended
+response = client.responses.create(
+    model="gpt-5.6",
+    reasoning={"effort": "medium"},  # control reasoning depth
+    input=[
+        {"role": "user", "content": "Explain how transformers work."}
+    ]
+)
+
+print(response.output_text)
+
+# Usage includes reasoning tokens
+print(f"Reasoning tokens: {response.usage.output_tokens_details.reasoning_tokens}")
+```
+
+### Key differences from Chat Completions:
+
+| Feature | Chat Completions | Responses API |
+|---------|-----------------|---------------|
+| State management | Manual (re-send history) | Built-in (previous_response_id) |
+| Reasoning control | Not available | `reasoning.effort` (none/low/medium/high/xhigh) |
+| Multi-agent | Manual | Native orchestration |
+| Reasoning persistence | Not available | `reasoning.context` (current_turn/all_turns) |
+| Background mode | Not available | Long-running tasks with polling |
+
+Chat Completions still works, but Responses API is recommended for new projects.
+
+---
+
+## 8. Putting It Together — Reading a Real System
 
 Now you can read any LLM system and understand what's happening:
 
@@ -272,11 +318,11 @@ Now you can read any LLM system and understand what's happening:
    - Tool results from previous agent steps (if any)
    - The user's current message
 3. Sends assembled context to the model API
-4. Model generates output tokens one at a time
+4. Model generates output tokens (and reasoning tokens for reasoning models)
 5. Application parses the response:
    - If tool call → execute tool → add result → repeat from step 2
    - If plain text → return to user
-6. Application logs: tokens_in, tokens_out, latency, cost
+6. Application logs: tokens_in, tokens_out, reasoning_tokens, latency, cost
 ```
 
 Every module in this course deepens one part of this pipeline.

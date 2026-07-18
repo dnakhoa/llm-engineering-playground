@@ -335,6 +335,55 @@ Resources differ from tools:
 
 ---
 
+## 🔐 Secure MCP Tunnels
+
+For production deployments, expose MCP servers securely without making them public:
+
+```bash
+# OpenAI's Secure MCP Tunnel — connects private servers to ChatGPT
+# without exposing them to the public internet
+npx @openai/mcp-tunnel --server http://localhost:8080/mcp
+```
+
+**Why tunnels matter**:
+- MCP servers often need access to internal databases, APIs, and services
+- Direct exposure creates security risks
+- Tunnels provide authenticated, encrypted access without public endpoints
+- Works with ChatGPT Apps SDK, Claude, and other MCP clients
+
+### Computer Use as a Tool
+
+Modern models can interact with computers directly — clicking, typing, taking screenshots. This is exposed as a tool type in both OpenAI and Anthropic APIs:
+
+```python
+# Anthropic Computer Use
+response = client.messages.create(
+    model="claude-opus-4-8",
+    max_tokens=4096,
+    tools=[{
+        "type": "computer_20250124",
+        "name": "computer",
+        "display_width_px": 1024,
+        "display_height_px": 768,
+        "display_number": 0,
+    }],
+    messages=[{
+        "role": "user",
+        "content": "Open a browser and search for 'LLM engineering courses'."
+    }]
+)
+```
+
+**When to use Computer Use**:
+- Automating tasks that require GUI interaction
+- Testing web applications
+- Scraping dynamic content that requires browser interaction
+- Legacy system integration where no API exists
+
+**CAUTION**: Computer Use has broad capabilities — always run in sandboxed environments with appropriate guardrails.
+
+---
+
 ## 📋 Prompt Templates
 
 Prompts define reusable templates that UIs can surface:
@@ -391,6 +440,9 @@ def code_review_prompt(language: str, focus: str = "correctness") -> str:
 - [MCP Inspector](https://github.com/modelcontextprotocol/inspector) — dev tool for testing servers
 - [MCP Registry](https://registry.modelcontextprotocol.io) — discover community servers
 - [Official Reference Servers](https://github.com/modelcontextprotocol/servers) — filesystem, git, GitHub, PostgreSQL, etc.
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — ACI design principles
+- [OpenAI Secure MCP Tunnels](https://platform.openai.com/docs/guides/secure-mcp-tunnels) — production MCP security
+- [MCPEvol-Bench](https://arxiv.org/abs/2607.14642) — benchmarking LLM agents across MCP server evolutions
 
 ## 🔗 Integration with Other Modules
 

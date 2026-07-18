@@ -206,44 +206,56 @@ Prompt caching lets you pay **once** for a large, stable context prefix (system 
 | Cache WRITE (1-hour) | 2.0× input  | 1 hour |
 | Cache READ  | **0.1× input** | — |
 
-Minimum tokens: 1,024 (Haiku), 2,048 (Sonnet/Opus).
+Minimum tokens: 512 (Fable 5/Mythos 5), 1,024 (Opus 4.8, Sonnet 5), 4,096 (Opus 4.5/4.6).
+
+#### Automatic Caching (Simplest)
+
+Add a single `cache_control` at the top level — the system automatically caches the last cacheable block:
 
 ```python
 import anthropic
-
 client = anthropic.Anthropic()
 
-# Structure: stable prefix → cache boundary → dynamic suffix
+response = client.messages.create(
+    model="claude-opus-4-8",
+    max_tokens=1024,
+    cache_control={"type": "ephemeral"},  # automatic caching
+    system="You are an expert analyst.",
+    messages=[
+        {"role": "user", "content": "Analyze this document."}
+    ]
+)
+```
+
+#### Explicit Cache Breakpoints (Fine-Grained)
+
+Place `cache_control` on individual content blocks for maximum control. Up to 4 breakpoints:
+
+```python
 response = client.messages.create(
     model="claude-opus-4-8",
     max_tokens=1024,
     system=[
         {"type": "text", "text": "You are an expert analyst."},
-        {
-            "type": "text",
-            "text": large_reference_document,       # stable, large
-            "cache_control": {"type": "ephemeral"}  # 5-min TTL cache boundary
-        }
+        {"type": "text", "text": large_reference_doc,
+         "cache_control": {"type": "ephemeral"}}  # cache boundary here
     ],
-    messages=[
-        {"role": "user", "content": user_question}  # dynamic — NOT cached
-    ]
+    messages=[{"role": "user", "content": user_question}]
 )
-
-# First call: WRITE (1.25× price)
-print(f"Cache write: {response.usage.cache_creation_input_tokens:,} tokens")
-# Subsequent calls within 5 min: READ (0.1× price — 90% discount)
-print(f"Cache read:  {response.usage.cache_read_input_tokens:,} tokens")
 ```
+
+**First call**: WRITE (1.25× price). **Subsequent calls within 5 min**: READ (0.1× — 90% discount).
 
 **Cost example**: 5,000-token system prompt, 100 req/day:
 - Without caching: 100 × 5,000 = 500,000 input tokens/day
 - With caching:    1 × 5,000 × 1.25 (write) + 99 × 5,000 × 0.1 (read) = 55,750 tokens
 - **Savings: 89%** after the first request per cache window
 
-### OpenAI Automatic Caching
+### OpenAI Prompt Caching
 
-OpenAI automatically caches the first 1,024+ token prefix — no API changes needed.
+#### Automatic Caching
+
+OpenAI automatically caches the first 1,024+ token prefix — no code changes needed:
 
 ```python
 from openai import OpenAI
@@ -253,14 +265,46 @@ response = client.chat.completions.create(
     model="gpt-4o",
     messages=[
         {"role": "system", "content": "You are..." + large_stable_context},
-        {"role": "user",   "content": user_question}   # dynamic suffix
+        {"role": "user",   "content": user_question}
     ]
 )
 cached = response.usage.prompt_tokens_details.cached_tokens
 print(f"Cached tokens: {cached}")
 ```
 
-Optionally pass `prompt_cache_key` to improve routing when many users share the same prefix.
+#### Explicit Cache Breakpoints (GPT-5.6+)
+
+For GPT-5.6 models, use explicit breakpoints for fine-grained control:
+
+```python
+response = client.responses.create(
+    model="gpt-5.6",
+    prompt_cache_key="tenant:acme:knowledge-base-v1",  # improve routing
+    prompt_cache_options={"mode": "explicit"},  # only explicit breakpoints
+    input=[{
+        "role": "user",
+        "content": [
+            {"type": "input_file", "file_id": "file_123",
+             "prompt_cache_breakpoint": {"mode": "explicit"}},
+            {"type": "input_text", "text": "Answer the question."}
+        ]
+    }]
+)
+```
+
+#### prompt_cache_key
+
+Pass `prompt_cache_key` to improve cache hit rates when many requests share a prefix:
+
+```python
+response = client.responses.create(
+    model="gpt-5.6",
+    prompt_cache_key="tenant:acme:support-v1",  # routes to same cache
+    input=[...]
+)
+```
+
+Keep traffic per key to ~15 req/min. Partition across keys for higher volume.
 
 ### Cache-Friendly Design Rules
 
@@ -274,12 +318,13 @@ Optionally pass `prompt_cache_key` to improve routing when many users share the 
    User Question (changes)       ← NOT cached
 
 ❌ DON'T: Put timestamps or session IDs at the top
-   "Current time: 2026-06-23 11:30:22"   ← invalidates EVERYTHING below
+   "Current time: 2026-07-17 11:30:22"   ← invalidates EVERYTHING below
    System Prompt                          ← not cached (prefix broken)
 ```
 
 Additional rules:
 - Keep call cadence steady — cache evicts on inactivity (5–10 min)
+- Place `cache_control` on the last **stable** block, not the varying block
 - Longer TTL entries must appear before shorter TTL entries (Anthropic)
 - Never add per-request noise (request IDs, timestamps) before the cache boundary
 

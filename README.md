@@ -111,21 +111,21 @@ docker compose up                 # starts API on :8000 + UI on :7860
 | Module | Topic | Key Focus | Time | Status |
 |--------|-------|-----------|------|--------|
 | 00 | LLM Foundations | Tokens, embeddings, context, sampling, cost | ~1h | ✅ |
-| 01 | Prompt Engineering | Foundation communication + extended thinking | ~1.5h | ✅ |
+| 01 | Prompt Engineering | Foundation communication + reasoning models | ~1.5h | ✅ |
 | 02 | RAG Systems | Knowledge augmentation | ~2h | ✅ |
 | 03 | Fine-Tuning | Model adaptation | ~2h | ✅ |
 | 04 | Evaluation | Quality assurance + LLM-as-judge | ~2h | ✅ |
 | 05 | Deployment | Production serving | ~2h | ✅ |
 | 06 | Optimization | Performance, efficiency & prompt caching | ~2h | ✅ |
-| 07 | Agentic Workflows | Multi-agent systems + supervisor/swarm | ~3.5h | ✅ |
+| 07 | Agentic Workflows | Multi-agent systems + Agent SDKs + ACI | ~3.5h | ✅ |
 | 08 | LLM Ops | Observability & monitoring | ~2h | ✅ |
 | 09 | EvalOps | Continuous evaluation | ~1.5h | ✅ |
 | 10 | Gateway & Guardrails | Security & compliance | ~2h | ✅ |
 | 11 | Memory & Context | Persistent intelligence | ~2h | ✅ |
-| 12 | Context Engineering | Window anatomy, caching, compression | ~2h | ✅ |
-| 13 | Agent Harness | Loop engineering, durable journals, repair | ~3h | ✅ |
-| 14 | MCP & Tool Design | Model Context Protocol, tool interfaces | ~2h | ✅ |
-| 15 | Multimodal | Vision, image generation, audio, CLIP | ~2h | ✅ |
+| 12 | Context Engineering | Window anatomy, caching, reasoning context | ~2h | ✅ |
+| 13 | Agent Harness | Loop engineering, durable journals, phase management | ~3h | ✅ |
+| 14 | MCP & Tool Design | Model Context Protocol, ACI, Secure Tunnels | ~2h | ✅ |
+| 15 | Multimodal | Vision, image gen, audio, video, voice agents | ~2h | ✅ |
 
 ### 🧱 Module 0: LLM Foundations
 **Start Here** - The mental models every LLM engineer needs
@@ -133,7 +133,8 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Embeddings as geometry — why semantic search works
 - Context window anatomy: input tokens, output tokens, limits
 - Sampling parameters: temperature, top-p, max_tokens
-- API call anatomy: system prompt, user, assistant, parameters
+- Responses API (recommended) vs Chat Completions
+- Reasoning effort tuning (none/low/medium/high/xhigh)
 - Model selection: when to use small/medium/large
 - Cost estimation before you build
 
@@ -145,7 +146,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Chain-of-thought reasoning
 - Role prompting and personas
 - Structured output generation
-- Best practices and patterns
+- Reasoning models, effort tuning, adaptive thinking
 
 📁 Location: `01-prompt-engineering/`
 
@@ -192,7 +193,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 ### ⚡ Module 6: Optimization
 **Performance & Efficiency** - Make it faster and cheaper
 - Quantization and pruning
-- Caching strategies
+- Caching strategies (automatic + explicit breakpoints)
 - Model routing
 - Prompt optimization
 - Token budgeting
@@ -202,7 +203,9 @@ docker compose up                 # starts API on :8000 + UI on :7860
 ### 🤖 Module 7: Agentic Workflows
 **Autonomous Systems** - Build multi-agent collaborative systems
 - LangChain agents and tools
+- Agent SDKs (OpenAI, Anthropic, Strands)
 - LangGraph state machines
+- Agent-Computer Interface (ACI) design
 - Specialist agent design
 - Dynamic routing and orchestration
 - Human-in-the-loop workflows
@@ -245,51 +248,6 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 📁 Location: `10-gateway-guardrails/`
 
-### 🧠 Module 12: Context Engineering
-**Context as a Resource** - Design what enters the context window, not just fill it
-- Context window anatomy and the U-shaped attention curve
-- Context poisoning, confusion, and clash — failure modes and fixes
-- Observation masking — compress tool outputs before they hit context
-- Provider-level prefix caching (Anthropic cache_control, OpenAI auto-cache)
-- Token budget management and per-slot allocation
-- Context compression: sliding window, LLM-based summarization
-
-📁 Location: `12-context-engineering/`
-
-### 🔄 Module 13: Agent Harness & Loop Engineering
-**Reliable Autonomy** - Build agents that don't get stuck, crash, or over-run
-- Loop-until-dry with novelty gates (exhaustive without infinite loops)
-- Budget-aware loops — token budget injected into each agent call
-- Durable journals — crash-proof resume without replaying completed steps
-- Self-repair loops — retry with error context fed back to the agent
-- Human approval checkpoints for irreversible actions
-- Deterministic orchestration vs model-driven autonomy
-- Pipeline vs barrier synchronization, adversarial verification
-
-📁 Location: `13-agent-harness/`
-
-### 🔌 Module 14: MCP & Tool Design
-**Tool Interfaces** - Build tools agents can actually use correctly
-- Model Context Protocol (MCP spec 2025-06-18) — architecture and primitives
-- Building MCP servers in Python with FastMCP (stdio + HTTP transport)
-- Tool descriptions as routing signals — what makes an agent call the right tool
-- Schema design to eliminate ambiguous arguments
-- Error handling: protocol vs business-logic errors, actionable messages
-- When to split vs consolidate tools
-- Resources, prompts, and the MCP ecosystem
-
-📁 Location: `14-mcp-tool-design/`
-
-### 🖼️ Module 15: Multimodal LLMs
-**Vision, Audio & Image Generation** - Handle more than just text
-- Vision APIs (GPT-4V, Claude Vision) for image analysis and OCR
-- Image generation with DALL-E 3
-- Audio transcription with Whisper and text-to-speech
-- CLIP embeddings for image retrieval
-- Multimodal RAG combining text and images
-
-📁 Location: `15-multimodal/`
-
 ### 🧠 Module 11: Memory & Context Management
 **Persistent Intelligence** - Build memory-enabled applications
 - Short-term conversation buffers
@@ -302,6 +260,57 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Multi-session conversation support
 
 📁 Location: `11-memory-context/`
+
+### 🧠 Module 12: Context Engineering
+**Context as a Resource** - Design what enters the context window, not just fill it
+- Context window anatomy and the U-shaped attention curve
+- Context poisoning, confusion, and clash — failure modes and fixes
+- Observation masking — compress tool outputs before they hit context
+- Provider-level prefix caching (automatic + explicit breakpoints)
+- Reasoning context management (reasoning.context parameter)
+- Token budget management and per-slot allocation
+- Context compression: sliding window, LLM-based summarization
+
+📁 Location: `12-context-engineering/`
+
+### 🔄 Module 13: Agent Harness & Loop Engineering
+**Reliable Autonomy** - Build agents that don't get stuck, crash, or over-run
+- Loop-until-dry with novelty gates (exhaustive without infinite loops)
+- Budget-aware loops — token budget injected into each agent call
+- Durable journals — crash-proof resume without replaying completed steps
+- Self-repair loops — retry with error context fed back to the agent
+- Human approval checkpoints for irreversible actions
+- Phase parameter for long-running interactions
+- Background mode for async tasks
+- Pipeline vs barrier synchronization, adversarial verification
+
+📁 Location: `13-agent-harness/`
+
+### 🔌 Module 14: MCP & Tool Design
+**Tool Interfaces** - Build tools agents can actually use correctly
+- Model Context Protocol (MCP spec 2025-06-18) — architecture and primitives
+- Building MCP servers in Python with FastMCP (stdio + HTTP transport)
+- Tool descriptions as routing signals — what makes an agent call the right tool
+- Schema design to eliminate ambiguous arguments
+- Error handling: protocol vs business-logic errors, actionable messages
+- When to split vs consolidate tools
+- Agent-Computer Interface (ACI) design principles
+- Secure MCP Tunnels for production deployment
+- Computer Use as a tool type
+
+📁 Location: `14-mcp-tool-design/`
+
+### 🖼️ Module 15: Multimodal LLMs
+**Vision, Audio, Video & Image Generation** - Handle more than just text
+- Vision APIs (GPT-4o, Claude Vision) for image analysis and OCR
+- Image generation with DALL-E 3
+- Video generation (Sora, gpt-4o-video)
+- Audio transcription with Whisper and text-to-speech
+- Realtime Audio / Voice Agents
+- CLIP embeddings for image retrieval
+- Multimodal RAG combining text and images
+
+📁 Location: `15-multimodal/`
 
 ## 🗺️ Learning Paths
 
@@ -361,8 +370,8 @@ The course works with any LLM provider. Just set one key in `.env`:
 
 | Provider | Env Variable | Default Model | Cost |
 |----------|-------------|---------------|------|
-| OpenAI | `OPENAI_API_KEY` | gpt-4o-mini | Pay-as-you-go |
-| Anthropic | `ANTHROPIC_API_KEY` | claude-sonnet-4-20250514 | Pay-as-you-go |
+| OpenAI | `OPENAI_API_KEY` | gpt-4o-mini (or gpt-5.6 for reasoning) | Pay-as-you-go |
+| Anthropic | `ANTHROPIC_API_KEY` | claude-sonnet-5 (or claude-opus-4-8 for complex) | Pay-as-you-go |
 | DeepSeek | `DEEPSEEK_API_KEY` | deepseek-chat | Very cheap |
 | xAI Grok | `GROK_API_KEY` | grok-3-mini | Pay-as-you-go |
 | Qwen | `QWEN_API_KEY` | qwen-plus | Cheap |
@@ -443,21 +452,21 @@ llm-engineering-playground/
 
 | Concept | Description | When to Use |
 |---------|-------------|-------------|
-| **Prompt Engineering** | Craft effective inputs + extended thinking | Always - first line of defense |
+| **Prompt Engineering** | Craft effective inputs + reasoning effort tuning | Always - first line of defense |
 | **RAG** | Add external knowledge | Domain-specific Q&A, current info |
 | **Fine-Tuning** | Adapt model weights | Style, format, specialized tasks |
 | **Evaluation** | Measure performance + LLM-as-judge | Before/after any change |
-| **Deployment** | Production serving | When ready for users |
-| **Optimization** | Performance, efficiency + prompt caching | Cost/performance issues |
-| **Agentic Workflows** | Multi-agent + supervisor/swarm patterns | Complex multi-step tasks |
+| **Deployment** | Production serving (Responses API recommended) | When ready for users |
+| **Optimization** | Performance, efficiency + provider-level prompt caching | Cost/performance issues |
+| **Agentic Workflows** | Multi-agent + supervisor/swarm patterns + Agent SDKs | Complex multi-step tasks |
 | **LLM Ops & Observability** | Monitor and trace production | After deployment, always |
 | **EvalOps** | Continuous automated evaluation | CI/CD pipelines |
 | **Gateway & Guardrails** | Security, rate limiting, compliance | Production protection layer |
 | **Memory & Context** | Persistent memory across sessions | Conversational and personalized apps |
-| **Context Engineering** | Design context quality, not just quantity | Every LLM call in production |
-| **Agent Harness** | Loop engineering, durable execution | Any long-running autonomous agent |
-| **MCP & Tool Design** | Standard tool interfaces for agents | When building agent tool ecosystems |
-| **Multimodal** | Vision, image gen, audio, CLIP | When working with images or audio |
+| **Context Engineering** | Design context quality + reasoning context management | Every LLM call in production |
+| **Agent Harness** | Loop engineering, durable execution, phase management | Any long-running autonomous agent |
+| **MCP & Tool Design** | Standard tool interfaces + Agent-Computer Interface (ACI) | When building agent tool ecosystems |
+| **Multimodal** | Vision, image gen, audio, video generation | When working with images, audio, or video |
 
 ## Best Practices
 
@@ -470,7 +479,7 @@ llm-engineering-playground/
 
 ## Common Pitfalls to Avoid
 
-❌ Using GPT-4 for simple tasks (overkill)
+❌ Using frontier models for simple tasks (overkill — use small models)
 ❌ No caching strategy (wasting money)
 ❌ Skipping evaluation (flying blind)
 ❌ Ignoring latency (poor UX)
@@ -501,6 +510,11 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 - [LangChain Docs](https://python.langchain.com/)
 - [Hugging Face Transformers](https://huggingface.co/docs/transformers)
 - [OpenAI API Reference](https://platform.openai.com/docs)
+- [OpenAI Responses API](https://platform.openai.com/docs/guides/responses)
+- [OpenAI Agents SDK](https://platform.openai.com/docs/guides/agents)
+- [Anthropic Docs](https://docs.anthropic.com/)
+- [Anthropic Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
 
 ### Communities
 - r/LocalLLaMA (Reddit)

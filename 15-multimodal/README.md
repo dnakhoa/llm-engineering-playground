@@ -12,7 +12,8 @@
 Most of this course uses text-in, text-out. Multimodal LLMs extend this to:
 - **Vision**: Image + text → text (describe, analyze, OCR, extract data)
 - **Generation**: Text → image (DALL-E, Stable Diffusion, Flux)
-- **Audio**: Audio → text (Whisper transcription), Text → audio (TTS)
+- **Video**: Text → video (OpenAI Sora, Google Veo)
+- **Audio**: Audio → text (Whisper transcription), Text → audio (TTS, Realtime API)
 - **Multimodal RAG**: Retrieve images + text, reason over both
 
 ## 1. Vision APIs — Analyzing Images
@@ -73,7 +74,7 @@ import anthropic
 client = anthropic.Anthropic()
 
 response = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-5",
     max_tokens=1024,
     messages=[{
         "role": "user",
@@ -121,7 +122,50 @@ httpx.get(image_url).content
 - Include lighting: "golden hour", "dramatic lighting", "soft diffused light"
 - Reference artists: "in the style of Monet", "Studio Ghibli aesthetic"
 
-## 3. Audio — Whisper Transcription
+## 3. Video Generation
+
+OpenAI's video models generate video from text prompts:
+
+```python
+# OpenAI video generation (Sora / gpt-4o-video)
+response = client.images.generate(
+    model="gpt-4o-video",
+    prompt="A timelapse of a flower blooming in a garden, cinematic lighting",
+    size="1080p",
+)
+
+video_url = response.data[0].url
+```
+
+### Video generation best practices
+- Be specific about motion: "camera slowly pans left", "person walks toward camera"
+- Describe the scene temporally: "first X happens, then Y"
+- Reference visual style: "cinematic", "documentary", "animation"
+- Keep prompts concise — overly long prompts can confuse the model
+
+### When to use video generation
+- Marketing and social media content
+- Concept visualization and storyboarding
+- Training and educational material
+- Prototyping animations before production
+
+## 4. Realtime Audio (Voice Agents)
+
+OpenAI's Realtime API enables voice-based agent interactions with low latency:
+
+```python
+# Voice agents — real-time conversational AI
+# See OpenAI Realtime API docs for WebSocket-based integration
+# Supports: voice input, voice output, tool calling, interruption handling
+```
+
+**Key capabilities**:
+- Sub-second voice-to-voice latency
+- Tool calling during voice conversations
+- Voice activity detection (VAD)
+- Multiple voice options (alloy, echo, fable, onyx, nova, shimmer)
+
+## 5. Audio — Whisper Transcription
 
 ```python
 from pathlib import Path
@@ -151,7 +195,7 @@ response = client.audio.speech.create(
 response.stream_to_file("output.mp3")
 ```
 
-## 4. Multimodal RAG
+## 6. Multimodal RAG
 
 Traditional RAG retrieves text chunks. Multimodal RAG adds image retrieval:
 
@@ -196,7 +240,7 @@ def embed_text(text: str) -> list[float]:
     return features[0].tolist()
 ```
 
-## 5. When to Use Multimodal
+## 7. When to Use Multimodal
 
 | Scenario | Worth it? | Why |
 |----------|-----------|-----|
@@ -204,6 +248,8 @@ def embed_text(text: str) -> list[float]:
 | Describing products from photos | Yes | More accurate than manual tagging |
 | Analyzing charts/graphs | Yes | LLMs can read visual data |
 | Generating marketing images | Maybe | DALL-E quality varies; human review needed |
+| Generating marketing videos | Emerging | Quality improving rapidly; review needed |
+| Voice-based agent interfaces | Yes | Realtime API enables low-latency voice UX |
 | Real-time video analysis | Expensive | Cost scales with frame count |
 
 ## 🧪 Hands-On Exercises

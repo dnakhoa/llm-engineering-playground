@@ -350,6 +350,49 @@ Deterministic ←─────────────────────
 | **Error surface** | Minimize | Acceptable |
 | **Task complexity** | Bounded | Unbounded |
 
+### Phase Parameter (OpenAI GPT-5.5+)
+
+For long-running or tool-heavy flows, use the `phase` field to distinguish intermediate commentary from final answers:
+
+```python
+# GPT-5.5+ Responses API
+response = client.responses.create(
+    model="gpt-5.6",
+    input=[
+        {"role": "assistant", "phase": "commentary",
+         "content": "I'll inspect the logs and then summarize root cause."},
+        {"role": "assistant", "phase": "final_answer",
+         "content": "Root cause: cache invalidation race."},
+        {"role": "user", "content": "Great — now give me a rollout-safe fix plan."}
+    ]
+)
+```
+
+- `phase: "commentary"` — intermediate updates (preambles before tool calls)
+- `phase: "final_answer"` — the completed answer
+- Missing or dropped `phase` can cause preambles to be treated as final answers
+
+### Background Mode (OpenAI)
+
+For tasks that take minutes to hours, use background mode — the API returns immediately and you poll for completion:
+
+```python
+# Start a long-running task
+response = client.responses.create(
+    model="gpt-5.6",
+    background=True,  # returns immediately
+    input="Analyze this 500-page codebase for security vulnerabilities."
+)
+
+# Poll for completion
+import time
+while response.status == "in_progress":
+    time.sleep(5)
+    response = client.responses.retrieve(response.id)
+
+print(response.output_text)
+```
+
 ### Multi-Phase Pipelines
 
 Chain phases sequentially with programmatic gates between them:
@@ -468,11 +511,13 @@ for finding in raw_findings:
 
 ## 📚 References
 
-- Anthropic: "Building effective agents" (2024)
-- OpenAI: "Practical guide to building agents" (2025)
+- Anthropic: "Building effective agents" (2024) — ACI design principles
+- OpenAI: "Reasoning models" (2026) — effort levels, pro mode, persisted reasoning
+- OpenAI: "Responses API" (2026) — phase parameter, background mode
 - Google DeepMind: "Mastering Complex Multi-Step Tasks with LLM Agents" (2025)
 - LangGraph: Adaptive RAG and agentic RAG patterns
 - Anthropic Claude Code harness engineering (this tool's own architecture)
+- "Proof-or-Stop: Loop Engineering for Verifiable Evidence-Gated Lifecycle Control" (2026)
 
 ## 🔗 Integration with Other Modules
 

@@ -248,6 +248,47 @@ Generate → Critique → Revise → Validate → Deploy
 
 ## 🚀 Advanced Multi-Agent Patterns (2025-2026)
 
+### Agent SDKs — Production-Ready Agent Frameworks
+
+Major providers now offer dedicated agent SDKs that handle the boilerplate of tool calling, state management, and orchestration:
+
+| SDK | Provider | Key Features |
+|-----|----------|-------------|
+| **OpenAI Agents SDK** | OpenAI | Multi-agent orchestration, handoffs, guardrails, sandboxing |
+| **Anthropic Agent SDK** | Anthropic | Claude-native tool use, MCP integration, human-in-the-loop |
+| **LangGraph** | LangChain | State machine graphs, checkpointing, streaming |
+| **Strands Agents SDK** | AWS | Bedrock-native, enterprise integration |
+
+**When to use SDKs vs raw API**:
+- SDKs reduce boilerplate but add abstraction layers that can obscure prompts/responses
+- Start with raw API to understand the mechanics, then adopt SDKs for production
+- Always verify what's happening under the hood — incorrect assumptions are a common source of errors
+
+### Agent-Computer Interface (ACI) Design
+
+Anthropic's research on building effective agents found that **tool design matters more than prompt design**. They spent more time optimizing tools than the overall agent prompt for their SWE-bench agent.
+
+**Core ACI principles**:
+
+```python
+# ❌ BAD: Relative paths break when agent changes directories
+@mcp.tool()
+def edit_file(path: str, content: str) -> str:
+    """Edit a file."""
+
+# ✅ GOOD: Absolute paths always work — model never makes this mistake
+@mcp.tool()
+def edit_file(absolute_path: str, content: str) -> str:
+    """Edit a file. absolute_path must be a full absolute path (e.g., /home/user/project/file.py)."""
+```
+
+**ACI checklist**:
+- [ ] Put yourself in the model's shoes — is it obvious how to use this tool?
+- [ ] Include example usage, edge cases, and format requirements in descriptions
+- [ ] Change parameter names to make mistakes harder (poka-yoke)
+- [ ] Use absolute paths, explicit formats, and constrained types over free-form inputs
+- [ ] Test with many examples — watch what mistakes the model makes, then fix the tool
+
 ### Supervisor / Worker Architecture
 
 The supervisor holds the task decomposition and coordination logic. Workers are stateless executors that receive only the context slice they need.

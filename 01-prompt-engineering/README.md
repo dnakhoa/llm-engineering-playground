@@ -329,58 +329,97 @@ if finish_reason == "content_filter":
 
 ---
 
-## 8. Extended Thinking / Reasoning Models
+## 8. Reasoning Models & Effort Tuning
 
-Some tasks benefit from the model spending time "thinking" before answering — especially multi-step math, logic problems, complex architecture decisions, and careful analysis.
+Modern models can "think" before answering — spending reasoning tokens to plan, consider alternatives, and solve multi-step problems. This is controlled through **reasoning effort** parameters.
 
-### When to Use Extended Thinking
+### Reasoning Effort Levels
 
-| Use extended thinking | Use standard mode |
-|----------------------|-------------------|
-| Multi-step math/logic | Simple Q&A |
-| Architecture decisions | Classification |
-| Legal/scientific analysis | High-volume cheap calls |
-| Plan-then-execute tasks | Latency-sensitive paths |
-| Complex debugging | Summarization |
+| Effort | Best for | Tradeoff |
+|--------|----------|----------|
+| `none` | Latency-critical: classification, retrieval, simple Q&A | Fastest, no reasoning overhead |
+| `low` | Tool-use, planning, search, customer support | Modest latency increase |
+| `medium` | Agentic coding, research, complex analysis | Balanced quality/speed |
+| `high` | Debugging, deep planning, high-value tasks | Higher latency, more tokens |
+| `xhigh` | Security review, deep research, enterprise workflows | Highest quality, highest cost |
 
-**Cost tradeoff**: Thinking tokens are billed at output token rates (typically 5-10× input rates). A 16,000-token thinking block on Opus 4.8 costs ~$0.40 in thinking alone. Reserve for tasks where reasoning quality justifiably outweighs cost.
+### OpenAI Reasoning Models (GPT-5.x)
 
-### Anthropic Extended Thinking
+```python
+from openai import OpenAI
+client = OpenAI()
+
+# Low effort — fast, efficient
+response = client.responses.create(
+    model="gpt-5.6",
+    reasoning={"effort": "low"},
+    input=[{"role": "user", "content": "Summarize this document."}]
+)
+
+# High effort with pro mode — maximum intelligence
+response = client.responses.create(
+    model="gpt-5.6",
+    reasoning={"effort": "high", "mode": "pro"},
+    input=[{"role": "user", "content": "Analyze this architecture for security flaws."}]
+)
+
+# View reasoning summary (not raw tokens)
+response = client.responses.create(
+    model="gpt-5.6",
+    reasoning={"effort": "medium", "summary": "auto"},
+    input=[{"role": "user", "content": "Solve this optimization problem."}]
+)
+for item in response.output:
+    if item.type == "reasoning":
+        print(f"[Reasoning]: {item.summary[0].text[:200]}...")
+```
+
+**Pro reasoning mode** (`reasoning.mode: "pro"`) performs more model work than standard, producing higher quality at increased cost. Useful for the hardest problems.
+
+### Anthropic Adaptive Thinking
+
+Claude models (Opus 4.7+, Sonnet 4.6+, Fable 5) use **adaptive thinking** — the model decides how much reasoning to apply based on task complexity.
 
 ```python
 import anthropic
-
 client = anthropic.Anthropic()
 
-# Adaptive mode (default on Claude Opus 4.7+, Sonnet 4.6+, Fable 5, Mythos 5)
-# Model decides how much reasoning to apply based on complexity
+# Adaptive mode (default) — model decides budget
 response = client.messages.create(
     model="claude-opus-4-8",
     max_tokens=8000,
-    thinking={"type": "adaptive"},  # model decides budget
-    messages=[{"role": "user", "content": "What's the optimal strategy for this optimization problem?"}]
+    thinking={"type": "adaptive"},
+    messages=[{"role": "user", "content": "What's the optimal strategy for this problem?"}]
 )
 
-# Explicit budget mode (Opus 4.5 and older)
-response = client.messages.create(
-    model="claude-opus-4-8",
-    max_tokens=8000,
-    thinking={
-        "type": "enabled",
-        "budget_tokens": 4000  # min 1024; 16k+ for complex tasks
-    },
-    messages=[{"role": "user", "content": complex_problem}]
-)
-
-# Parse thinking and answer blocks
+# Parse thinking and answer
 for block in response.content:
     if block.type == "thinking":
         print(f"[Thinking]: {block.thinking[:200]}...")
     elif block.type == "text":
         print(f"[Answer]: {block.text}")
 
-# Track thinking token usage
 print(f"Thinking tokens: {response.usage.output_tokens_details.thinking_tokens}")
+```
+
+### Persisted Reasoning (Reasoning Context)
+
+For multi-turn conversations with reasoning models, you can preserve reasoning across calls:
+
+```python
+# OpenAI — preserve reasoning context
+first = client.responses.create(
+    model="gpt-5.6",
+    reasoning={"effort": "medium", "context": "current_turn"},
+    input="Inspect this repository and identify the likely bug."
+)
+
+second = client.responses.create(
+    model="gpt-5.6",
+    previous_response_id=first.id,
+    reasoning={"context": "all_turns"},  # reuse prior reasoning
+    input="Now patch the bug and explain the change."
+)
 ```
 
 ### Budget Guidelines
@@ -392,11 +431,17 @@ print(f"Thinking tokens: {response.usage.output_tokens_details.thinking_tokens}"
 | Hard problems | 16,000–32,000 tokens |
 | Extremely complex | 32,000+ tokens (use Batch API) |
 
-**Key facts**:
-- Budget is a target, not a hard cap — actual usage varies
-- On Claude Fable 5, Mythos 5, Opus 4.8: thinking blocks appear between tool calls automatically (inter-tool reasoning)
-- Requests above 32k thinking tokens should use the Batch API to avoid timeouts
-- Track thinking tokens via `usage.output_tokens_details.thinking_tokens`
+### When to Use Extended Thinking
+
+| Use extended thinking | Use standard mode |
+|----------------------|-------------------|
+| Multi-step math/logic | Simple Q&A |
+| Architecture decisions | Classification |
+| Legal/scientific analysis | High-volume cheap calls |
+| Plan-then-execute tasks | Latency-sensitive paths |
+| Complex debugging | Summarization |
+
+**Cost tradeoff**: Thinking tokens are billed at output token rates. Reserve for tasks where reasoning quality justifiably outweighs cost.
 
 ### Prompt Patterns That Work Well with Thinking
 
