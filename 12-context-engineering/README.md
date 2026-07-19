@@ -1,10 +1,8 @@
 # Module 12: Context Engineering
-
-
 > **Why this matters:** The context window is a scarce resource — every token competes for attention. Context engineering is how you design what enters the window, not just fill it.
 
 
-## 🎯 Learning Objectives
+## Learning Objectives
 - Understand the context window as a resource to be engineered, not just filled
 - Apply the attention mechanics model to predict where information will be processed
 - Diagnose and fix context poisoning, context confusion, and context clash
@@ -533,3 +531,8 @@ Before injecting anything into context, ask:
 ---
 
 **The core insight: Your context window is not a buffer to fill — it's a signal to design.**
+
+## Resources
+- [Anthropic Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
+- [OpenAI Conversation State](https://platform.openai.com/docs/guides/conversation-state)
+- ['Lost in the Middle'](https://arxiv.org/abs/2307.03172)

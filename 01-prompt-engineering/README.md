@@ -1,7 +1,15 @@
-# Module 1: Prompt Engineering
+# Module 01: Prompt Engineering
+> **Why this matters:**  ## Learning Objectives - Zero-shot and few-shot p
 
+## Learning Objectives
+- Zero-shot and few-shot prompting techniques
+- Chain-of-thought reasoning for complex tasks
+- Structured output with JSON schemas
+- Reasoning models and effort tuning
+- Debugging common LLM failures
 
-> **Why this matters:** Prompt engineering is the highest-ROI skill in LLM engineering. A well-crafted prompt can replace fine-tuning, reduce costs by 10x, and improve accuracy without any infrastructure changes.
+---
+Prompt engineering is the highest-ROI skill in LLM engineering. A well-crafted prompt can replace fine-tuning, reduce costs by 10x, and improve accuracy without any infrastructure changes.
 
 
 ## What is Prompt Engineering?
@@ -148,6 +156,12 @@ person = client.chat.completions.create(
 3. **Use Delimiters**: Separate instructions from content using ```, """, or ---
 4. **Specify Format**: Tell the model exactly how you want the output
 5. **Iterate**: Refine prompts based on results
+
+
+## Resources
+- [OpenAI Prompt Engineering](https://platform.openai.com/docs/guides/prompt-engineering)
+- [Anthropic Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering)
+- [Learn Prompting](https://learnprompting.org/)
 
 ## Hands-On Exercises
 

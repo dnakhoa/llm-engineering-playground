@@ -1,10 +1,8 @@
 # Module 14: MCP & Tool Design
-
-
 > **Why this matters:** Tools are how agents interact with the world. Bad tool design causes routing failures, hallucinated arguments, and unreliable agents. Good ACI design has higher ROI than prompt engineering.
 
 
-## 🎯 Learning Objectives
+## Learning Objectives
 - Understand the Model Context Protocol (MCP) architecture and primitives
 - Build a complete MCP server in Python using FastMCP
 - Write tool descriptions that agents can reliably route on
@@ -545,3 +543,7 @@ result = a2a_client.wait_for_result(task.id)
 - [Google A2A GitHub](https://github.com/google/a2a-python) — Python SDK
 - [A2A + MCP Integration](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/) — Google blog post
 
+## Resources
+- [MCP Specification](https://modelcontextprotocol.io/)
+- [A2A Protocol](https://a2a-protocol.org/)
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)

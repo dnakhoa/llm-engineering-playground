@@ -1,7 +1,14 @@
-# Module 6: LLM Optimization
+# Module 06: Optimization
+> **Why this matters:**  ## Learning Objectives - Prompt caching (automati
 
+## Learning Objectives
+- Prompt caching (automatic and explicit)
+- Quantization and pruning
+- Model routing for cost optimization
+- Token budgeting and compression
 
-> **Why this matters:** LLM costs scale linearly with usage. Optimization techniques — caching, routing, quantization — can reduce costs by 50-90% without sacrificing quality.
+---
+LLM costs scale linearly with usage. Optimization techniques — caching, routing, quantization — can reduce costs by 50-90% without sacrificing quality.
 
 
 ## Overview
@@ -183,6 +190,12 @@ Cost:
 See `optimization_example.py` for practical optimization code.
 
 **Interactive notebook**: Open `optimization.ipynb` for step-by-step walkthrough.
+
+
+## Resources
+- [OpenAI Prompt Caching](https://platform.openai.com/docs/guides/prompt-caching)
+- [Anthropic Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
+- [vLLM](https://github.com/vllm-project/vllm)
 
 ## Hands-On Exercises
 

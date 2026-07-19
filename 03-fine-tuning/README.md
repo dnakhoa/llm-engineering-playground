@@ -1,7 +1,15 @@
-# Module 3: Fine-Tuning LLMs
+# Module 03: Fine-Tuning
+> **Why this matters:**  ## Learning Objectives - When to fine-tune vs pro
 
+## Learning Objectives
+- When to fine-tune vs prompt engineering vs RAG
+- LoRA and QLoRA techniques
+- Model merging with MergeKit
+- Interpretability with SAEs and ablation
+- Fine-tuning evaluation and deployment
 
-> **Why this matters:** Fine-tuning lets you adapt models to your domain, style, or format. But it's expensive and often unnecessary — this module helps you decide when to fine-tune, merge, or just prompt better.
+---
+Fine-tuning lets you adapt models to your domain, style, or format. But it's expensive and often unnecessary — this module helps you decide when to fine-tune, merge, or just prompt better.
 
 
 > ⚠️ **Read this first.** Fine-tuning is powerful but almost always the wrong first move. Most teams that fine-tune when they shouldn't waste weeks and thousands of dollars. Work through the decision tree below before writing any training code.
@@ -217,6 +225,12 @@ training_args = {
 See `finetune_example.py` for a complete LoRA fine-tuning script.
 
 **Interactive notebook**: Open `fine_tuning.ipynb` for step-by-step walkthrough.
+
+
+## Resources
+- [MergeKit](https://github.com/arcee-ai/mergekit)
+- [Axolotl](https://github.com/OpenAccess-AI-Collective/axolotl)
+- [mlabonne: Merge LLMs](https://mlabonne.github.io/blog/posts/2024-01-08_Merge_LLMs_with_mergekit%20copy.html)
 
 ## Hands-On Exercises
 

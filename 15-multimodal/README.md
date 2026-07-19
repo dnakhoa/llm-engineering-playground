@@ -1,5 +1,4 @@
-# Module 15: Multimodal LLMs
-
+# Module 15: Multimodal
 > **Why this matters:** The world isn't text-only. Multimodal LLMs let you analyze images, generate visuals, transcribe audio, and build voice interfaces — expanding what LLM apps can do.
 
 ## Learning Objectives

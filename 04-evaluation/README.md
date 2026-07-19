@@ -1,7 +1,14 @@
-# Module 4: LLM Evaluation
+# Module 04: Evaluation
+> **Why this matters:**  ## Learning Objectives - LLM-as-judge evaluation 
 
+## Learning Objectives
+- LLM-as-judge evaluation patterns
+- Classical metrics (BLEU, ROUGE)
+- Building evaluation harnesses
+- A/B testing for LLM applications
 
-> **Why this matters:** You can't improve what you can't measure. Evaluation is the backbone of LLM engineering — without it, you're guessing whether changes help or hurt.
+---
+You can't improve what you can't measure. Evaluation is the backbone of LLM engineering — without it, you're guessing whether changes help or hurt.
 
 
 ## Why Evaluate LLMs?
@@ -305,6 +312,12 @@ Specifically for RAG systems:
 See `evaluation_example.py` for practical evaluation code.
 
 **Interactive notebook**: Open `evaluation.ipynb` for step-by-step walkthrough.
+
+
+## Resources
+- [DeepEval](https://github.com/confident-ai/deepeval)
+- [OpenAI Evals](https://github.com/openai/evals)
+- [RAGAS](https://github.com/explodinggradients/ragas)
 
 ## Hands-On Exercises
 

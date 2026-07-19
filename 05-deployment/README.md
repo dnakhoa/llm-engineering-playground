@@ -1,7 +1,14 @@
-# Module 5: LLM Deployment
+# Module 05: Deployment
+> **Why this matters:**  ## Learning Objectives - Cloud APIs vs self-hosti
 
+## Learning Objectives
+- Cloud APIs vs self-hosting tradeoffs
+- Streaming and latency optimization
+- Edge deployment with SLMs
+- Cost management strategies
 
-> **Why this matters:** Deployment is where LLM apps meet reality — latency, cost, reliability, and user experience all collide. Getting this right means the difference between a demo and a product.
+---
+Deployment is where LLM apps meet reality — latency, cost, reliability, and user experience all collide. Getting this right means the difference between a demo and a product.
 
 
 ## Overview
@@ -382,6 +389,12 @@ User → Queue → Worker → LLM → Store Result → Notify User
 See `deployment_example.py` for a complete FastAPI service.
 
 **Interactive notebook**: Open `deployment.ipynb` for step-by-step walkthrough.
+
+
+## Resources
+- [vLLM](https://github.com/vllm-project/vllm)
+- [MLC LLM](https://github.com/mlc-ai/mlc-llm)
+- [llama.cpp](https://github.com/ggerganov/llama.cpp)
 
 ## Hands-On Exercises
 

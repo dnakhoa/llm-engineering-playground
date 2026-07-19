@@ -1,10 +1,8 @@
-# Module 08: LLM Ops, Observability & Production Monitoring
-
-
+# Module 08: LLM Ops & Observability
 > **Why this matters:** LLM apps are non-deterministic — the same input can produce different outputs. Observability is how you debug, monitor, and improve production systems when you can't reproduce issues locally.
 
 
-## 🎯 Learning Objectives
+## Learning Objectives
 - Implement comprehensive tracing for LLM applications
 - Monitor cost, latency, and quality in production
 - Set up alerting for model drift and anomalies
@@ -1001,3 +999,8 @@ This module connects to:
 ---
 
 **Remember**: Observability is not optional in production LLM systems. You can't improve what you can't measure!
+
+## Resources
+- [Langfuse](https://langfuse.com/)
+- [Arize Phoenix](https://phoenix.arize.com/)
+- [OpenTelemetry](https://opentelemetry.io/)

@@ -1,5 +1,4 @@
-# Module 2: RAG (Retrieval-Augmented Generation) Systems
-
+# Module 02: RAG Systems
 > **Why this matters:** RAG is how most production LLM apps add knowledge without fine-tuning. Getting retrieval right — chunking, embedding, re-ranking — is the difference between a chatbot that hallucinates and one that cites sources.
 
 ## Learning Objectives

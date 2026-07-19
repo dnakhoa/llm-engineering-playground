@@ -1,12 +1,13 @@
 # Module 00: LLM Foundations
 
 
+
 > **Why this matters:** Every LLM application is built on tokens, embeddings, and context windows. Understanding these fundamentals lets you estimate costs before building, debug token-related issues, and choose the right model tier for your use case.
 
 
 > **Start here.** This module builds the mental models you need before touching any code. If you're coming from software engineering or ML, you'll have some of this — but the LLM-specific details (tokens, context windows, sampling) are different from what you're used to.
 
-## 🎯 Learning Objectives
+## Learning Objectives
 - Understand what tokens are and why they're the fundamental unit of LLM cost and capacity
 - Build geometric intuition for embeddings and why semantic search works
 - Know the anatomy of a context window and its hard limits
