@@ -1,15 +1,38 @@
-# LLM Engineering Playground
+# LLM Engineering Course — The Complete Guide to Building Production AI Applications
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/spaces)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Notebooks-blue)](https://www.kaggle.com/)
+[![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](tests/)
+[![Modules](https://img.shields.io/badge/modules-16-blue.svg)]()
+[![Notebooks](https://img.shields.io/badge/notebooks-16-orange.svg)]()
 
-> **The only open-source course that covers the full production lifecycle of LLM engineering** — from foundations through context engineering, agent harness, MCP, guardrails, and eval ops.
+> **The most comprehensive open-source LLM engineering course** — 16 hands-on modules covering RAG, agents, fine-tuning, prompt engineering, deployment, guardrails, and more. From beginner to production-ready in 30 hours.
+
+
+## What You'll Learn
+
+This course teaches you everything needed to build, deploy, and operate production LLM applications:
+
+| Topic | What You Master |
+|-------|-----------------|
+| **Prompt Engineering** | Zero-shot, few-shot, chain-of-thought, structured output, reasoning models |
+| **RAG Systems** | Vector databases, chunking, embedding, HyDE, corrective RAG, graph RAG |
+| **Fine-Tuning** | LoRA, QLoRA, model merging, interpretability, when NOT to fine-tune |
+| **Evaluation** | LLM-as-judge, benchmarks, A/B testing, EvalOps CI/CD |
+| **Deployment** | Cloud APIs, streaming, edge deployment, SLMs, cost optimization |
+| **Agents** | LangGraph, OpenAI Agents SDK, multi-agent orchestration, ACI design |
+| **MCP & Tools** | Model Context Protocol, A2A, tool design, Secure MCP Tunnels |
+| **Guardrails** | Prompt injection detection, PII filtering, rate limiting, compliance |
+| **Observability** | Tracing, drift detection, cost tracking, prompt versioning |
+| **Context Engineering** | Token budgets, observation masking, prefix caching, compression |
+| **Memory** | Short/long-term memory, hierarchical systems, personalization |
+| **Multimodal** | Vision, image generation, audio, video, voice agents |
 
 ## Why This Course?
 
-| What you learn | Microsoft (112k⭐) | awesome-llm-apps (115k⭐) | This course |
+| Topic | Microsoft GenAI (112k⭐) | awesome-llm-apps (115k⭐) | **This Course** |
 |----------------|-------------------|--------------------------|-------------|
 | Context Engineering (U-curve, caching) | ❌ | ❌ | ✅ Module 12 |
 | Agent Harness (crash-proof resume) | ❌ | ❌ | ✅ Module 13 |
@@ -19,6 +42,17 @@
 | Gateway & Guardrails | One lesson | ❌ | ✅ Module 10 |
 | Multi-provider (6+ providers) | Azure-only | Varies | ✅ All modules |
 | **Total coverage** | 21 lessons, ~12h | 100+ standalone demos | **15 modules, ~30h** |
+
+
+## Who This Course Is For
+
+- **Software engineers** transitioning to AI/ML roles
+- **ML engineers** who want to learn LLM production patterns
+- **Product managers** building AI-powered features
+- **Students** looking for a structured path into AI engineering
+- **Teams** needing a shared reference for LLM best practices
+
+**Prerequisites:** Basic Python knowledge. No ML background required — we start from fundamentals.
 
 ## Quick Start
 
@@ -314,9 +348,21 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 📁 Location: `15-multimodal/`
 
+
+## Built With
+
+- **Python 3.10+** — core language
+- **LangChain / LangGraph** — agent orchestration
+- **OpenAI / Anthropic SDKs** — multi-provider LLM access
+- **ChromaDB** — vector database
+- **FastAPI** — production API
+- **Gradio** — web interface
+- **Pytest** — unit testing
+- **Docker** — containerized deployment
+
 ## 🗺️ Learning Paths
 
-### ⚡ Minimum Viable Path — "I want to ship my first AI product"
+### Learning Path: Ship Your First AI Product
 **~10 hours | 6 modules | Gets you to a working, deployed LLM application**
 
 ```
@@ -326,10 +372,10 @@ Foundations  Prompting    RAG        Deployment  Agents     Full app
 
 Do these six, build the capstone, and you'll have shipped something real. Then come back for the rest.
 
-### 📈 Full Curriculum — "I want to be production-ready"
+### Learning Path: Full Curriculum — All 16 Modules
 Work through all 15 modules in order. Each builds on the previous.
 
-### 🔧 Practitioner Path — "I already build with LLMs, fill my gaps"
+### Learning Path: Fill Your Gaps
 | Gap | Go to |
 |-----|-------|
 | Agent loops are flaky | Module 13 (Harness) |
@@ -506,7 +552,7 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 📁 Location: [`capstone/`](capstone/)  
 ▶ Quick start: `cd capstone && python seed_knowledge.py && uvicorn app:app --port 8000`
 
-## Next Steps
+## Start Learning
 
 1. **Complete the capstone**: run the Knowledge Assistant end-to-end
 2. **Contribute**: fix a broken example or add an exercise — see [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -534,6 +580,15 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 - [arXiv cs.CL](https://arxiv.org/list/cs.CL/recent) (Computation and Language)
 - [Papers With Code](https://paperswithcode.com/area/natural-language-processing)
 
+
+
+## Why Students Love This Course
+
+- **Hands-on from day one** — every module has runnable code and exercises
+- **Production-ready** — covers the gaps other courses miss (context engineering, agent harness, eval ops)
+- **Multi-provider** — works with OpenAI, Anthropic, DeepSeek, Grok, Qwen, or Ollama
+- **Always up-to-date** — covers the latest: reasoning models, MCP, A2A, edge deployment
+- **Tests included** — 21 unit tests to verify your understanding
 
 ## 📖 Glossary
 
@@ -566,6 +621,8 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 ## License
 
 This educational resource is provided for learning purposes. Feel free to use, modify, and share.
+
+**Keywords:** LLM, LLM course, AI engineering, prompt engineering, RAG, retrieval augmented generation, fine-tuning, AI agents, LangChain, LangGraph, MCP, vector database, embedding, context engineering, LLM deployment, AI evaluation, guardrails, LLM observability, multimodal AI, voice agents
 
 ---
 
