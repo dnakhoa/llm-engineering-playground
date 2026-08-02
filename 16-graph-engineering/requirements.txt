@@ -1,0 +1,26 @@
+# Module 16: Graph Engineering
+# The bundled examples run on the standard library alone — install these to
+# build the real thing.
+
+# Graph orchestration
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# Checkpointers (durability, resume, time travel)
+langgraph-checkpoint-sqlite>=2.0.0
+
+# Knowledge graph construction & analysis
+networkx>=3.2
+
+# LLM providers (extraction, grading, answering)
+openai>=1.50.0
+anthropic>=0.40.0
+python-dotenv>=1.0.0
+
+# Optional — property graph store for graphs that outgrow memory
+# neo4j>=5.20.0
+# kuzu>=0.4.0
+
+# Optional — community detection for global search
+# python-igraph>=0.11.0
+# leidenalg>=0.10.0

@@ -1,7 +1,7 @@
 """
 Module 12: Context Engineering
 Practical examples of context window optimization, observation masking,
-prefix caching, token budgeting, and extended thinking.
+prefix caching, token budgeting, and adaptive thinking.
 """
 import os
 import re
@@ -301,11 +301,12 @@ def demo_anthropic_prefix_caching():
         - ARR: $780M (as of Dec 2025)
         - NRR: 118%
         - Customer count: 4,200 enterprise
-        """ * 10  # repeat to exceed 1024 token minimum
+        """ * 10  # repeat to exceed the cacheable-prefix minimum (512 tokens on
+        #           Claude Opus 5; 1024 on Opus 4.8 / Sonnet 5; 4096 on Haiku 4.5)
 
         # First call: WRITES to cache (costs 1.25x for 5-min TTL)
         response1 = anth.messages.create(
-            model="claude-opus-4-8",
+            model="claude-opus-5",
             max_tokens=256,
             system=[
                 {"type": "text", "text": "You are an expert financial analyst."},
@@ -325,7 +326,7 @@ def demo_anthropic_prefix_caching():
 
         # Second call: READS from cache (costs 0.1x = 90% discount)
         response2 = anth.messages.create(
-            model="claude-opus-4-8",
+            model="claude-opus-5",
             max_tokens=256,
             system=[
                 {"type": "text", "text": "You are an expert financial analyst."},
@@ -350,23 +351,29 @@ def demo_anthropic_prefix_caching():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. EXTENDED THINKING (ANTHROPIC)
+# 5. ADAPTIVE THINKING (ANTHROPIC)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def demo_extended_thinking():
+def demo_adaptive_thinking():
     """
-    Extended thinking exposes the model's internal chain-of-thought.
-    Thinking tokens are billed at output token rates.
+    Thinking lets the model reason before answering. Thinking tokens are billed
+    at output token rates and count against max_tokens.
 
     Use for: multi-step reasoning, math, architecture decisions, analysis.
     Skip for: simple classification, high-volume cheap calls.
 
-    As of Claude Opus 4.7+ / Sonnet 4.6+ / Fable 5:
-    - 'adaptive' mode is the default (model decides reasoning depth)
-    - 'enabled' + budget_tokens is available for explicit control
-    - Thinking blocks appear between tool calls (inter-tool reasoning)
+    Current API (Claude Opus 5 / Sonnet 5 / Opus 4.8 / Fable 5):
+    - thinking={"type": "adaptive"} — the model decides how deep to reason.
+      On Opus 5 this is also what you get by omitting `thinking` entirely.
+    - Depth is controlled by output_config={"effort": ...}
+      (low | medium | high | xhigh | max), NOT by a token budget.
+    - The old thinking={"type": "enabled", "budget_tokens": N} form is REMOVED
+      and returns a 400 on Opus 5 / Sonnet 5 / Opus 4.8 / 4.7 / Fable 5.
+    - display defaults to "omitted" (empty thinking text). Pass
+      display="summarized" if you render reasoning to users.
+    - Thinking blocks appear between tool calls (inter-tool reasoning).
     """
-    print("\n=== Demo 5: Extended Thinking ===")
+    print("\n=== Demo 5: Adaptive Thinking ===")
     try:
         import anthropic
         anth = anthropic.Anthropic()
@@ -380,11 +387,12 @@ def demo_extended_thinking():
         What production mix maximizes profit?
         """
 
-        # Extended thinking with explicit budget
+        # Adaptive thinking — depth controlled by `effort`, not a token budget
         response = anth.messages.create(
-            model="claude-opus-4-8",
+            model="claude-opus-5",
             max_tokens=8000,
-            thinking={"type": "enabled", "budget_tokens": 4000},
+            thinking={"type": "adaptive", "display": "summarized"},
+            output_config={"effort": "high"},  # low | medium | high | xhigh | max
             messages=[{"role": "user", "content": problem}]
         )
 
@@ -405,7 +413,7 @@ def demo_extended_thinking():
         print("  anthropic package not installed — pip install anthropic")
     except Exception as e:
         print(f"  Note: {e}")
-        print("  Demonstrating structure — extended thinking requires claude-opus-4-8+")
+        print("  Demonstrating structure — adaptive thinking requires Claude Opus 4.6+")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -516,7 +524,7 @@ if __name__ == "__main__":
     demo_observation_masking()
     demo_sliding_window()
     demo_anthropic_prefix_caching()
-    demo_extended_thinking()
+    demo_adaptive_thinking()
     demo_context_audit()
 
     print("\n✅ All demos complete.")
@@ -525,5 +533,5 @@ if __name__ == "__main__":
     print("  2. Mask large tool outputs before they hit context")
     print("  3. Compress old conversation turns (anchor + recency)")
     print("  4. Cache stable prefixes — 90% cost reduction on reads")
-    print("  5. Use extended thinking only for genuinely hard problems")
+    print("  5. Reserve high/xhigh effort for genuinely hard problems")
     print("  6. Audit context distribution — avoid middle-heavy loading")

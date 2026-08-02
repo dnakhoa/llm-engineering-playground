@@ -1,14 +1,19 @@
-# Module 13: Agent Harness
-> **Why this matters:** Autonomous agents crash, loop infinitely, and waste budgets. The harness is what makes agents reliable enough for production — stopping conditions, crash recovery, and cost control.
+# Module 13: Agent Harness & Loop Engineering
+> **Why this matters:** Autonomous agents crash, loop infinitely, and waste budgets. The harness is what makes agents reliable enough for production — stopping conditions, crash recovery, and cost control. **Loop engineering** is the discipline of designing that iteration: what advances it, what ends it, what survives a crash, and what it's allowed to spend.
 
 
 ## Learning Objectives
 - Understand what an agent harness is and why it's necessary
+- Answer the five questions every production loop must answer
 - Implement loop-until-dry research loops with novelty gates
-- Build budget-aware loops that respect token and cost limits
+- Build budget-aware loops — both hand-rolled and API-native (`task_budget`)
 - Create durable journals for crash-proof agent runs with resume capability
 - Design self-repair loops with retry logic and rollback
+- Run outcome-driven loops that iterate against a graded rubric until "done"
+- Manage the context lifecycle *inside* a loop (compaction, context editing)
+- Decide who owns the loop: your code, the SDK, or a hosted agent runtime
 - Add human approval checkpoints for irreversible actions
+- Recognize and fix the standard loop failure modes
 - Choose between deterministic orchestration and model-driven autonomy
 
 ## 📚 What is an Agent Harness?
@@ -40,6 +45,37 @@ Without a harness, an autonomous agent is just a while-loop with no brakes. The 
 │                       max_iterations  |  goal_reached           │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## 🧭 Loop Engineering: The Five Questions
+
+A "loop" in production is not `while True`. Before you write one, answer these five questions explicitly. If you can't answer one of them, that's your next bug.
+
+| # | Question | Mechanism | Failure if unanswered |
+|---|----------|-----------|----------------------|
+| 1 | **What advances it?** | New information per iteration — a tool result, a fresh finding, a grader verdict | Iterations repeat identical work (thrash) |
+| 2 | **What ends it?** | Goal predicate, novelty gate, budget, max iterations, grader says *satisfied* | Infinite loop, or premature exit on the first plausible answer |
+| 3 | **What survives a crash?** | Durable journal, checkpointer, or hosted session state | 40 minutes of work lost to one timeout |
+| 4 | **What may it spend?** | Token/cost budget, `task_budget`, `effort`, iteration cap | A $200 overnight run that produced nothing |
+| 5 | **When does it escalate?** | Human approval checkpoint, permission policy, deny-with-reason | Agent does something irreversible at 3am |
+
+**Design rule:** every loop needs *at least two* independent stop conditions — one semantic (goal reached / gone dry) and one mechanical (budget or iteration cap). The semantic one is what you want; the mechanical one is what saves you when the semantic one is wrong.
+
+### Loop taxonomy
+
+Most agent loops are one of six shapes. Naming the shape tells you which controls you need.
+
+| Shape | Advances on | Stops on | Use for |
+|-------|-------------|----------|---------|
+| **Tool loop** (ReAct) | Tool results | `stop_reason == "end_turn"` | Anything with tools — the base case |
+| **Loop-until-dry** | New unseen items | K consecutive dry rounds | Exhaustive discovery (bugs, sources, entities) |
+| **Budget loop** | Any work | Budget exhausted | Cost-capped research and coding runs |
+| **Self-repair loop** | Error fed back to the model | Success or max retries | Flaky tools, compiling/testing, schema fixes |
+| **Outcome loop** | Grader feedback | Rubric satisfied / max iterations | Deliverables with checkable "done" criteria |
+| **Scheduled loop** | Wall-clock / event | Never (each firing is bounded) | Monitors, nightly triage, recurring reports |
+
+They compose: a nightly (scheduled) outcome loop whose worker is a budget-capped tool loop with self-repair on test failures is an ordinary production design.
+
+---
 
 ## 🔄 Loop Patterns
 
@@ -329,6 +365,307 @@ execute_action(action)
 
 ---
 
+## 💰 API-Native Loop Controls
+
+Patterns 1–5 are all *client-side*: your code counts, gates, and stops. Newer APIs push two of those controls into the model itself, which changes how you write the loop.
+
+### `effort` — the per-call depth dial
+
+Instead of a thinking-token budget, current models take an **effort** level that controls how much they think *and* act:
+
+```python
+response = client.messages.create(
+    model="claude-opus-5",
+    max_tokens=64000,
+    thinking={"type": "adaptive"},              # model decides when to think
+    output_config={"effort": "high"},           # low | medium | high | xhigh | max
+    tools=tools,
+    messages=messages,
+)
+```
+
+Loop-relevant behaviour:
+
+| Effort | Loop effect | Use in a harness |
+|--------|-------------|------------------|
+| `low` | Fewer, more consolidated tool calls; scopes to exactly what was asked | Subagents, classification steps, cheap verification passes |
+| `medium` | Balanced | High-volume worker nodes |
+| `high` | Default; more tool use, more thorough | Main agent loop |
+| `xhigh` | Best for coding and agentic work | Long-horizon coding runs |
+| `max` | Deepest reasoning, can overthink simple tasks | Rare, correctness-critical steps |
+
+> ⚠️ **`effort` is not a verbosity dial.** Lowering it to shorten user-facing output is unreliable — instruct conciseness in the prompt instead. And at `xhigh`/`max`, raise `max_tokens` (start at 64K): thinking counts against the same ceiling as the answer, so a tight `max_tokens` truncates mid-thought.
+
+### `task_budget` — a budget the *model* can see
+
+Pattern 2 injected the remaining budget into the system prompt. That works, but it invalidates your prompt cache every turn and the number is only as accurate as your own accounting. The API-native version hands the model a server-tracked countdown for a whole agentic loop:
+
+```python
+with client.beta.messages.stream(
+    model="claude-opus-5",
+    max_tokens=128000,
+    betas=["task-budgets-2026-03-13"],
+    output_config={
+        "effort": "high",
+        "task_budget": {"type": "tokens", "total": 64000},   # minimum 20,000
+    },
+    tools=tools,
+    messages=messages,
+) as stream:
+    response = stream.get_final_message()
+```
+
+- **`task_budget` ≠ `max_tokens`.** `max_tokens` is an enforced per-response ceiling the model is *unaware* of — hitting it truncates. `task_budget` is a target the model *sees* and paces itself against, so it wraps up gracefully instead of being cut off mid-task.
+- The countdown covers what the model generates plus the tool results it reads **this turn** — not the full history you resend each request. Leave `remaining` unset in a normal loop; the server tracks it.
+- Stream it. A 128K `max_tokens` non-streaming request will hit HTTP timeouts.
+- Keep your own `BudgetTracker` too, accumulating `usage.output_tokens` — you still need a hard mechanical stop and a number to show the user.
+
+### Choosing between them
+
+```
+Need the model to pace itself over a long loop?    → task_budget
+Need a hard ceiling you enforce?                   → max_tokens + BudgetTracker
+Need to trade quality for cost per call?           → effort
+Need cumulative spend across many runs?            → your own accounting (Module 08)
+```
+
+---
+
+## 🎯 Outcome-Driven Loops
+
+The patterns above stop on *mechanical* conditions. An **outcome loop** stops on a *quality* condition: you declare what "done" looks like as a gradeable rubric, and a separate grader — with its own context window — scores each iteration and feeds per-criterion gaps back to the agent.
+
+```
+                ┌──────────────────────────────────────────┐
+                │                                          │
+  outcome ──▶ agent works ──▶ artifact ──▶ grader ──┬── needs_revision (loop, with gaps)
+  + rubric                                          ├── satisfied           → done
+                                                    ├── max_iterations_reached
+                                                    └── failed (rubric ≠ task)
+```
+
+Why it's different from self-critique: the grader has **no memory of how the artifact was built**, so it can't be talked into approving its own reasoning. Fresh-context verification consistently beats self-review.
+
+```python
+# Anthropic Managed Agents — the harness runs the iterate → grade → revise loop
+session = client.beta.sessions.create(
+    agent=AGENT_ID,                     # created once, versioned
+    environment_id=ENVIRONMENT_ID,
+    title="Q4 revenue model",
+)
+
+client.beta.sessions.events.send(
+    session_id=session.id,
+    events=[{
+        "type": "user.define_outcome",
+        "description": "Build a DCF model for Costco as an .xlsx file",
+        "rubric": {"type": "text", "content": RUBRIC_MD},   # required
+        "max_iterations": 5,                                # default 3, max 20
+    }],
+)
+```
+
+Watch `span.outcome_evaluation_end` on the event stream. Its `result` drives the loop:
+
+| `result` | Meaning | Next |
+|----------|---------|------|
+| `satisfied` | Every criterion met | Terminal — collect the artifact |
+| `needs_revision` | Gaps reported back to the agent | Another iteration runs |
+| `max_iterations_reached` | Cap hit | One final revision may run, then idle |
+| `failed` | Rubric doesn't match the task at all | Terminal — fix your rubric |
+| `interrupted` | You sent `user.interrupt` | Terminal |
+
+### Writing a rubric the grader can actually use
+
+The rubric *is* the loop's stop condition. Vague rubrics produce noisy loops that burn iterations.
+
+```markdown
+❌ "The report should look good and be accurate."
+
+✅ - Output is a single .xlsx file with sheets: Assumptions, Model, Summary
+   - Revenue projection covers exactly 5 forward years
+   - Every projected figure traces to a cell in Assumptions (no hardcoded numbers)
+   - WACC is stated as a number between 0 and 1 in Assumptions!B4
+   - Summary contains an enterprise value and an implied share price
+```
+
+Each line is independently checkable, so a failure names a specific gap the next iteration can close. Rule of thumb: if two competent reviewers could disagree on whether a criterion is met, the grader will too.
+
+### Rolling your own outcome loop
+
+You don't need a hosted runtime — the pattern is portable:
+
+```python
+def outcome_loop(task: str, rubric: str, max_iterations: int = 5):
+    """Iterate → grade with a FRESH context → revise. Stop when satisfied."""
+    artifact, feedback = None, ""
+
+    for i in range(max_iterations):
+        artifact = worker_agent(task=task, prior=artifact, feedback=feedback)
+
+        verdict = grader_agent(          # separate call, no worker history
+            rubric=rubric,
+            artifact=artifact,
+            schema=VERDICT_SCHEMA,       # {satisfied: bool, gaps: [{criterion, why}]}
+        )
+        log(f"iteration {i}: satisfied={verdict.satisfied} gaps={len(verdict.gaps)}")
+
+        if verdict.satisfied:
+            return artifact, "satisfied"
+
+        # Feed back ONLY the unmet criteria — not the whole rubric again
+        feedback = "\n".join(f"- {g.criterion}: {g.why}" for g in verdict.gaps)
+
+    return artifact, "max_iterations_reached"
+```
+
+Two things make or break it: the grader must not see the worker's reasoning, and the feedback must be the *gaps only*. Replaying the full rubric each round teaches the model nothing about what it missed.
+
+---
+
+## 🧹 Context Lifecycle Inside a Loop
+
+A loop that runs for 60 iterations accumulates 60 iterations of tool output. Left alone, the context window fills with stale observations, the model's attention degrades (Module 12), and eventually the request fails outright. A harness needs an explicit policy for what leaves the context.
+
+| Mechanism | What it does | Loop-side cost |
+|-----------|--------------|----------------|
+| **Observation masking** (Module 12) | Compresses tool output *before* it enters context | Cheapest — do this first |
+| **Context editing** | Server-side **clears** old tool results / thinking blocks | Cleared content is gone; keep it in your journal if you need it |
+| **Compaction** | Server-side **summarizes** earlier history into a compaction block | Lossy; summary quality varies |
+| **Journal + fresh context** | Restart the loop with a curated state summary you control | Most control, most code |
+
+```python
+# Context editing — prune stale tool results as the loop runs
+response = client.beta.messages.create(
+    model="claude-opus-5",
+    max_tokens=16000,
+    betas=["context-management-2025-06-27"],
+    context_management={"edits": [
+        {"type": "clear_tool_uses_20250919"},   # drop old tool results
+        {"type": "clear_thinking_20251015"},    # drop old thinking blocks
+    ]},
+    tools=tools,
+    messages=messages,
+)
+
+# Compaction — summarize earlier turns instead of dropping them
+response = client.beta.messages.create(
+    model="claude-opus-5",
+    max_tokens=16000,
+    betas=["compact-2026-01-12"],
+    context_management={"edits": [{"type": "compact_20260112"}]},
+    messages=messages,
+)
+messages.append({"role": "assistant", "content": response.content})  # ← full content!
+```
+
+> ⚠️ **The one-line bug that breaks compaction:** append `response.content`, not just the text. The compaction block lives in `content`, and the API uses it to replace the compacted history on the next request. Extract only `.text` and you silently lose the compaction state — the conversation regrows and the next call is billed at full price.
+
+**Pairing rule:** context editing and compaction manage the *model's* view; the journal manages *your* view. Facts the loop must not forget (confirmed findings, decisions, file paths) belong in the journal or a memory file — never only in the conversation history, because the history is designed to be pruned.
+
+---
+
+## 🧑‍✈️ Who Owns the Loop?
+
+Four options, and the choice is mostly about how much of the harness you want to maintain.
+
+| Approach | You write | Runs where | Reach for it when |
+|----------|-----------|-----------|-------------------|
+| **Manual loop** | The whole `while stop_reason == "tool_use"` cycle | Your process | You need control the helpers don't expose, or no beta dependency |
+| **SDK tool runner** (`client.beta.messages.tool_runner`) | Just the tool functions | Your process | Most custom-tool agents — approval gates and retries are per-turn hooks |
+| **Agent SDK / framework** | A prompt + options | Your process | You want a batteries-included coding/filesystem agent |
+| **Hosted agent runtime** (Managed Agents) | Agent config + tool results | Provider-hosted session + sandbox | Long-running sessions, persisted versioned configs, scheduled runs |
+
+Two rules that catch most people out:
+
+1. **"I need fine-grained control" is rarely a reason to hand-write the loop.** The tool runner yields the assistant message *before* tools execute, so approval gating, error interception, result rewriting (e.g. adding `cache_control`), and per-turn retries all work without owning the loop.
+2. **A harness-only helper is not a deployment.** The tool runner and agent frameworks still run on your infrastructure; only a hosted runtime takes over process lifetime, sandboxing, and scheduling.
+
+### Durable execution: journal vs. engine
+
+Pattern 3's journal is the do-it-yourself version of **durable execution**. The same guarantee — completed steps are never re-run — is offered by dedicated engines:
+
+| Option | Persistence unit | Good fit |
+|--------|-----------------|----------|
+| Hand-rolled JSONL journal (pattern 3) | Your step IDs | Scripts, batch jobs, learning the mechanics |
+| Graph checkpointer (Module 16) | Every node transition + state snapshot | Branching workflows, time-travel debugging, human interrupts |
+| Workflow engine (Temporal-style) | Every activity, with retries and timers | Multi-day processes, strict SLAs, existing workflow infra |
+| Hosted session state | The session itself | You don't want to run the process at all |
+
+Pick the cheapest one that survives your worst realistic failure. A 20-minute research script needs a journal, not a workflow cluster.
+
+### The idle-break gate (hosted loops)
+
+When the provider runs the loop, your code becomes a stream consumer — and the single most common bug is breaking on the first idle event:
+
+```python
+for event in stream:
+    handle(event)
+    if event.type == "session.status_terminated":
+        break
+    if event.type == "session.status_idle":
+        if event.stop_reason.type == "requires_action":
+            continue          # waiting on YOU — send a tool result or approval
+        break                 # end_turn / retries_exhausted → genuinely done
+```
+
+Sessions go idle transiently — between parallel tool calls, or while waiting for your approval. Breaking on bare `status_idle` truncates the run and looks like the agent gave up.
+
+---
+
+## ⏰ Loops That Start Themselves
+
+Not every loop is triggered by a user. Two production shapes:
+
+**Scheduled loops** — a cron-style deployment fires a fresh session per firing. Each run is bounded; the *schedule* is the outer loop.
+
+```python
+deployment = client.beta.deployments.create(
+    name="Weekly compliance scan",
+    agent=AGENT_ID,
+    environment_id=ENVIRONMENT_ID,
+    initial_events=[{
+        "type": "user.message",
+        "content": [{"type": "text", "text": "Run the weekly compliance scan."}],
+    }],
+    schedule={"type": "cron", "expression": "0 20 * * 5", "timezone": "America/New_York"},
+)
+```
+
+Operational details that bite:
+- **Firings are jittered** to spread load — don't build a downstream deadline that assumes the exact scheduled minute.
+- **Missed firings are not backfilled** after a pause. If gap-free coverage matters, make each run compute its own window from persisted state rather than assuming "since last run".
+- **DST is literal wall-clock**: a 2AM schedule can be skipped on spring-forward and fire twice on fall-back. Schedule outside 1–3AM local, or use UTC.
+- Each firing writes a **run record** — audit failures there, not in session logs, because a failed firing may never create a session.
+
+**Event-driven loops** — a webhook (or queue message) wakes the harness, it does one bounded pass, and it exits. Cheaper than a poller and the right default for "react to X". Verify the signature, dedupe on event ID, and treat delivery as at-least-once and unordered: drive state from the resource you fetch, not from arrival order.
+
+> **Anti-pattern: polling as a loop.** A `while True: sleep(5); check()` loop is a scheduled loop with worse cost and no audit trail. If something can notify you, be notified.
+
+---
+
+## ☠️ Loop Failure Modes
+
+The catalogue below is what actually goes wrong. Each has a specific fix; none are fixed by "add more instructions".
+
+| Failure | Symptom | Fix |
+|---------|---------|-----|
+| **Thrash** | Same tool, same args, every iteration | Novelty gate on the *action*, not just results; feed the failure back explicitly |
+| **Ping-pong** | Agent alternates between two fixes forever | Record attempted approaches in state; forbid repeats; cap iterations |
+| **Premature exit** | Loop ends on the first plausible answer | Add a verification gate; make the stop predicate a checked criterion, not the model's opinion |
+| **Never-dry loop** | Novelty gate never trips | Fingerprint is too sensitive (timestamps, IDs in the hash) — normalize before hashing |
+| **Silent truncation** | Output stops mid-sentence, no error | `max_tokens` too low for thinking + answer; raise it and check `stop_reason` |
+| **Budget starvation** | Loop stops with 80% of work undone | Budget spent on exploration; lower `effort` on workers, mask observations, cap fan-out |
+| **Context rot** | Quality degrades after ~20 iterations | Context editing / compaction + journal for must-keep facts (Module 12) |
+| **Verification loop** | Loop spends more on checking than doing | On models that self-verify, *delete* "double-check your work" instructions and separate verification steps |
+| **Lost work on crash** | Restart re-runs everything | Durable journal or checkpointer keyed on deterministic step IDs |
+| **Runaway fan-out** | 40 subagents for a 3-file change | Explicit delegation policy + hard spawn cap in the harness, not just the prompt |
+| **Approval deadlock** | Run hangs forever, no error | Stream dropped while a tool awaited approval — reconnect with history consolidation and re-resolve pending calls |
+
+**Instrument before you tune.** Log per iteration: iteration number, tokens in/out, tools called, new items found, stop-condition state. Nearly every failure above is obvious in that table and invisible without it.
+
+---
+
 ## 🔀 Orchestration Spectrum
 
 Choosing between deterministic and autonomous control depends on task structure:
@@ -492,7 +829,16 @@ for finding in raw_findings:
 └── loops/
     ├── __init__.py
     ├── research_loop.py         Full autonomous research loop
-    └── budget_loop.py           Budget-aware execution loop
+    ├── budget_loop.py           Budget-aware execution loop
+    └── outcome_loop.py          ★ Rubric-graded iterate → grade → revise loop
+```
+
+Run the outcome loop with no API key to inspect the harness mechanics:
+
+```bash
+cd 13-agent-harness
+python loops/outcome_loop.py --mock     # scripted worker + grader
+python loops/outcome_loop.py            # live, uses your configured provider
 ```
 
 
@@ -501,15 +847,26 @@ for finding in raw_findings:
 
 | Problem | Fix |
 |---------|-----|
-| Agent crashes and loses progress | Implement durable journal with JSONL checkpointing |
-| Budget exhausted too quickly | Inject remaining budget into agent prompt for self-regulation |
-| Novelty gate stops too early | Increase dry_threshold; check fingerprint function |
+| Agent crashes and loses progress | Durable journal with JSONL checkpointing, or a graph checkpointer (Module 16) |
+| Budget exhausted too quickly | Lower `effort` on worker steps, mask observations, cap fan-out — then re-measure |
+| Model ignores the budget you injected | Use API-native `task_budget` so the server tracks the countdown; prompt-injected numbers also break prompt caching |
+| Novelty gate stops too early | Increase `dry_threshold`; check the fingerprint function |
+| Novelty gate never trips | Fingerprint includes volatile data (timestamps, UUIDs) — normalize before hashing |
 | Journal replay is slow | Use deterministic step IDs; skip completed steps efficiently |
+| Compaction seems to do nothing | You appended only `.text` — append the full `response.content` so the compaction block survives |
+| Output truncates mid-thought | `max_tokens` too low for thinking + answer at high `effort`; raise it and check `stop_reason` |
+| Outcome loop never reaches `satisfied` | Rubric criteria aren't independently checkable — rewrite them so a failure names a specific gap |
+| Hosted run appears to give up early | You broke on bare `session.status_idle`; check `stop_reason.type != "requires_action"` |
+| Scheduled run didn't fire on time | Firings are jittered and DST is literal wall-clock — check the run records, not the session log |
 
 ## 📚 Resources
 
 - [LangGraph Checkpointing](https://langchain-ai.github.io/langgraph/concepts/persistence/) — durable agent state
 - [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — agent patterns
+- [Anthropic: Managed Agents](https://platform.claude.com/docs/en/managed-agents/overview) — hosted agent loops, outcomes, scheduled deployments
+- [Anthropic: Adaptive thinking & effort](https://platform.claude.com/docs/en/build-with-claude/effort) — the per-call depth dial
+- [Anthropic: Compaction](https://platform.claude.com/docs/en/build-with-claude/compaction) and [Context editing](https://platform.claude.com/docs/en/build-with-claude/context-editing)
+- [Temporal: Durable execution](https://docs.temporal.io/evaluate/understanding-temporal) — the industrial version of the journal
 - [CrewAI](https://docs.crewai.com/) — multi-agent orchestration
 
 ## 🧪 Hands-On Exercises
@@ -526,6 +883,16 @@ for finding in raw_findings:
 
 6. **Pipeline vs Barrier**: Process 10 items through a 3-stage pipeline. Measure wall-clock time for: (a) pure sequential, (b) parallel with barrier after each stage, (c) pipeline (no barriers). Plot the speedup.
 
+7. **Outcome Loop**: Run `python loops/outcome_loop.py --mock` and confirm it stops at `satisfied` on iteration 3. Then write a rubric for a real task of your own with 5 criteria, run the live loop, and record how many iterations each criterion took to satisfy. Rewrite the slowest criterion to be more concrete and re-measure.
+
+8. **Rubric Ambiguity**: Take one vague criterion ("the summary should be clear") and grade the *same* artifact 5 times with `temperature=0`. Count how often the verdict flips. Now rewrite it as a checkable criterion and repeat. Ambiguous criteria are why outcome loops burn iterations.
+
+9. **Budget Comparison**: Run the same research task three ways — (a) no budget control, (b) prompt-injected remaining budget, (c) API-native `task_budget`. Compare total tokens spent, tokens *wasted after* the task was effectively complete, and cache-read hit rate. Explain why (b) hurts the cache.
+
+10. **Context Lifecycle**: Run a 30-iteration tool loop with no pruning, then with observation masking, then with masking + context editing. Plot context size per iteration and note where answer quality starts to degrade in the unpruned run.
+
+11. **Failure-Mode Bingo**: Deliberately induce four failures from the failure-mode table (thrash, premature exit, silent truncation, never-dry loop). For each, write down the *single log line* that would have identified it. That set of log lines is your harness's minimum instrumentation.
+
 ---
 
 ## 📚 References
@@ -540,10 +907,25 @@ for finding in raw_findings:
 
 ## 🔗 Integration with Other Modules
 
-- **Module 07 (Agents)**: Harness patterns extend basic LangGraph flows
-- **Module 12 (Context Engineering)**: Harnesses must budget context per iteration
-- **Module 08 (LLM Ops)**: Add tracing to each harness iteration
-- **Module 09 (EvalOps)**: Evaluate harness quality end-to-end
+- **Module 07 (Agents)**: Harness patterns extend basic agent and multi-agent flows
+- **Module 12 (Context Engineering)**: Harnesses must budget context per iteration; compaction and context editing are loop-level policies
+- **Module 16 (Graph Engineering)**: A graph is the *other* way to express control flow — explicit topology instead of an open loop. Graph checkpointers are the productized version of pattern 3
+- **Module 08 (LLM Ops)**: Add tracing to each harness iteration — the per-iteration log table is what makes failure modes visible
+- **Module 09 (EvalOps)**: Evaluate harness quality end-to-end; the outcome-loop grader is an LLM-as-judge with a rubric (Module 04)
+- **Module 14 (MCP & Tool Design)**: Tool descriptions decide how often your loop calls the right tool
+
+### Loop or graph?
+
+Both control iteration; they answer different questions.
+
+| Use a **loop** (this module) when… | Use a **graph** (Module 16) when… |
+|-----------------------------------|-----------------------------------|
+| The number of steps is unknown up front | The steps and their order are known |
+| The next action emerges from the last result | Branching is conditional but enumerable |
+| You want exhaustiveness (until dry / until satisfied) | You want auditability and replay |
+| State is a running transcript | State is a typed object with reducers |
+
+In practice production systems nest them: a graph whose nodes contain bounded loops, or a loop whose each iteration executes a graph.
 
 ---
 

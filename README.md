@@ -5,10 +5,10 @@
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/spaces)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Notebooks-blue)](https://www.kaggle.com/)
 [![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](tests/)
-[![Modules](https://img.shields.io/badge/modules-16-blue.svg)]()
-[![Notebooks](https://img.shields.io/badge/notebooks-16-orange.svg)]()
+[![Modules](https://img.shields.io/badge/modules-17-blue.svg)]()
+[![Notebooks](https://img.shields.io/badge/notebooks-17-orange.svg)]()
 
-> **The most comprehensive open-source LLM engineering course** — 16 hands-on modules covering RAG, agents, fine-tuning, prompt engineering, deployment, guardrails, and more. From beginner to production-ready in 30 hours.
+> **The most comprehensive open-source LLM engineering course** — 17 hands-on modules covering RAG, agents, loop and graph engineering, fine-tuning, prompt engineering, deployment, guardrails, and more. From beginner to production-ready in 33 hours.
 
 
 ## What You'll Learn
@@ -22,7 +22,9 @@ This course teaches you everything needed to build, deploy, and operate producti
 | **Fine-Tuning** | LoRA, QLoRA, model merging, interpretability, when NOT to fine-tune |
 | **Evaluation** | LLM-as-judge, benchmarks, A/B testing, EvalOps CI/CD |
 | **Deployment** | Cloud APIs, streaming, edge deployment, SLMs, cost optimization |
-| **Agents** | LangGraph, OpenAI Agents SDK, multi-agent orchestration, ACI design |
+| **Agents** | Agent SDKs, multi-agent orchestration, ACI design, supervisor/swarm |
+| **Loop Engineering** | Novelty gates, task budgets, durable journals, outcome loops |
+| **Graph Engineering** | State graphs, reducers, checkpointers, knowledge graphs, Graph RAG |
 | **MCP & Tools** | Model Context Protocol, A2A, tool design, Secure MCP Tunnels |
 | **Guardrails** | Prompt injection detection, PII filtering, rate limiting, compliance |
 | **Observability** | Tracing, drift detection, cost tracking, prompt versioning |
@@ -35,13 +37,14 @@ This course teaches you everything needed to build, deploy, and operate producti
 | Topic | Microsoft GenAI (112k⭐) | awesome-llm-apps (115k⭐) | **This Course** |
 |----------------|-------------------|--------------------------|-------------|
 | Context Engineering (U-curve, caching) | ❌ | ❌ | ✅ Module 12 |
-| Agent Harness (crash-proof resume) | ❌ | ❌ | ✅ Module 13 |
+| Agent Harness & Loop Engineering | ❌ | ❌ | ✅ Module 13 |
+| Graph Engineering (state graphs + knowledge graphs) | ❌ | Demos only | ✅ Module 16 |
 | EvalOps (CI/CD for LLMs) | ❌ | ❌ | ✅ Module 9 |
 | LLM Ops (tracing, drift detection) | Partial | ❌ | ✅ Module 8 |
 | MCP Tool Design | Separate course | Templates only | ✅ Module 14 |
 | Gateway & Guardrails | One lesson | ❌ | ✅ Module 10 |
 | Multi-provider (6+ providers) | Azure-only | Varies | ✅ All modules |
-| **Total coverage** | 21 lessons, ~12h | 100+ standalone demos | **15 modules, ~30h** |
+| **Total coverage** | 21 lessons, ~12h | 100+ standalone demos | **17 modules, ~33h** |
 
 
 ## Who This Course Is For
@@ -140,13 +143,13 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 ## Curriculum Structure
 
-**16 Comprehensive Modules** covering the complete LLM engineering lifecycle — all with interactive notebooks:
+**17 Comprehensive Modules** covering the complete LLM engineering lifecycle — all with interactive notebooks:
 
 | Module | Topic | Key Focus | Time | Difficulty |
 |--------|-------|-----------|------|------------|
 | 00 | LLM Foundations | Tokens, embeddings, context, Responses API, reasoning | ~1h | ⭐ Beginner |
 | 01 | Prompt Engineering | Zero/few-shot, CoT, structured output, reasoning models | ~1.5h | ⭐ Beginner |
-| 02 | RAG Systems | Vector DB, chunking, HyDE, CRAG, evaluation | ~2h | ⭐⭐ Intermediate |
+| 02 | RAG Systems | Vector DB, chunking, HyDE, CRAG, Graph RAG, evaluation | ~2h | ⭐⭐ Intermediate |
 | 03 | Fine-Tuning | LoRA, QLoRA, model merging, interpretability | ~2h | ⭐⭐ Intermediate |
 | 04 | Evaluation | LLM-as-judge, benchmarks, A/B testing | ~2h | ⭐⭐ Intermediate |
 | 05 | Deployment | Cloud APIs, streaming, edge deployment, SLMs | ~2h | ⭐⭐ Intermediate |
@@ -157,9 +160,10 @@ docker compose up                 # starts API on :8000 + UI on :7860
 | 10 | Gateway & Guardrails | Auth, rate limiting, injection detection, PII | ~2h | ⭐⭐ Intermediate |
 | 11 | Memory & Context | Short/long-term memory, hierarchical systems | ~2h | ⭐⭐ Intermediate |
 | 12 | Context Engineering | U-curve, observation masking, prefix caching | ~2h | ⭐⭐⭐ Advanced |
-| 13 | Agent Harness | Loop engineering, durable journals, budget loops | ~3h | ⭐⭐⭐ Advanced |
+| 13 | Agent Harness & Loops | Loop engineering, task budgets, outcome loops, journals | ~3h | ⭐⭐⭐ Advanced |
 | 14 | MCP & Tool Design | MCP, A2A, ACI, Secure Tunnels, Computer Use | ~2h | ⭐⭐⭐ Advanced |
 | 15 | Multimodal | Vision, image gen, video, audio, voice agents | ~2h | ⭐⭐ Intermediate |
+| 16 | Graph Engineering | State graphs, checkpointers, knowledge graphs, Graph RAG | ~3h | ⭐⭐⭐ Advanced |
 
 ### 🧱 Module 0: LLM Foundations
 **Start Here** - The mental models every LLM engineer needs
@@ -310,14 +314,17 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 ### 🔄 Module 13: Agent Harness & Loop Engineering
 **Reliable Autonomy** - Build agents that don't get stuck, crash, or over-run
+- The five questions every production loop must answer, and the six loop shapes
 - Loop-until-dry with novelty gates (exhaustive without infinite loops)
-- Budget-aware loops — token budget injected into each agent call
+- Budget-aware loops — hand-rolled, and API-native `task_budget` the model can see
+- `effort` as a loop knob (low → max) and why it isn't a verbosity dial
+- Outcome-driven loops — iterate → grade → revise against a gradeable rubric
 - Durable journals — crash-proof resume without replaying completed steps
-- Self-repair loops — retry with error context fed back to the agent
-- Human approval checkpoints for irreversible actions
-- Phase parameter for long-running interactions
-- Background mode for async tasks
-- Pipeline vs barrier synchronization, adversarial verification
+- Context lifecycle inside a loop: masking, context editing, compaction
+- Who owns the loop: manual, SDK tool runner, framework, or hosted runtime
+- Scheduled and event-driven loops (cron deployments, webhooks, jitter, DST)
+- Self-repair loops, human approval checkpoints, adversarial verification
+- A catalogue of loop failure modes and the log line that catches each one
 
 📁 Location: `13-agent-harness/`
 
@@ -348,6 +355,21 @@ docker compose up                 # starts API on :8000 + UI on :7860
 
 📁 Location: `15-multimodal/`
 
+### 🕸️ Module 16: Graph Engineering
+**Structure You Can Replay** - Control flow and knowledge as explicit graphs
+- State, nodes, edges, and superstep semantics
+- Reducers — and the silent lost-update bug you get without them
+- Conditional edges as testable stop conditions; bounded cycles
+- Checkpointers: crash resume, durable human interrupts, time-travel debugging
+- Dynamic fan-out (map-reduce) with caps you actually report
+- Supervisor, swarm, and hierarchical topologies as graph shapes
+- Knowledge graph construction: extraction schemas, entity resolution, evidence
+- Graph RAG retrieval modes: local, global (community summaries), path, hybrid
+- Temporal knowledge graphs — facts that expire instead of going stale
+- Proving Graph RAG earns its cost, and its confidently-wrong-edge failure mode
+
+📁 Location: `16-graph-engineering/`
+
 
 ## Built With
 
@@ -372,8 +394,8 @@ Foundations  Prompting    RAG        Deployment  Agents     Full app
 
 Do these six, build the capstone, and you'll have shipped something real. Then come back for the rest.
 
-### Learning Path: Full Curriculum — All 16 Modules
-Work through all 15 modules in order. Each builds on the previous.
+### Learning Path: Full Curriculum — All 17 Modules
+Work through all 17 modules in order. Each builds on the previous.
 
 ### Learning Path: Fill Your Gaps
 | Gap | Go to |
@@ -384,6 +406,8 @@ Work through all 15 modules in order. Each builds on the previous.
 | Tool/MCP integration | Module 14 |
 | Production incidents | Module 08 |
 | Fine-tuning questions | Module 03 |
+| Multi-hop questions RAG can't answer | Module 16 (Graph RAG) |
+| Branching workflows that need replay/approval | Module 16 (state graphs) |
 
 ---
 
@@ -419,7 +443,7 @@ The course works with any LLM provider. Just set one key in `.env`:
 | Provider | Env Variable | Default Model | Cost |
 |----------|-------------|---------------|------|
 | OpenAI | `OPENAI_API_KEY` | gpt-4o-mini (or gpt-5.6 for reasoning) | Pay-as-you-go |
-| Anthropic | `ANTHROPIC_API_KEY` | claude-sonnet-5 (or claude-opus-4-8 for complex) | Pay-as-you-go |
+| Anthropic | `ANTHROPIC_API_KEY` | claude-sonnet-5 (or claude-opus-5 for complex) | Pay-as-you-go |
 | DeepSeek | `DEEPSEEK_API_KEY` | deepseek-chat | Very cheap |
 | xAI Grok | `GROK_API_KEY` | grok-3-mini | Pay-as-you-go |
 | Qwen | `QWEN_API_KEY` | qwen-plus | Cheap |
@@ -473,9 +497,10 @@ llm-engineering-playground/
 ├── 10-gateway-guardrails/             # Auth, rate limiting, injection detection
 ├── 11-memory-context/                 # Short/long-term memory, hierarchical
 ├── 12-context-engineering/            # U-curve, observation masking, prefix caching
-├── 13-agent-harness/                  # Loop engineering, durable journals
+├── 13-agent-harness/                  # Loop engineering, task budgets, outcome loops
 ├── 14-mcp-tool-design/                # Model Context Protocol, tool schemas
 ├── 15-multimodal/                     # Vision, image gen, audio, CLIP
+├── 16-graph-engineering/              # State graphs, checkpointers, knowledge graphs, Graph RAG
 │
 ├── capstone/
 │   ├── app.py                         # FastAPI app (main entry point)
@@ -519,9 +544,10 @@ llm-engineering-playground/
 | **Gateway & Guardrails** | Security, rate limiting, compliance | Production protection layer |
 | **Memory & Context** | Persistent memory across sessions | Conversational and personalized apps |
 | **Context Engineering** | Design context quality + reasoning context management | Every LLM call in production |
-| **Agent Harness** | Loop engineering, durable execution, phase management | Any long-running autonomous agent |
+| **Agent Harness & Loops** | Loop engineering, task budgets, outcome loops, durable execution | Any long-running autonomous agent |
 | **MCP & Tool Design** | MCP + A2A + ACI + Secure Tunnels | When building agent tool ecosystems |
 | **Multimodal** | Vision, image gen, audio, video generation | When working with images, audio, or video |
+| **Graph Engineering** | State graphs, checkpointers, knowledge graphs, Graph RAG | Branching/replayable workflows; multi-hop and corpus-level questions |
 
 ## Best Practices
 
@@ -587,7 +613,7 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 - **Hands-on from day one** — every module has runnable code and exercises
 - **Production-ready** — covers the gaps other courses miss (context engineering, agent harness, eval ops)
 - **Multi-provider** — works with OpenAI, Anthropic, DeepSeek, Grok, Qwen, or Ollama
-- **Always up-to-date** — covers the latest: reasoning models, MCP, A2A, edge deployment
+- **Always up-to-date** — covers the latest: adaptive thinking and effort, task budgets, outcome loops, MCP, A2A, graph engineering
 - **Tests included** — 21 unit tests to verify your understanding
 
 ## 📖 Glossary
@@ -617,12 +643,28 @@ RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + E
 | **Reasoning Tokens** | Hidden tokens the model uses to "think" before answering |
 | **SLM** | Small Language Model — <10B parameter models for edge deployment |
 | **GGUF** | Quantized model format for llama.cpp and CPU inference |
+| **Adaptive Thinking** | Model decides its own reasoning depth; replaces fixed thinking-token budgets |
+| **Effort** | Request-level dial (low→max) controlling how much a model thinks and acts |
+| **Task Budget** | Token target the model can *see*, so it paces itself over an agentic loop |
+| **Loop Engineering** | Designing what advances, ends, persists, and bounds an agent's iteration |
+| **Novelty Gate** | Stops an exhaustive loop after K rounds produce nothing new |
+| **Outcome Loop** | Iterate → grade against a rubric → revise, until "done" is provable |
+| **Durable Execution** | Completed steps are never re-run after a crash (journal or checkpointer) |
+| **State Graph** | Agent control flow as typed state + nodes + (conditional) edges |
+| **Reducer** | Function merging parallel updates to one state field instead of overwriting |
+| **Superstep** | One scheduling round of a graph: run frontier, merge updates, schedule next |
+| **Checkpointer** | Persists graph state per superstep — resume, interrupts, time travel |
+| **Knowledge Graph** | Entities as nodes, typed relationships as edges, over your corpus |
+| **Graph RAG** | Retrieval by traversal/aggregation over a knowledge graph, not just similarity |
+| **Entity Resolution** | Collapsing name variants ("Acme", "ACME Corp") into one canonical node |
+| **Community Summary** | Per-cluster summary computed at index time; powers corpus-level answers |
+| **Temporal Edge** | Relationship with `valid_from`/`valid_to`, so facts expire instead of going stale |
 
 ## License
 
 This educational resource is provided for learning purposes. Feel free to use, modify, and share.
 
-**Keywords:** LLM, LLM course, AI engineering, prompt engineering, RAG, retrieval augmented generation, fine-tuning, AI agents, LangChain, LangGraph, MCP, vector database, embedding, context engineering, LLM deployment, AI evaluation, guardrails, LLM observability, multimodal AI, voice agents
+**Keywords:** LLM, LLM course, AI engineering, prompt engineering, RAG, retrieval augmented generation, fine-tuning, AI agents, LangChain, LangGraph, MCP, vector database, embedding, context engineering, loop engineering, graph engineering, agent harness, knowledge graph, GraphRAG, durable execution, LLM deployment, AI evaluation, guardrails, LLM observability, multimodal AI, voice agents
 
 ---
 

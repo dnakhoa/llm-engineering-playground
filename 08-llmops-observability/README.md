@@ -196,15 +196,19 @@ class CostRecord:
     user_id: Optional[str]
     endpoint: str
 
-# Pricing per 1K tokens (update regularly!)
+# Pricing per 1K tokens (update regularly — treat this dict as config, not code!)
 MODEL_PRICING = {
-    "gpt-4o": {"prompt": 0.005, "completion": 0.015},
-    "gpt-4-turbo": {"prompt": 0.01, "completion": 0.03},
-    "gpt-3.5-turbo": {"prompt": 0.0005, "completion": 0.0015},
-    "claude-3-opus": {"prompt": 0.015, "completion": 0.075},
-    "claude-3-sonnet": {"prompt": 0.003, "completion": 0.015},
+    "gpt-4o": {"prompt": 0.0025, "completion": 0.010},
+    "gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
+    "claude-haiku-4-5": {"prompt": 0.001, "completion": 0.005},
+    "claude-sonnet-5": {"prompt": 0.003, "completion": 0.015},
+    "claude-opus-5": {"prompt": 0.005, "completion": 0.025},
     "llama-3-70b": {"prompt": 0.0008, "completion": 0.0008},
 }
+# Note: cached input tokens bill at a fraction of the prompt rate (~10% on
+# Anthropic cache reads). A cost tracker that ignores
+# usage.cache_read_input_tokens will overstate spend by 5-10x on a
+# cache-heavy workload — see the prefix caching section in Module 12.
 
 class CostTracker:
     def __init__(self):

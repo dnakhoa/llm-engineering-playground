@@ -106,7 +106,7 @@ import anthropic, json
 client = anthropic.Anthropic()
 
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=256,
     tools=[{
         "name": "extract_person",
@@ -230,7 +230,7 @@ with open("screenshot.png", "rb") as f:
     b64 = base64.standard_b64encode(f.read()).decode()
 
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=512,
     messages=[{
         "role": "user",
@@ -396,17 +396,19 @@ for item in response.output:
 
 ### Anthropic Adaptive Thinking
 
-Claude models (Opus 4.7+, Sonnet 4.6+, Fable 5) use **adaptive thinking** — the model decides how much reasoning to apply based on task complexity.
+Current Claude models (Opus 5, Sonnet 5, Opus 4.8/4.7/4.6, Fable 5) use **adaptive thinking** — the model decides how much reasoning to apply based on task complexity. Depth is steered with `effort`, not a token budget.
 
 ```python
 import anthropic
 client = anthropic.Anthropic()
 
-# Adaptive mode (default) — model decides budget
+# Adaptive thinking — on Opus 5 this is also the default if you omit `thinking`.
+# display defaults to "omitted" (empty thinking text); opt in to see a summary.
 response = client.messages.create(
-    model="claude-opus-4-8",
+    model="claude-opus-5",
     max_tokens=8000,
-    thinking={"type": "adaptive"},
+    thinking={"type": "adaptive", "display": "summarized"},
+    output_config={"effort": "high"},   # low | medium | high | xhigh | max
     messages=[{"role": "user", "content": "What's the optimal strategy for this problem?"}]
 )
 
@@ -417,8 +419,10 @@ for block in response.content:
     elif block.type == "text":
         print(f"[Answer]: {block.text}")
 
-print(f"Thinking tokens: {response.usage.output_tokens_details.thinking_tokens}")
+print(f"Output tokens (includes thinking): {response.usage.output_tokens}")
 ```
+
+> ⚠️ **`budget_tokens` is gone.** The old `thinking={"type": "enabled", "budget_tokens": N}` form returns a **400** on Opus 5, Sonnet 5, Opus 4.8/4.7, and Fable 5. If you have it in existing code, replace it with adaptive thinking plus an `effort` level. Thinking counts against `max_tokens`, so raise `max_tokens` when you raise `effort`.
 
 ### Persisted Reasoning (Reasoning Context)
 
@@ -440,19 +444,24 @@ second = client.responses.create(
 )
 ```
 
-### Budget Guidelines
+### Effort Guidelines
 
-| Task complexity | Recommended budget |
-|----------------|-------------------|
-| Simple reasoning | 1,024 tokens (minimum) |
-| Moderate complexity | 4,000–8,000 tokens |
-| Hard problems | 16,000–32,000 tokens |
-| Extremely complex | 32,000+ tokens (use Batch API) |
+Effort replaced thinking-token budgets. It controls how much the model thinks *and* acts.
 
-### When to Use Extended Thinking
+| Task | Effort | `max_tokens` guidance |
+|------|--------|----------------------|
+| Classification, simple lookups, latency-sensitive paths | `low` | Small (256–2,000) |
+| High-volume production work | `medium` | 4,000–8,000 |
+| Default for intelligence-sensitive work | `high` | 8,000–16,000 |
+| Coding and agentic loops | `xhigh` | 64,000+, and **stream** |
+| Correctness matters more than cost | `max` | 64,000+, and **stream** |
 
-| Use extended thinking | Use standard mode |
-|----------------------|-------------------|
+Two rules that catch people out: effort is **not** a verbosity dial (instruct conciseness in the prompt instead), and at `xhigh`/`max` a tight `max_tokens` truncates mid-thought because thinking and answer share the same ceiling.
+
+### When to Use Thinking
+
+| Use thinking | Use standard mode |
+|--------------|-------------------|
 | Multi-step math/logic | Simple Q&A |
 | Architecture decisions | Classification |
 | Legal/scientific analysis | High-volume cheap calls |

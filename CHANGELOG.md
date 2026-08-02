@@ -4,6 +4,55 @@ All notable changes to this project are documented here.
 
 ---
 
+## [6.0.0] — 2026-08-02
+
+Loop engineering and graph engineering are now first-class disciplines in the
+curriculum, and every stale model reference has been retired.
+
+### Added — Module 16: Graph Engineering (new module, ~3h, Advanced)
+- **Part 1 — graphs as control flow:** state/nodes/edges, superstep semantics, reducers and the silent lost-update bug, conditional edges as testable stop conditions, bounded cycles
+- Checkpointers as one mechanism for four capabilities: crash resume, durable human interrupts, time-travel debugging, multi-turn memory
+- Dynamic fan-out (map-reduce with `Send`) and caps that get *reported* rather than silently applied
+- Supervisor / swarm / hierarchical topologies expressed as graph shapes, with context-leakage and handoff-ping-pong fixes
+- Explicit "when *not* to reach for a graph" guidance
+- **Part 2 — knowledge graphs & Graph RAG:** extraction with a closed relation vocabulary and mandatory per-edge evidence, entity-resolution cascade, storage choices
+- Retrieval modes: local, global (community summaries), path, hybrid — matched to question shapes
+- Temporal knowledge graphs with `valid_from`/`valid_to`, invalidation instead of overwrite
+- Cost/benefit table for Graph RAG vs vector RAG, and how to prove it on your own corpus
+- 12-entry graph failure-mode catalogue; 12 hands-on exercises
+- `examples/state_graph.py` — a ~150-line superstep engine (reducers, cycles, fan-out, time travel), runs with no dependencies
+- `examples/knowledge_graph.py` — full text → graph → local/global/path/temporal retrieval pipeline, runs with no dependencies
+- `graph_engineering.ipynb` — 23 cells, all executable without an API key
+
+### Expanded — Module 13: Agent Harness → Agent Harness & Loop Engineering
+- Added the **five questions every production loop must answer** and a six-shape loop taxonomy
+- Added **API-native loop controls**: `effort` as a per-call depth dial, and `task_budget` — a server-tracked budget the model can see, contrasted with `max_tokens`
+- Added **outcome-driven loops**: rubric-graded iterate → grade → revise, fresh-context grading, `span.outcome_evaluation_end` result semantics, and how to write a rubric a grader can use
+- Added **context lifecycle inside a loop**: masking vs context editing vs compaction, plus the `response.content` bug that silently breaks compaction
+- Added **who owns the loop**: manual loop / SDK tool runner / framework / hosted runtime, durable-execution options, and the idle-break gate
+- Added **loops that start themselves**: scheduled cron deployments (jitter, DST, no backfill, run records) and event-driven wake-ups
+- Added an 11-entry loop failure-mode catalogue with the log line that catches each
+- Added a "loop or graph?" decision table cross-linking Module 16
+- New `loops/outcome_loop.py` with a `--mock` mode that runs without an API key
+- Notebook expanded 11 → 14 cells; troubleshooting 4 → 12 entries; exercises 6 → 11
+
+### Expanded — Module 02: Graph RAG section
+- Local / global / path retrieval modes table, hybrid retrieval code, cost and failure-mode guidance, cross-link to Module 16
+
+### Changed — Retired outdated model and API references
+- `claude-opus-4-8` → `claude-opus-5`, `claude-sonnet-4-6` → `claude-sonnet-5` across all modules, notebooks, and TypeScript examples
+- Replaced deprecated `thinking={"type": "enabled", "budget_tokens": N}` with `thinking={"type": "adaptive"}` + `output_config={"effort": ...}` in Module 12 (the old form now returns a 400 on current models)
+- Module 01: replaced the thinking-token "Budget Guidelines" table with an **effort guidelines** table (level → `max_tokens` guidance), fixed a non-existent `usage.output_tokens_details.thinking_tokens` field, added `display: "summarized"` and an explicit `budget_tokens`-is-gone warning
+- Corrected Module 00 pricing table (Opus was listed at 15/75; Haiku at 0.80/4.00) and added Claude Fable 5
+- Replaced retired `claude-3-opus` / `claude-3-sonnet` / `gpt-3.5-turbo` entries in Module 08's cost tracker, and noted that ignoring `cache_read_input_tokens` overstates spend by 5–10x
+- Updated the cacheable-prefix minimum note in Module 12 (512 tokens on Opus 5, not a flat 1024)
+
+### Changed — Repo metadata
+- Root README: 16 → 17 modules, new module sections, learning-path gaps, key-concept and structure entries, 17 new glossary terms, updated keywords
+- CI structure check now validates modules 00–16 (previously only 01–11)
+
+---
+
 ## [5.6.0] — 2026-07-17
 
 ### Expanded — Module 02: RAG Systems (184 -> 330 lines)

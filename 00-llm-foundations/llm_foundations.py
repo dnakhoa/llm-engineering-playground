@@ -233,14 +233,16 @@ def estimate_cost(
 
     output_tokens = int(expected_output_words * 1.3)
 
-    # Approximate pricing per 1M tokens (input/output), mid-2026
+    # Approximate pricing per 1M tokens (input/output), mid-2026.
+    # Always re-check current rates — pricing moves faster than course material.
     pricing = {
-        "gpt-4o-mini":         (0.15,   0.60),
-        "gpt-4o":              (2.50,  10.00),
-        "gpt-4.1":             (2.00,   8.00),
-        "claude-haiku-4-5":    (0.80,   4.00),
-        "claude-sonnet-4-6":   (3.00,  15.00),
-        "claude-opus-4-8":    (15.00,  75.00),
+        "gpt-4o-mini":       (0.15,   0.60),
+        "gpt-4o":            (2.50,  10.00),
+        "gpt-4.1":           (2.00,   8.00),
+        "claude-haiku-4-5":  (1.00,   5.00),
+        "claude-sonnet-5":   (3.00,  15.00),
+        "claude-opus-5":     (5.00,  25.00),
+        "claude-fable-5":   (10.00,  50.00),
     }
 
     # Normalize model name for lookup
@@ -273,7 +275,7 @@ def demo_cost_estimator():
         "The user has the following issue: " + "I can't log into my account. " * 5
     )
 
-    for m in ["gpt-4o-mini", "gpt-4o", "claude-sonnet-4-6", "claude-opus-4-8"]:
+    for m in ["gpt-4o-mini", "gpt-4o", "claude-sonnet-5", "claude-opus-5"]:
         est = estimate_cost(m, sample_input, expected_output_words=150)
         print(
             f"  {m:<25} | in={est['input_tokens']:>5} tok | "

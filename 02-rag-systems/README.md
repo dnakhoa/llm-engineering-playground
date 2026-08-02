@@ -248,9 +248,35 @@ def crag_retrieve(query, docs, llm, max_retries=2):
 ```
 
 ### Graph RAG
-Build a knowledge graph from documents, traverse relationships for multi-hop answers.
+Build a knowledge graph from documents — entities as nodes, typed relationships as edges — then answer by traversal and aggregation instead of similarity.
 
-**When to use:** Multi-hop reasoning, relationship-heavy domains (medical, legal).
+Three retrieval modes, matched to three question shapes:
+
+| Mode | Question | Mechanism |
+|------|----------|-----------|
+| **Local** | "Tell me about X" | Anchor on entities in the query, expand 1–2 hops, return subgraph + source chunks |
+| **Global** | "What are the main themes across the corpus?" | Pre-computed community summaries; map over communities, then reduce |
+| **Path** | "How is X connected to Y?" | Shortest/all paths between anchors, returned as an explained chain |
+
+```python
+# Hybrid is the default production shape: passages for content, graph for structure
+def hybrid_retrieve(query: str, k: int = 8) -> list[str]:
+    passages = vector_store.search(query, k=k)          # what looks like the question
+    anchors  = extract_entities(query)                  # what the question is about
+    subgraph = graph.expand(anchors, hops=2, limit=40)  # structure around it
+    context  = [p.text for p in passages]
+    context += [f"{s} —[{t}]→ {o}  (source: {ev})"      # every edge carries its evidence
+                for s, t, o, ev in subgraph.edges_with_evidence()]
+    return rerank(query, dedupe(context))[:k]
+```
+
+**When to use:** multi-hop reasoning, relationship-heavy domains (medical, legal, finance, supply chain), corpus-level "what are the themes" questions, and anywhere you need an explainable reasoning chain rather than a chunk citation.
+
+**When not to:** Graph RAG is strictly more expensive — extraction is an LLM call per chunk plus community summarization at index time. If multi-hop questions are under ~10% of your traffic, expand the graph *on demand* (only when the query names multiple entities) rather than everywhere.
+
+⚠️ **Its failure mode is worse than vector RAG's.** A missing chunk produces "I don't know"; a hallucinated `ACQUIRED` edge produces a fluent, cited, false answer. Extract against a **closed relation vocabulary** and store the source sentence on every edge, or you can't audit what the graph claims.
+
+📁 **Deep dive:** [Module 16 — Graph Engineering](../16-graph-engineering/) covers extraction schemas, entity resolution, community detection, temporal edges, and how to prove Graph RAG earns its cost on your corpus.
 
 ### Self-RAG
 Model learns when to retrieve vs answer from memory. Adds "reflection tokens" to decide.

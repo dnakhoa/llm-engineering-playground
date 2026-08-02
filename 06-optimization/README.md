@@ -234,7 +234,7 @@ import anthropic
 client = anthropic.Anthropic()
 
 response = client.messages.create(
-    model="claude-opus-4-8",
+    model="claude-opus-5",
     max_tokens=1024,
     cache_control={"type": "ephemeral"},  # automatic caching
     system="You are an expert analyst.",
@@ -250,7 +250,7 @@ Place `cache_control` on individual content blocks for maximum control. Up to 4 
 
 ```python
 response = client.messages.create(
-    model="claude-opus-4-8",
+    model="claude-opus-5",
     max_tokens=1024,
     system=[
         {"type": "text", "text": "You are an expert analyst."},
