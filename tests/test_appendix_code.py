@@ -49,7 +49,7 @@ CODE_SUFFIXES = (".py", ".ipynb", ".ts")
 DIRECT_SDK_CALLS = {
     "appendix/multimodal/multimodal_example.py": "images and audio: the layer is text-only",
     "appendix/multimodal/multimodal_example.ipynb": "images and audio: the layer is text-only",
-    "appendix/context-engineering/context_engineering.py": "explicit cache_control breakpoints",
+    "appendix/context-engineering/context_engineering.py": "cache_control breakpoints and thinking blocks",
     "appendix/deployment/deployment.ipynb": "token streaming: the layer returns whole responses",
 }
 
