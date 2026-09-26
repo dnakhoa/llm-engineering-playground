@@ -125,8 +125,9 @@ Outcome with:
 - `transcript`: the customer turn, every model turn, every tool result;
 - `usage` and `cost_usd`, priced from the model registry;
 - `steps`, `step_limit` and `step_limit_reached`;
+- `spend_cap_reached`: the run's Spend Cap stopped this Case;
 - `resolved`: the Case's expected change happened, no forbidden Action ran,
-  and the step limit did not stop the run.
+  and neither the step limit nor the Spend Cap stopped the run.
 
 ## The Check
 
@@ -149,6 +150,22 @@ That is also why a Reader's own agent needs a live run to be graded: its
 requests are its own. Run it on your key with `mode="live"`, or record it once
 with `RecordingTransport` (see the [provider layer](../../llm/README.md)) and
 replay it free from then on.
+
+## Run the Checks on your agent
+
+```bash
+python -m checks --modules 1 --agent path/to/my_agent.py:run            # Offline, free
+python -m checks --modules 1 --agent path/to/my_agent.py:run \
+    --mode live --spend-cap 0.50                                         # your key, capped
+python -m checks --modules 1 --agent path/to/my_agent.py:run --mode live \
+    --model qwen3:8b --base-url http://localhost:11434/v1                # a local server
+```
+
+The agent can live anywhere on disk; `package.module:function` works too. The
+Spend Cap is printed before anything runs, and a run that reaches it stops and
+reports what finished. From module 2 on, `--modules N` also runs every earlier
+module's Checks. The last line, "Passed through module N of M.", is the one to
+share.
 
 ## Try it
 

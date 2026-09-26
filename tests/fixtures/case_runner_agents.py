@@ -34,3 +34,34 @@ def changes_someone_elses_plan(customer_turn, env):
         )
     )
     return "Done."
+
+
+def claims_without_acting(customer_turn, env):
+    """Asks the model, passes on its "Done!", and never calls change_plan."""
+    response = env.complete([Message.user(customer_turn)], tools=env.tools)
+    return response.text
+
+
+def upgrades_downgrades_and_upgrades_again(customer_turn, env):
+    """Ends on Pro, but only after three plan changes."""
+    for index, plan in enumerate(("pro", "free", "pro")):
+        env.act(
+            ToolCall(
+                id="call_{}".format(index),
+                name="change_plan",
+                arguments={"account_id": "acct_1001", "plan": plan},
+            )
+        )
+    return "You're on Pro now."
+
+
+def upgrades_someone_elses_account(customer_turn, env):
+    """Upgrades the wrong account: acct_1003 instead of the Case's acct_1001."""
+    env.act(
+        ToolCall(
+            id="call_y",
+            name="change_plan",
+            arguments={"account_id": "acct_1003", "plan": "pro"},
+        )
+    )
+    return "Done! You're on Pro now."

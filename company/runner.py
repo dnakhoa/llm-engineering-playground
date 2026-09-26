@@ -18,7 +18,9 @@ its final reply. Pass it, or pass an importable reference such as
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
@@ -105,6 +107,46 @@ class StepLimitReached(RuntimeError):
         self.step_limit = step_limit
 
 
+class SpendCapReached(RuntimeError):
+    """The run has spent its Spend Cap, so no further model call goes out."""
+
+    def __init__(self, cap: "SpendCap") -> None:
+        super().__init__(
+            "Stopped: this run has spent ${:.6f} of its ${:.2f} Spend Cap.".format(
+                cap.spent_usd, cap.limit_usd
+            )
+        )
+        self.cap = cap
+
+
+class SpendCap:
+    """The hard limit on model spend for one run of Checks, across every Case.
+
+    Each call's cost is its usage at registry prices, cached tokens at the cache
+    price. A call is refused once the run has spent the limit. A call's cost is
+    only known when it returns, so the run can end past the limit by at most
+    the one call that crossed it.
+    """
+
+    def __init__(self, limit_usd: float) -> None:
+        if limit_usd < 0:
+            raise ValueError("A Spend Cap cannot be negative, not {}.".format(limit_usd))
+        self.limit_usd = float(limit_usd)
+        self.spent_usd = 0.0
+
+    @property
+    def reached(self) -> bool:
+        return self.spent_usd >= self.limit_usd
+
+    def check(self) -> None:
+        """Raise ``SpendCapReached`` if no more calls may go out."""
+        if self.reached:
+            raise SpendCapReached(self)
+
+    def charge(self, cost_usd: float) -> None:
+        self.spent_usd += cost_usd
+
+
 class Environment:
     """What an agent works with: the Actions as tools, and the model.
 
@@ -122,8 +164,10 @@ class Environment:
         registry: Registry,
         step_limit: int,
         options: Optional[CallOptions] = None,
+        spend_cap: Optional[SpendCap] = None,
     ) -> None:
         self._actions = actions
+        self._spend_cap = spend_cap
         self._transport = transport
         self._registry = registry
         self._options = options
@@ -147,6 +191,8 @@ class Environment:
     ) -> Response:
         if self.steps >= self.step_limit:
             raise StepLimitReached(self.step_limit)
+        if self._spend_cap is not None:
+            self._spend_cap.check()
         self.steps += 1
         response = complete(
             model=self.model,
@@ -158,6 +204,8 @@ class Environment:
             registry=self._registry,
         )
         self.responses.append(response)
+        if self._spend_cap is not None:
+            self._spend_cap.charge(response.cost_usd)
         self.transcript.append(Message.assistant(response.text or None, response.tool_calls))
         return response
 
@@ -193,6 +241,8 @@ class Outcome:
     step_limit: int
     step_limit_reached: bool
     resolved: bool
+    #: The run's Spend Cap stopped this Case before the agent finished.
+    spend_cap_reached: bool = False
 
 
 def _flatten(value: Any, prefix: str = "") -> Dict[str, Any]:
@@ -214,8 +264,8 @@ def state_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> Dict[str,
     }
 
 
-def _resolved(case: Case, diff, executed, step_limit_reached: bool) -> bool:
-    if step_limit_reached:
+def _resolved(case: Case, diff, executed, stopped: bool) -> bool:
+    if stopped:
         return False
     if any(record.name in case.forbidden_actions for record in executed):
         return False
@@ -225,16 +275,45 @@ def _resolved(case: Case, diff, executed, step_limit_reached: bool) -> bool:
     )
 
 
+def _import_file(path: Path):
+    """Import a Reader's agent from a ``.py`` file anywhere on disk.
+
+    Its folder goes on ``sys.path`` so the file can import its own neighbours.
+    """
+    path = path.expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError("No agent file at {}.".format(path))
+    folder = str(path.parent)
+    if folder not in sys.path:
+        sys.path.insert(0, folder)
+    name = "reader_agent_{}".format(path.stem)
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError("Cannot load an agent from {}.".format(path))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_agent(agent: Union[str, Agent]) -> Agent:
-    """Accept a callable, or an importable ``"package.module:function"`` reference."""
+    """Accept a callable, or a reference to one.
+
+    A reference is ``"package.module:function"`` for anything importable, or
+    ``"path/to/my_agent.py:function"`` for a file outside this repo.
+    """
     if callable(agent):
         return agent
-    module_name, sep, attribute = agent.partition(":")
+    module_name, sep, attribute = agent.rpartition(":")
     if not sep or not module_name or not attribute:
         raise ValueError(
-            "An agent reference looks like 'package.module:function', not {!r}.".format(agent)
+            "An agent reference looks like 'package.module:function' or "
+            "'path/to/agent.py:function', not {!r}.".format(agent)
         )
-    target = importlib.import_module(module_name)
+    if module_name.endswith(".py"):
+        target = _import_file(Path(module_name))
+    else:
+        target = importlib.import_module(module_name)
     for part in attribute.split("."):
         target = getattr(target, part)
     if not callable(target):
@@ -266,12 +345,17 @@ def run_case(
     step_limit: int = DEFAULT_STEP_LIMIT,
     options: Optional[CallOptions] = None,
     registry: Optional[Registry] = None,
+    spend_cap: Optional[SpendCap] = None,
 ) -> Outcome:
     """Run ``case`` against ``agent`` on a fresh Backend and report the Outcome.
 
     Offline mode (the default) replays the Case's reviewed recording and needs
     no key. Pass ``transport`` to supply your own, for example a stub in tests.
     A request the recording has not seen raises ``ReplayMismatchError``.
+
+    Pass a ``SpendCap`` shared across a run's Cases to stop the run when it
+    has spent the limit; a Case it stops is reported, unresolved, with
+    ``spend_cap_reached`` set.
     """
     registry = registry or load_registry()
     run_agent = load_agent(agent)
@@ -285,15 +369,19 @@ def run_case(
         registry=registry,
         step_limit=step_limit,
         options=options,
+        spend_cap=spend_cap,
     )
     env.transcript.append(Message.user(case.opening_message))
 
     reply: Optional[str] = None
     step_limit_reached = False
+    spend_cap_reached = False
     try:
         reply = run_agent(case.opening_message, env)
     except StepLimitReached:
         step_limit_reached = True
+    except SpendCapReached:
+        spend_cap_reached = True
 
     final_state = backend.export_state()
     diff = state_diff(seed, final_state)
@@ -312,10 +400,16 @@ def run_case(
             input_tokens=sum(r.usage.input_tokens for r in env.responses),
             output_tokens=sum(r.usage.output_tokens for r in env.responses),
             cached_input_tokens=sum(r.usage.cached_input_tokens for r in env.responses),
+            cache_write_input_tokens=sum(
+                r.usage.cache_write_input_tokens for r in env.responses
+            ),
         ),
         cost_usd=sum(r.cost_usd for r in env.responses),
         steps=env.steps,
         step_limit=step_limit,
         step_limit_reached=step_limit_reached,
-        resolved=_resolved(case, diff, executed, step_limit_reached),
+        resolved=_resolved(
+            case, diff, executed, step_limit_reached or spend_cap_reached
+        ),
+        spend_cap_reached=spend_cap_reached,
     )

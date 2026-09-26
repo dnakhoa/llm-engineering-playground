@@ -38,6 +38,22 @@ def test_google_api_key_is_accepted_for_gemini(monkeypatch):
     assert _require_key("GEMINI_API_KEY") == "g"
 
 
+def test_a_local_server_needs_no_key(monkeypatch):
+    from llm.call import build_request
+    from llm.registry import local_model
+    from llm.transport import HttpTransport
+    from llm.types import Message
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("LOCAL_LLM_API_KEY", raising=False)
+    spec = local_model("qwen3:8b", "http://localhost:11434/v1")
+    request = build_request(spec, messages=[Message.user("hi")])
+
+    headers = HttpTransport(provider=spec.provider)._headers(request)
+
+    assert "authorization" not in headers
+
+
 def test_missing_key_names_every_accepted_variable():
     with pytest.raises(TransportError) as err:
         _require_key("XAI_API_KEY")

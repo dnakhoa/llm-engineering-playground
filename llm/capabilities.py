@@ -77,10 +77,15 @@ def _map_effort(spec: ModelSpec, requested: Optional[str]):
     )
 
 
-def _resolve_temperature(spec: ModelSpec, requested: Optional[float]):
+def _resolve_temperature(
+    spec: ModelSpec, requested: Optional[float], effort: Optional[str]
+):
+    """Sampling support can depend on effort: GPT-6 takes a temperature only at
+    effort ``none``. ``effort`` is the level actually sent, or the model's
+    default when the caller named none."""
     if requested is None:
         return None, None
-    if spec.accepts_sampling_params:
+    if spec.accepts_sampling_at(effort if effort is not None else spec.default_effort):
         return requested, None
     return None, Adjustment(
         option="temperature",
@@ -113,7 +118,9 @@ def plan_request(spec: ModelSpec, options: Optional[CallOptions]) -> RequestPlan
     adjustments: List[Adjustment] = []
 
     effort, effort_adjustment = _map_effort(spec, options.effort)
-    temperature, temperature_adjustment = _resolve_temperature(spec, options.temperature)
+    temperature, temperature_adjustment = _resolve_temperature(
+        spec, options.temperature, effort
+    )
     max_output, max_output_adjustment = _resolve_max_output(
         spec, options.max_output_tokens
     )

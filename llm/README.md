@@ -36,18 +36,29 @@ acts on sampling parameters, which effort levels it has, and which API surface
 it speaks. Each entry names the vendor page it was read from and the date it was
 read. A model we could not confirm from a vendor source is left out.
 
-| Model | Provider | Surface | In $/MTok | Out $/MTok | Context | temperature | effort levels |
-|---|---|---|---:|---:|---:|---|---|
-| `claude-opus-5-5` | anthropic | Messages | 4.00 | 20.00 | 1,000,000 | rejected | low…max |
-| `claude-sonnet-5` | anthropic | Messages | 2.00 | 10.00 | 1,000,000 | rejected | low…max |
-| `claude-haiku-4-5` | anthropic | Messages | 1.00 | 5.00 | 200,000 | accepted | none |
-| `gpt-6-sol` | openai | Responses | 2.00 | 10.00 | 1,050,000 | rejected | none…max |
-| `gpt-6-luna` | openai | Responses | 0.10 | 0.50 | 1,050,000 | rejected | none…max |
-| `gemini-3.8-flash` | google | generateContent | 0.75 | 3.75 | 1,048,576 | accepted | low/medium/high |
-| `deepseek-flash` | deepseek | Chat Completions | 0.30 | 1.20 | 1,000,000 | ignored | low/high/max |
-| `grok-4.7` | xai | Chat Completions | 2.00 | 6.00 | 500,000 | accepted | low…xhigh |
+| Model | Provider | Surface | In $/MTok | Cache read | Cache write | Out $/MTok | Context | temperature | effort levels |
+|---|---|---|---:|---:|---:|---:|---:|---|---|
+| `claude-opus-5-5` | anthropic | Messages | 4.00 | 0.20 | 5.00 | 20.00 | 1,000,000 | rejected | low…max |
+| `claude-sonnet-5` | anthropic | Messages | 2.00 | 0.20 | 2.50 | 10.00 | 1,000,000 | rejected | low…max |
+| `claude-haiku-4-5` | anthropic | Messages | 1.00 | 0.10 | 1.25 | 5.00 | 200,000 | accepted | none |
+| `gpt-6-sol` | openai | Responses | 2.00 | 0.20 | 2.50 | 10.00 | 1,050,000 | at effort `none` only | none…max |
+| `gpt-6-luna` | openai | Responses | 0.10 | 0.01 | 0.125 | 0.50 | 1,050,000 | at effort `none` only | none…max |
+| `gemini-3.8-flash` | google | generateContent | 0.75 | 0.075 | — | 3.75 | 1,048,576 | accepted | low/medium/high |
+| `deepseek-flash` | deepseek | Chat Completions | 0.30 | 0.006 | — | 1.20 | 1,000,000 | ignored | low/high/max |
+| `grok-4.7` | xai | Chat Completions | 2.00 | 0.50 | — | 6.00 | 500,000 | accepted | low…xhigh |
 
 Read `models.json` for the authoritative version, including each entry's source.
+Cache prices come from each vendor's pricing page (`cache_price_source`). A dash
+means the vendor lists no separate write rate, so written tokens bill as input.
+Every `Usage` counts cached and written tokens inside `input_tokens` whichever
+vendor answered, and `cost_usd` bills them at these prices, so a cached run is
+not reported as costing what an uncached one would.
+
+**Local servers.** A local OpenAI-compatible server (Ollama, vLLM) needs no
+registry entry: `llm.registry.local_model("qwen3:8b", "http://localhost:11434/v1")`
+gives a zero-priced spec, and `registry.with_model(spec)` adds it. It needs no
+key (set `LOCAL_LLM_API_KEY` if yours wants one). Qwen's hosted API stays out of
+the registry until Alibaba publishes its prices on a vendor page.
 
 ## The three things that differ between models
 
@@ -55,8 +66,10 @@ Read `models.json` for the authoritative version, including each entry's source.
 non-default `temperature`. Current OpenAI models reject it whenever reasoning
 effort is anything but `none`. DeepSeek in thinking mode accepts it and then
 ignores it — which the registry treats the same way, because sending a value
-that does nothing is a lie about the request. The layer never sends one to any
-of them.
+that does nothing is a lie about the request. So support depends on the effort
+level as well as the model: the layer sends GPT-6 a temperature only when the
+request runs at effort `none` (`sampling_effort_levels` in the registry), and
+never sends one to the others.
 
 **Effort.** Every provider spells "think harder" differently:
 `output_config.effort`, `reasoning.effort`, `reasoning_effort`,

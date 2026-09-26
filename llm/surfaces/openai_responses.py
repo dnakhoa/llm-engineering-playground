@@ -129,6 +129,7 @@ def parse_response(spec, payload: Dict[str, Any]):
         input_tokens=int(raw_usage.get("input_tokens") or 0),
         output_tokens=int(raw_usage.get("output_tokens") or 0),
         cached_input_tokens=int(details.get("cached_tokens") or 0),
+        cache_write_input_tokens=int(details.get("cache_write_tokens") or 0),
     )
 
     if calls:

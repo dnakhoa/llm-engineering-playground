@@ -129,7 +129,10 @@ def parse_response(spec, payload: Dict[str, Any]):
     usage = Usage(
         input_tokens=int(raw_usage.get("prompt_tokens") or 0),
         output_tokens=int(raw_usage.get("completion_tokens") or 0),
-        cached_input_tokens=int(details.get("cached_tokens") or 0),
+        # DeepSeek reports cache hits in its own field rather than the details.
+        cached_input_tokens=int(
+            details.get("cached_tokens") or raw_usage.get("prompt_cache_hit_tokens") or 0
+        ),
     )
     stop = _FINISH_REASONS.get(choice.get("finish_reason"), STOP_OTHER)
     return text, tuple(calls), usage, stop

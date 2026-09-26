@@ -99,6 +99,37 @@ def test_the_request_names_the_registry_model_and_its_surface(spec):
     assert request.surface == spec.api_surface
 
 
+# ── Sampling depends on effort, not just the model (ticket 04, S3) ────────────
+
+GPT_6 = [spec for spec in ALL_MODELS if spec.model_id.startswith("gpt-6-")]
+
+
+@pytest.mark.parametrize("spec", GPT_6, ids=lambda s: s.model_id)
+def test_gpt_6_sends_temperature_when_effort_is_none(spec):
+    request, response = _ask(spec, effort="none", temperature=0.2)
+
+    assert request.body["reasoning"] == {"effort": "none"}
+    assert request.body["temperature"] == 0.2
+    assert not [a for a in response.adjustments if a.option == "temperature"]
+
+
+@pytest.mark.parametrize("spec", GPT_6, ids=lambda s: s.model_id)
+def test_gpt_6_drops_temperature_at_any_other_effort(spec):
+    request, response = _ask(spec, effort="low", temperature=0.2)
+
+    assert request.body["reasoning"] == {"effort": "low"}
+    assert "temperature" not in _flatten_keys(request.body)
+    dropped = [a for a in response.adjustments if a.option == "temperature"]
+    assert len(dropped) == 1
+    assert '"none"' in dropped[0].reason
+
+
+def test_the_registry_lists_gpt_6_as_sampling_only_at_effort_none():
+    assert GPT_6, "the registry has no GPT-6 model to test"
+    for spec in GPT_6:
+        assert spec.sampling_effort_levels == ("none",)
+
+
 def test_an_unregistered_model_is_refused_before_any_request_is_built():
     transport = StubTransport()
     with pytest.raises(KeyError):
