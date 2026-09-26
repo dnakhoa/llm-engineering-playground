@@ -113,10 +113,14 @@ def parse_response(spec, payload: Dict[str, Any]):
                 )
             )
     raw_usage = payload.get("usage") or {}
+    # Anthropic counts cache reads and writes beside input_tokens, not inside it.
+    cache_read = int(raw_usage.get("cache_read_input_tokens") or 0)
+    cache_write = int(raw_usage.get("cache_creation_input_tokens") or 0)
     usage = Usage(
-        input_tokens=int(raw_usage.get("input_tokens") or 0),
+        input_tokens=int(raw_usage.get("input_tokens") or 0) + cache_read + cache_write,
         output_tokens=int(raw_usage.get("output_tokens") or 0),
-        cached_input_tokens=int(raw_usage.get("cache_read_input_tokens") or 0),
+        cached_input_tokens=cache_read,
+        cache_write_input_tokens=cache_write,
     )
     stop = _STOP_REASONS.get(payload.get("stop_reason"), STOP_OTHER)
     return "".join(text_parts), tuple(calls), usage, stop

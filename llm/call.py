@@ -78,7 +78,10 @@ def complete(
         usage=usage,
         stop_reason=stop_reason,
         cost_usd=spec.cost_usd(
-            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cached_input_tokens=usage.cached_input_tokens,
+            cache_write_input_tokens=usage.cache_write_input_tokens,
         ),
         adjustments=plan.adjustments,
         raw=payload,

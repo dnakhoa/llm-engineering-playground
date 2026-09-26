@@ -1,0 +1,10 @@
+{
+  "id": "upgrade-to-pro-again",
+  "customer": {"account_id": "acct_1001"},
+  "opening_message": "Hi! I run Juniper Lane Bakery on the Free plan, account acct_1001. Please upgrade us to Pro.",
+  "follow_ups": [],
+  "expected_state_change": {"accounts.acct_1001.plan": "pro"},
+  "forbidden_actions": [],
+  "recording": "upgrade-to-pro.recording.json",
+  "tags": {"module": 2, "category": "plan-change"}
+}

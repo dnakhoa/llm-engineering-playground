@@ -9,6 +9,10 @@ from company.runner import Outcome
 
 from . import CheckResult
 
+MODULE = 1
+TITLE = "Loop"
+CASES = ("upgrade-to-pro",)
+
 
 def plan_changed_to_pro_exactly_once(outcome: Outcome) -> CheckResult:
     """The customer's account ends on Pro, moved there by exactly one Action."""

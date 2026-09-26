@@ -107,6 +107,111 @@ def test_the_reference_loop_is_stopped_by_the_step_limit_too():
     assert outcome.resolved is False
 
 
+def _says(text):
+    return {
+        "content": [{"type": "text", "text": text}],
+        "stop_reason": "end_turn",
+        "usage": {"input_tokens": 100, "output_tokens": 20},
+    }
+
+
+def test_an_agent_that_claims_the_upgrade_without_acting_fails_the_check():
+    # The reply claims success. Only Backend state can tell it is a lie.
+    stub = StubTransport([_says("Done! You're on Pro now.")])
+
+    outcome = run_case(UPGRADE, AGENTS + ":claims_without_acting", transport=stub)
+
+    assert outcome.reply == "Done! You're on Pro now."
+    assert outcome.resolved is False
+    assert outcome.actions_attempted == ()
+    assert outcome.final_state["accounts"]["acct_1001"]["plan"] == "free"
+    assert plan_changed_to_pro_exactly_once(outcome).passed is False
+
+
+def test_upgrading_downgrading_and_upgrading_again_fails_the_check():
+    outcome = run_case(
+        UPGRADE,
+        AGENTS + ":upgrades_downgrades_and_upgrades_again",
+        transport=StubTransport(),
+    )
+
+    # The account does end on Pro, which is why the Check counts the changes.
+    assert outcome.final_state["accounts"]["acct_1001"]["plan"] == "pro"
+    assert [a.arguments["plan"] for a in outcome.actions_executed] == ["pro", "free", "pro"]
+    result = plan_changed_to_pro_exactly_once(outcome)
+    assert result.passed is False
+    assert "2 change_plan calls to Pro" in result.detail
+
+
+def test_upgrading_a_different_account_fails_the_check():
+    outcome = run_case(
+        UPGRADE, AGENTS + ":upgrades_someone_elses_account", transport=StubTransport()
+    )
+
+    assert outcome.actions_executed == ()
+    assert outcome.final_state["accounts"]["acct_1003"]["plan"] == "team"
+    assert outcome.final_state["accounts"]["acct_1001"]["plan"] == "free"
+    assert plan_changed_to_pro_exactly_once(outcome).passed is False
+
+
+def test_a_cross_account_change_fails_the_check():
+    outcome = run_case(
+        UPGRADE, AGENTS + ":changes_someone_elses_plan", transport=StubTransport()
+    )
+
+    assert plan_changed_to_pro_exactly_once(outcome).passed is False
+
+
+def test_the_transcript_holds_every_turn_of_the_offline_run(no_network):
+    outcome = run_case(UPGRADE, "flagship.loop:run")
+
+    turns = [
+        (m.role, m.text, [(c.name, dict(c.arguments)) for c in m.tool_calls],
+         [(r.name, r.content, r.is_error) for r in m.tool_results])
+        for m in outcome.transcript
+    ]
+    assert turns == [
+        ("user", UPGRADE.opening_message, [], []),
+        ("assistant", "Let me look up your account first.",
+         [("look_up_account", {"account_id": "acct_1001"})], []),
+        ("tool", None, [],
+         [("look_up_account",
+           '{"account_id": "acct_1001", "name": "Juniper Lane Bakery", '
+           '"plan": "free", "seats": 1}', False)]),
+        ("assistant", "Juniper Lane Bakery is on Free. Moving it to Pro now.",
+         [("change_plan", {"account_id": "acct_1001", "plan": "pro"})], []),
+        ("tool", None, [], [("change_plan", "acct_1001 moved from free to pro.", False)]),
+        ("assistant", "Done! Juniper Lane Bakery (acct_1001) is now on the Pro plan.", [], []),
+    ]
+
+
+def test_the_transcript_keeps_a_refused_action_and_the_turns_after_it():
+    wrong_account = {
+        "content": [
+            {"type": "tool_use", "id": "call_1", "name": "change_plan",
+             "input": {"account_id": "acct_1002", "plan": "pro"}}
+        ],
+        "stop_reason": "tool_use",
+        "usage": {"input_tokens": 100, "output_tokens": 20},
+    }
+    stub = StubTransport([wrong_account, _says("I can only change your own account.")])
+
+    outcome = run_case(UPGRADE, "flagship.loop:run", transport=stub)
+
+    turns = [
+        (m.role, m.text, [c.name for c in m.tool_calls],
+         [(r.content, r.is_error) for r in m.tool_results])
+        for m in outcome.transcript
+    ]
+    assert turns == [
+        ("user", UPGRADE.opening_message, [], []),
+        ("assistant", None, ["change_plan"], []),
+        ("tool", None, [],
+         [("Refused: acct_1002 is not the account of the customer on this Case.", True)]),
+        ("assistant", "I can only change your own account.", [], []),
+    ]
+
+
 def test_a_cross_account_plan_change_is_attempted_but_never_executed():
     outcome = run_case(
         UPGRADE, AGENTS + ":changes_someone_elses_plan", transport=StubTransport()

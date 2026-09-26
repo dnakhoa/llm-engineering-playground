@@ -61,6 +61,11 @@ class HttpTransport:
             headers["authorization"] = "Bearer " + _require_key("OPENAI_API_KEY")
         elif surface == ApiSurface.GOOGLE_GEMINI:
             headers["x-goog-api-key"] = _require_key("GEMINI_API_KEY")
+        elif self._provider == "local":
+            # A local server (Ollama, vLLM) needs no key. Send one only if set.
+            key = os.environ.get("LOCAL_LLM_API_KEY")
+            if key:
+                headers["authorization"] = "Bearer " + key
         else:
             env = _COMPATIBLE_KEYS.get(self._provider, "OPENAI_API_KEY")
             headers["authorization"] = "Bearer " + _require_key(env)
