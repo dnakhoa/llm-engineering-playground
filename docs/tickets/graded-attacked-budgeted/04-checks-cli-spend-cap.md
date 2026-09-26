@@ -20,3 +20,9 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 - [ ] **Cache pricing (S4).** The registry gains cache-read and cache-write prices, verified against vendor docs like every other field. Cost on an Outcome bills `cached_input_tokens` at the cache price. Otherwise the Spend Cap and the Budgeted module overstate the cost of cached runs.
 - [ ] **Local servers (S1).** A Reader can use a local OpenAI-compatible server (for example Ollama) by giving a base URL and a model name, with no registry entry needed. It is priced at zero, and the Checks output says the Spend Cap doesn't apply. Qwen stays out of the registry until Alibaba's docs give prices on a vendor page.
 - [ ] **Sampling depends on effort (S3).** Sampling support depends on the effort level, not just the model. For GPT-6, temperature is accepted when effort is `none` and dropped otherwise, following the registry's `sampling_note`. An outgoing-request test covers both cases.
+
+**Carried from the stage B review (2026-09-26).** Stage B was merged without these test-only fixes. The code behaves correctly; these tests make sure it keeps doing so:
+
+- [ ] **Claim without acting (G1).** A fixture agent replies "Done! You're on Pro now." and never calls `change_plan`. Its Outcome is unresolved and the Spine 1 Check fails. Today every never-acting fixture replies with text that claims nothing, so a Check that read the reply instead of Backend state would still pass.
+- [ ] **Exactly once, and only for the Case's account.** An agent that upgrades, downgrades and upgrades again fails the Check. So does one that changes a different account's plan.
+- [ ] **Full transcript.** The transcript test asserts every turn, including tool results and refusals, not just the first and last.

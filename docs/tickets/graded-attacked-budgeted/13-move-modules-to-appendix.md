@@ -26,7 +26,7 @@ TypeScript moves into the Appendix too. The capstone and Kaggle folders are remo
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] No numbered module folders remain, and the Appendix index lists every topic.
 - [ ] A link check finds no dangling internal links.

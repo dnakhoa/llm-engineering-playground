@@ -14,7 +14,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md · ADR 0001
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Running the Case in Offline mode against the reference agent passes its Check with no network.
 - [ ] An agent that never calls the Action produces an unresolved Outcome, and the Check fails.
