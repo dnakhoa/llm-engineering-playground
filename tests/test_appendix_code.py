@@ -63,8 +63,10 @@ _VENDOR_CHAT_CALL = re.compile(
 #: A quoted model ID from a provider the registry covers.
 _MODEL_ID = re.compile(r"""["'`]((?:gpt|claude|gemini|grok|deepseek)-[A-Za-z0-9.\-]*)["'`]""")
 
-#: OpenAI models the registry does not list because they are not chat models.
-NON_CHAT_MODELS = frozenset({"gpt-image-1"})
+#: OpenAI models the registry does not list because they are not chat models: image
+#: generation, text to speech and transcription, each the replacement OpenAI's
+#: deprecations page names (read 2026-09-26).
+NON_CHAT_MODELS = frozenset({"gpt-image-2", "gpt-4o-mini-tts", "gpt-transcribe"})
 
 REGISTRY_IDS = frozenset(load_registry().ids())
 
