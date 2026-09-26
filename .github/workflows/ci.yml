@@ -18,8 +18,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install nbformat
-        run: pip install nbformat
+      - name: Install nbformat and pytest
+        run: pip install nbformat pytest
 
       - name: Validate notebook structure
         run: |
@@ -51,6 +51,12 @@ jobs:
 
           print(f"\n{len(notebooks)} notebooks validated.")
           EOF
+
+      # Valid JSON says nothing about whether a notebook can run from its folder. This
+      # evaluates each notebook's and script's load_dotenv and sys.path setup where it
+      # sits, so a path one level off after a move fails here, not on a missing API key.
+      - name: Notebooks and scripts reach shared/ and the root .env from their folders
+        run: pytest tests/test_appendix_paths.py -v
 
   structure-check:
     name: Repo structure check

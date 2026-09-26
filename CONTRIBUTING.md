@@ -28,6 +28,10 @@ Contributions are welcome — bug fixes, better examples, new exercises, improve
   only ever shrinks
 - No dangling internal links. `pytest tests/test_repo_layout.py` checks every relative
   link in Markdown and notebook markdown cells (`python tests/link_check.py` lists them)
+- Appendix code reaches `shared/` and the root `.env` from its own folder.
+  `pytest tests/test_appendix_paths.py` evaluates every script's and notebook's
+  `sys.path` and `load_dotenv` paths where the file sits, so build them from `__file__`
+  (scripts) or relative to the notebook's folder, with `os.path` or `pathlib`
 - New notebooks follow the existing structure: Setup → Concepts → Code → Exercises
 - Keep each Appendix topic's `requirements.txt` (under `appendix/<topic>/`) in sync with its imports
 - Do not commit `.env` files or API keys
