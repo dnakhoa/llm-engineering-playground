@@ -1,0 +1,60 @@
+# Stale-reference lint baseline — files that already fail.
+#
+# Every path here contains at least one retired model ID or dead API (see
+# tests/stale_lint_denylist.json). The lint reports them as known-stale instead of
+# failing, so CI stays green while the Appendix refresh works through them.
+#
+# This is the expand step of an expand-contract sequence: entries come OUT of this
+# file as tickets 14-16 fix each page, and ticket 17 deletes the file entirely. Never
+# add a path here for new work — fix the reference, or mark the line
+# `historical-exception` if it is genuinely prose about the past.
+#
+# Regenerate the list of currently failing files with:
+#     python tests/stale_lint.py
+#
+# Generated 2026-09-26 — 45 files, 128 matches.
+00-llm-foundations/README.md
+00-llm-foundations/llm_foundations.ipynb
+00-llm-foundations/llm_foundations.py
+01-prompt-engineering/README.md
+01-prompt-engineering/prompt_engineering.ipynb
+02-rag-systems/README.md
+02-rag-systems/rag_example.py
+02-rag-systems/rag_systems.ipynb
+03-fine-tuning/README.md
+03-fine-tuning/finetune_example.py
+04-evaluation/evaluation.ipynb
+05-deployment/README.md
+05-deployment/deployment.ipynb
+05-deployment/deployment_example.py
+06-optimization/README.md
+06-optimization/optimization.ipynb
+07-agentic-workflows/README.md
+07-agentic-workflows/agentic_workflows.ipynb
+08-llmops-observability/README.md
+08-llmops-observability/llmops_observability.ipynb
+08-llmops-observability/observability_example.py
+09-eval-ops/eval_ops.ipynb
+10-gateway-guardrails/gateway_guardrails.ipynb
+11-memory-context/README.md
+11-memory-context/memory_context.ipynb
+14-mcp-tool-design/README.md
+14-mcp-tool-design/mcp_example.py
+14-mcp-tool-design/servers/example_server.py
+15-multimodal/README.md
+CHANGELOG.md
+README.md
+SETUP.md
+capstone/README.md
+capstone/app.py
+capstone/observability.py
+demo.py
+docs/specs/graded-attacked-budgeted.md
+docs/tickets/graded-attacked-budgeted/02-stale-reference-lint.md
+docs/tickets/graded-attacked-budgeted/15-appendix-refresh-mcp-frameworks.md
+shared/provider.py
+typescript/agent.ts
+typescript/chat.ts
+typescript/rag.ts
+typescript/streaming.ts
+typescript/structured-output.ts
