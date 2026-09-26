@@ -21,11 +21,18 @@ Load your ``.env`` before calling it; this module reads ``os.environ`` only.
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from typing import Mapping, Optional, Sequence
 
 from .call import complete
 from .registry import Registry, load_registry
 from .types import CallOptions, Message
+
+
+@lru_cache(maxsize=1)
+def _default_registry() -> Registry:
+    return load_registry()
+
 
 #: Provider → the env vars that hold its key, in the order they are detected.
 _PROVIDER_KEYS = (
@@ -56,7 +63,7 @@ def default_model(
     registry: Optional[Registry] = None, environ: Optional[Mapping[str, str]] = None
 ) -> str:
     """The model ``ask()`` uses when none is named. See the module docstring."""
-    registry = registry or load_registry()
+    registry = registry or _default_registry()
     env = os.environ if environ is None else environ
 
     explicit = env.get("LLM_MODEL", "").strip()
@@ -92,7 +99,7 @@ def ask(
     """Send ``prompt`` (or ``messages``) to ``model`` and return the answer text."""
     if (prompt is None) == (messages is None):
         raise ValueError("pass exactly one of prompt or messages")
-    registry = registry or load_registry()
+    registry = registry or _default_registry()
     model_id = model or default_model(registry)
     if transport is None:
         from .transport import HttpTransport
