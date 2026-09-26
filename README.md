@@ -3,7 +3,6 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/spaces)
-[![Kaggle](https://img.shields.io/badge/Kaggle-Notebooks-blue)](https://www.kaggle.com/)
 [![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](tests/)
 [![Modules](https://img.shields.io/badge/modules-17-blue.svg)]()
 [![Notebooks](https://img.shields.io/badge/notebooks-17-orange.svg)]()
@@ -117,20 +116,10 @@ This runs a self-contained pipeline that shows:
 
 No server, no database — just `python demo.py`.
 
-### Step 4: Run the full capstone (optional)
+### Step 4: Go deeper in the Appendix
 
-```bash
-cd capstone
-pip install -r requirements.txt
-python seed_knowledge.py          # seed ChromaDB with 10 LLM topics
-python ui.py                      # Gradio web UI at http://localhost:7860
-```
-
-Or with Docker:
-```bash
-cd capstone
-docker compose up                 # starts API on :8000 + UI on :7860
-```
+Every topic below lives in its own folder under [`appendix/`](appendix/README.md), with a
+README, a notebook and its own `requirements.txt`.
 
 ### Troubleshooting
 
@@ -144,6 +133,8 @@ docker compose up                 # starts API on :8000 + UI on :7860
 ## Curriculum Structure
 
 **17 Comprehensive Modules** covering the complete LLM engineering lifecycle — all with interactive notebooks:
+
+> The modules now live as topic folders in the [Appendix](appendix/README.md).
 
 | Module | Topic | Key Focus | Time | Difficulty |
 |--------|-------|-----------|------|------------|
@@ -176,7 +167,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Model selection: when to use small/medium/large
 - Cost estimation before you build
 
-📁 Location: `00-llm-foundations/`
+📁 Location: [`appendix/foundations/`](appendix/foundations/)
 
 ### 📚 Module 1: Prompt Engineering
 **Foundation** - Learn to communicate effectively with LLMs
@@ -186,7 +177,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Structured output generation
 - Reasoning models, effort tuning, adaptive thinking
 
-📁 Location: `01-prompt-engineering/`
+📁 Location: [`appendix/prompt-engineering/`](appendix/prompt-engineering/)
 
 ### 🔍 Module 2: RAG Systems
 **Knowledge Augmentation** - Connect LLMs to external data
@@ -196,7 +187,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Advanced patterns (HyDE, Corrective RAG, Graph RAG)
 - RAG evaluation (Recall@k, faithfulness, relevancy)
 
-📁 Location: `02-rag-systems/`
+📁 Location: [`appendix/rag/`](appendix/rag/)
 
 ### 🎯 Module 3: Fine-Tuning
 **Model Adaptation** - Customize LLMs for your needs
@@ -207,7 +198,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Interpretability (SAEs, abliteration, feature analysis)
 - Evaluation and deployment
 
-📁 Location: `03-fine-tuning/`
+📁 Location: [`appendix/fine-tuning/`](appendix/fine-tuning/)
 
 ### 📊 Module 4: Evaluation
 **Quality Assurance** - Measure and improve performance
@@ -217,7 +208,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Model-based evaluation
 - A/B testing frameworks
 
-📁 Location: `04-evaluation/`
+📁 Location: [`appendix/evaluation/`](appendix/evaluation/)
 
 ### 🚀 Module 5: Deployment
 **Production Ready** - Serve LLMs at scale
@@ -227,7 +218,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Cost management
 - Security and privacy
 
-📁 Location: `05-deployment/`
+📁 Location: [`appendix/deployment/`](appendix/deployment/)
 
 ### ⚡ Module 6: Optimization
 **Performance & Efficiency** - Make it faster and cheaper
@@ -237,7 +228,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Prompt optimization
 - Token budgeting
 
-📁 Location: `06-optimization/`
+📁 Location: [`appendix/optimization/`](appendix/optimization/)
 
 ### 🤖 Module 7: Agentic Workflows
 **Autonomous Systems** - Build multi-agent collaborative systems
@@ -250,7 +241,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Human-in-the-loop workflows
 - Production patterns
 
-📁 Location: `07-agentic-workflows/`
+📁 Location: [`appendix/agent-frameworks/`](appendix/agent-frameworks/)
 
 ### 📈 Module 8: LLM Ops & Observability
 **Production Monitoring** - Track, measure, and improve in production
@@ -261,7 +252,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Feedback loop pipelines
 - Dashboard metrics and alerting
 
-📁 Location: `08-llmops-observability/`
+📁 Location: [`appendix/observability/`](appendix/observability/)
 
 ### 🧪 Module 9: EvalOps (Evaluation Operations)
 **Automated Quality Assurance** - Continuous evaluation at scale
@@ -272,7 +263,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Continuous production evaluation
 - Adversarial testing
 
-📁 Location: `09-eval-ops/`
+📁 Location: [`appendix/evalops/`](appendix/evalops/)
 
 ### 🧠 Module 10: API Gateway & Guardrails
 **Security & Compliance** - Production protection layer
@@ -285,7 +276,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Compliance logging and audit trails
 - Monitoring metrics and alerting
 
-📁 Location: `10-gateway-guardrails/`
+📁 Location: [`appendix/guardrails/`](appendix/guardrails/)
 
 ### 🧠 Module 11: Memory & Context Management
 **Persistent Intelligence** - Build memory-enabled applications
@@ -298,7 +289,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Memory compression and summarization
 - Multi-session conversation support
 
-📁 Location: `11-memory-context/`
+📁 Location: [`appendix/memory/`](appendix/memory/)
 
 ### 🧠 Module 12: Context Engineering
 **Context as a Resource** - Design what enters the context window, not just fill it
@@ -310,7 +301,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Token budget management and per-slot allocation
 - Context compression: sliding window, LLM-based summarization
 
-📁 Location: `12-context-engineering/`
+📁 Location: [`appendix/context-engineering/`](appendix/context-engineering/)
 
 ### 🔄 Module 13: Agent Harness & Loop Engineering
 **Reliable Autonomy** - Build agents that don't get stuck, crash, or over-run
@@ -326,7 +317,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Self-repair loops, human approval checkpoints, adversarial verification
 - A catalogue of loop failure modes and the log line that catches each one
 
-📁 Location: `13-agent-harness/`
+📁 Location: [`appendix/agent-harness/`](appendix/agent-harness/)
 
 ### 🔌 Module 14: MCP & Tool Design
 **Tool Interfaces** - Build tools agents can actually use correctly
@@ -341,7 +332,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Secure MCP Tunnels for production deployment
 - Computer Use as a tool type
 
-📁 Location: `14-mcp-tool-design/`
+📁 Location: [`appendix/mcp/`](appendix/mcp/)
 
 ### 🖼️ Module 15: Multimodal LLMs
 **Vision, Audio, Video & Image Generation** - Handle more than just text
@@ -353,7 +344,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - CLIP embeddings for image retrieval
 - Multimodal RAG combining text and images
 
-📁 Location: `15-multimodal/`
+📁 Location: [`appendix/multimodal/`](appendix/multimodal/)
 
 ### 🕸️ Module 16: Graph Engineering
 **Structure You Can Replay** - Control flow and knowledge as explicit graphs
@@ -368,7 +359,7 @@ docker compose up                 # starts API on :8000 + UI on :7860
 - Temporal knowledge graphs — facts that expire instead of going stale
 - Proving Graph RAG earns its cost, and its confidently-wrong-edge failure mode
 
-📁 Location: `16-graph-engineering/`
+📁 Location: [`appendix/graph-engineering/`](appendix/graph-engineering/)
 
 
 ## Built With
@@ -385,14 +376,14 @@ docker compose up                 # starts API on :8000 + UI on :7860
 ## 🗺️ Learning Paths
 
 ### Learning Path: Ship Your First AI Product
-**~10 hours | 6 modules | Gets you to a working, deployed LLM application**
+**~10 hours | 5 modules | Gets you to a working, deployed LLM application**
 
 ```
-Module 00 → Module 01 → Module 02 → Module 05 → Module 07 → Capstone
-Foundations  Prompting    RAG        Deployment  Agents     Full app
+Module 00 → Module 01 → Module 02 → Module 05 → Module 07
+Foundations  Prompting    RAG        Deployment  Agents
 ```
 
-Do these six, build the capstone, and you'll have shipped something real. Then come back for the rest.
+Do these five and you'll have shipped something real. Then come back for the rest.
 
 ### Learning Path: Full Curriculum — All 17 Modules
 Work through all 17 modules in order. Each builds on the previous.
@@ -481,51 +472,32 @@ llm-engineering-playground/
 ├── requirements.txt                   # All dependencies
 ├── .env.example                       # API key template → copy to .env
 │
+├── llm/                               # Provider layer and model registry
+│
 ├── shared/
-│   └── provider.py                    # ★ Multi-provider LLM helper (OpenAI, Anthropic, DeepSeek, etc.)
+│   └── provider.py                    # Legacy multi-provider helper (being replaced by llm/)
 │
-├── 00-llm-foundations/                # Tokens, embeddings, context windows
-├── 01-prompt-engineering/             # Zero-shot, few-shot, chain-of-thought
-├── 02-rag-systems/                    # Vector DB, chunking, retrieval
-├── 03-fine-tuning/                    # LoRA, QLoRA, data preparation
-├── 04-evaluation/                     # Metrics, LLM-as-judge, benchmarks
-├── 05-deployment/                     # APIs, latency, cost management
-├── 06-optimization/                   # Caching, quantization, routing
-├── 07-agentic-workflows/              # LangGraph, multi-agent, HITL
-├── 08-llmops-observability/           # Tracing, monitoring, drift detection
-├── 09-eval-ops/                       # CI/CD for LLMs, regression testing
-├── 10-gateway-guardrails/             # Auth, rate limiting, injection detection
-├── 11-memory-context/                 # Short/long-term memory, hierarchical
-├── 12-context-engineering/            # U-curve, observation masking, prefix caching
-├── 13-agent-harness/                  # Loop engineering, task budgets, outcome loops
-├── 14-mcp-tool-design/                # Model Context Protocol, tool schemas
-├── 15-multimodal/                     # Vision, image gen, audio, CLIP
-├── 16-graph-engineering/              # State graphs, checkpointers, knowledge graphs, Graph RAG
+├── tests/                             # Unit tests, stale-reference lint, link check
 │
-├── capstone/
-│   ├── app.py                         # FastAPI app (main entry point)
-│   ├── ui.py                          # ★ Gradio web UI with streaming
-│   ├── rag.py                         # RAG pipeline (multi-provider)
-│   ├── cache.py                       # Semantic cache
-│   ├── memory.py                      # Conversation memory
-│   ├── guardrails.py                  # Input/output validation
-│   ├── observability.py               # Cost + latency tracking
-│   ├── evaluator.py                   # Async quality scoring
-│   ├── seed_knowledge.py              # Populate the knowledge base
-│   ├── chat_client.py                 # Terminal chat UI
-│   ├── docker-compose.yml             # ★ Docker setup
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── typescript/                        # ★ TypeScript examples (chat, RAG, agents)
-│   ├── README.md
-│   ├── chat.ts
-│   ├── rag.ts
-│   ├── agent.ts
-│   └── streaming.ts
-│
-└── kaggle/                            # ★ Kaggle notebook series
-    └── README.md
+└── appendix/                          # Reference topics — see appendix/README.md
+    ├── foundations/                   # Tokens, embeddings, context windows
+    ├── prompt-engineering/            # Zero-shot, few-shot, chain-of-thought
+    ├── rag/                           # Vector DB, chunking, retrieval
+    ├── fine-tuning/                   # LoRA, QLoRA, data preparation
+    ├── evaluation/                    # Metrics, LLM-as-judge, benchmarks
+    ├── deployment/                    # APIs, latency, cost management
+    ├── optimization/                  # Caching, quantization, routing
+    ├── agent-frameworks/              # LangGraph, multi-agent, HITL
+    ├── observability/                 # Tracing, monitoring, drift detection
+    ├── evalops/                       # CI/CD for LLMs, regression testing
+    ├── guardrails/                    # Auth, rate limiting, injection detection
+    ├── memory/                        # Short/long-term memory, hierarchical
+    ├── context-engineering/           # U-curve, observation masking, prefix caching
+    ├── agent-harness/                 # Loop engineering, task budgets, outcome loops
+    ├── mcp/                           # Model Context Protocol, tool schemas
+    ├── multimodal/                    # Vision, image gen, audio, CLIP
+    ├── graph-engineering/             # State graphs, checkpointers, knowledge graphs, Graph RAG
+    └── typescript/                    # TypeScript examples (chat, RAG, agents)
 ```
 
 ## Key Concepts Summary
@@ -567,20 +539,9 @@ llm-engineering-playground/
 ❌ Not monitoring in production (surprise failures)
 ❌ One-size-fits-all approach (suboptimal results)
 
-## Capstone Project
-
-After completing all modules, build the **Knowledge Assistant** — a full-stack LLM app that wires every module together:
-
-```
-RAG (02) + Caching (06) + Memory (11) + Guardrails (10) + Observability (08) + Evaluation (04)
-```
-
-📁 Location: [`capstone/`](capstone/)  
-▶ Quick start: `cd capstone && python seed_knowledge.py && uvicorn app:app --port 8000`
-
 ## Start Learning
 
-1. **Complete the capstone**: run the Knowledge Assistant end-to-end
+1. **Browse the Appendix**: pick a topic from the [Appendix index](appendix/README.md)
 2. **Contribute**: fix a broken example or add an exercise — see [CONTRIBUTING.md](CONTRIBUTING.md)
 3. **Stay current**: [arXiv cs.CL](https://arxiv.org/list/cs.CL/recent), Hugging Face blog, LangChain changelog
 4. **Specialize**: dive deeper into whichever module is most relevant to your work
