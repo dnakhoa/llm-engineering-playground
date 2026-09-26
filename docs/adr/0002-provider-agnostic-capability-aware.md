@@ -1,0 +1,3 @@
+# Stay provider-agnostic, with a provider layer that knows each model's capabilities
+
+Most 2026 breakout repos are Claude-only. We keep supporting multiple providers because comparing them is the evidence behind the evals and cost lessons. Models now disagree on basic parameters: current Claude models reject a non-default `temperature`, and some OpenAI models require the Responses API for tool calls. So the provider layer has to know what each model supports and drop or translate parameters, rather than passing one set of arguments through. This replaces `shared/provider.py`'s blanket `temperature=0.7` default.
