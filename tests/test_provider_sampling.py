@@ -103,7 +103,7 @@ def test_an_unregistered_model_is_refused_before_any_request_is_built():
     transport = StubTransport()
     with pytest.raises(KeyError):
         complete(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo",  # historical-exception: retired ID on purpose
             messages=[Message.user("hi")],
             transport=transport,
             registry=REGISTRY,

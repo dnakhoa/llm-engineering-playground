@@ -73,8 +73,8 @@ def test_lookup_by_id_and_unknown_model_error():
     spec = REGISTRY.get("claude-sonnet-5")
     assert spec.provider == "anthropic"
     with pytest.raises(KeyError) as excinfo:
-        REGISTRY.get("gpt-4o-mini")
-    assert "gpt-4o-mini" in str(excinfo.value)
+        REGISTRY.get("gpt-4o-mini")  # historical-exception: retired ID on purpose
+    assert "gpt-4o-mini" in str(excinfo.value)  # historical-exception
 
 
 def test_cost_is_computed_from_registry_prices():
