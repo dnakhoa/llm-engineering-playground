@@ -1,0 +1,8 @@
+{
+  "$comment": "Acme Notes' seed accounts. Every name is invented; the Backend holds no people, emails or payment details.",
+  "accounts": [
+    {"account_id": "acct_1001", "name": "Juniper Lane Bakery", "plan": "free", "seats": 1},
+    {"account_id": "acct_1002", "name": "Northwind Studio", "plan": "pro", "seats": 1},
+    {"account_id": "acct_1003", "name": "Harbor Robotics Club", "plan": "team", "seats": 8}
+  ]
+}
