@@ -28,7 +28,12 @@ Contributions are welcome — bug fixes, better examples, new exercises, improve
   only ever shrinks
 - No dangling internal links. `pytest tests/test_repo_layout.py` checks every relative
   link in Markdown and notebook markdown cells (`python tests/link_check.py` lists them)
-- Appendix code reaches `shared/` and the root `.env` from its own folder.
+- Appendix Python calls models through the provider layer — `from llm import ask`, or
+  `complete()` — with current model IDs from `llm/models.json`, and never hands a
+  `temperature` straight to a vendor SDK. `pytest tests/test_appendix_code.py` checks
+  all three; the few pages that need a vendor-only feature (images, audio, streaming,
+  cache breakpoints) are listed in that test with the reason
+- Appendix code reaches `llm/`, `shared/` and the root `.env` from its own folder.
   `pytest tests/test_appendix_paths.py` evaluates every script's and notebook's
   `sys.path` and `load_dotenv` paths where the file sits, so build them from `__file__`
   (scripts) or relative to the notebook's folder, with `os.path` or `pathlib`
