@@ -18,10 +18,16 @@ from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
-from provider import get_llm_client
+# The provider layer (llm/) and the .env file live at the repo root.
+ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+sys.path.insert(0, ROOT)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(ROOT, '.env'))
+except ImportError:
+    pass
 
-client, model = get_llm_client()
+from llm import ask   # any model in llm/models.json; LLM_MODEL or your key picks it
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. NOVELTY GATE — LOOP UNTIL DRY
@@ -267,19 +273,11 @@ def demo_adversarial_verify():
         Simulates an LLM voter. True = claim is valid.
         In production: call LLM with "try to refute this claim".
         """
-        # Use client to call LLM
-        response = client.chat.completions.create(
-            model=model,
-            max_tokens=10,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Is this claim accurate? Answer only YES or NO.\n"
-                    f"Claim: {claim}"
-                )
-            }]
-        )
-        answer = response.choices[0].message.content.strip().upper()
+        # One independent call per voter, through the provider layer
+        answer = ask(
+            f"Is this claim accurate? Answer only YES or NO.\nClaim: {claim}",
+            max_output_tokens=10,
+        ).strip().upper()
         return "YES" in answer
 
     def adversarial_verify(claim: str, n_voters: int = 3) -> bool:

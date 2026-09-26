@@ -51,6 +51,7 @@ class TestDenylistDataFile:
         "sample, expected_id",
         [
             ('model="gpt-4o-mini"', "gpt-4o-mini"),
+            ('model="gpt-4o-mini-transcribe"', "gpt-4o-mini"),
             ('model="gpt-3.5-turbo"', "gpt-3.5-turbo"),
             ('model = "gpt-4"', "gpt-4-as-default"),
             ("meta-llama/Llama-2-7b-chat-hf", "llama-2"),
@@ -76,6 +77,7 @@ class TestDenylistDataFile:
             'model="gpt-5.1"',
             'model="claude-sonnet-5"',
             'model="llama3.2"',
+            'model="gpt-4o-mini-tts"',  # the current text-to-speech model, not gpt-4o-mini
             "from langchain_openai import ChatOpenAI",
             "client.responses.create(model=model, tools=tools)",
             "MCP protocol version 2026-07-28",

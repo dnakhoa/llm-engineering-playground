@@ -9,10 +9,33 @@ import time
 import base64
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
-from provider import get_llm_client
+# The provider layer (llm/) and the .env file live at the repo root.
+ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+sys.path.insert(0, ROOT)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(ROOT, '.env'))
+except ImportError:
+    pass
 
-client, model = get_llm_client()
+from llm import CallOptions, Message, complete, default_model, load_registry
+from llm.transport import HttpTransport
+
+REGISTRY = load_registry()          # llm/models.json: current IDs, prices, capabilities
+CHEAPEST = min(REGISTRY.models, key=lambda spec: spec.input_price_per_mtok)
+
+
+def call(messages, *, system=None, **options):
+    """One call through the provider layer, on the model your .env selects."""
+    model = default_model(REGISTRY)
+    return complete(
+        model=model,
+        messages=messages,
+        system=system,
+        options=CallOptions(**options),
+        transport=HttpTransport(provider=REGISTRY.get(model).provider),
+        registry=REGISTRY,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -53,8 +76,8 @@ def demo_tokens():
         # Practical: estimate cost before calling API
         long_text = "word " * 1000
         token_count = len(enc.encode(long_text))
-        cost_estimate = (token_count / 1_000_000) * 0.15  # gpt-4o-mini pricing
-        print(f"\n  1000-word text: {token_count:,} tokens ≈ ${cost_estimate:.4f} (input, gpt-4o-mini)")
+        cost_estimate = CHEAPEST.cost_usd(input_tokens=token_count, output_tokens=0)
+        print(f"\n  1000-word text: {token_count:,} tokens ≈ ${cost_estimate:.4f} (input, {CHEAPEST.model_id})")
 
     except ImportError:
         print("  tiktoken not installed: pip install tiktoken")
@@ -135,45 +158,39 @@ def demo_api_anatomy():
 
     # A complete call showing every element
     start = time.time()
-    response = client.chat.completions.create(
-        model=model,
-        temperature=0.3,
-        max_tokens=200,
+    response = call(
+        # System prompt — instructions, permanent context, constraints
+        system=(
+            "You are a concise technical tutor. "
+            "Explain concepts in 2-3 sentences max. "
+            "Use a concrete analogy."
+        ),
         messages=[
-            # System prompt — instructions, permanent context, constraints
-            {
-                "role": "system",
-                "content": (
-                    "You are a concise technical tutor. "
-                    "Explain concepts in 2-3 sentences max. "
-                    "Use a concrete analogy."
-                )
-            },
             # Conversation history (simulating a prior turn)
-            {"role": "user",      "content": "What is a neural network?"},
-            {"role": "assistant", "content": "A neural network is a system of interconnected nodes..."},
+            Message.user("What is a neural network?"),
+            Message.assistant("A neural network is a system of interconnected nodes..."),
             # Current user message — always last
-            {"role": "user",      "content": "And what is a transformer?"}
-        ]
+            Message.user("And what is a transformer?"),
+        ],
+        max_output_tokens=200,
+        temperature=0.3,  # dropped, with a reason, for models that reject it
     )
     latency_ms = (time.time() - start) * 1000
 
-    text         = response.choices[0].message.content
-    tokens_in    = response.usage.prompt_tokens
-    tokens_out   = response.usage.completion_tokens
-    finish       = response.choices[0].finish_reason
+    tokens_in  = response.usage.input_tokens
+    tokens_out = response.usage.output_tokens
 
-    print(f"  Response:     {text[:150]}...")
+    print(f"  Model:        {response.model}")
+    print(f"  Response:     {response.text[:150]}...")
     print(f"  Tokens in:    {tokens_in}")
     print(f"  Tokens out:   {tokens_out}")
     print(f"  Total tokens: {tokens_in + tokens_out}")
-    print(f"  Finish reason: {finish}  (stop=natural end, length=hit max_tokens)")
+    print(f"  Stop reason:  {response.stop_reason}  (end_turn=natural end, max_tokens=hit the limit)")
     print(f"  Latency:      {latency_ms:.0f}ms")
-
-    # Cost calculation
-    input_cost  = (tokens_in  / 1_000_000) * 0.15   # gpt-4o-mini pricing
-    output_cost = (tokens_out / 1_000_000) * 0.60
-    print(f"  Estimated cost: ${input_cost + output_cost:.6f}")
+    # Cost from the registry's prices for this model
+    print(f"  Cost:         ${response.cost_usd:.6f}")
+    for note in response.adjustments:
+        print(f"  Layer:        {note}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -183,32 +200,29 @@ def demo_api_anatomy():
 def demo_temperature():
     print("\n=== Demo 4: Temperature Effect ===")
 
+    # Current reasoning models (Claude Opus 4.7 and later, GPT-6) reject a
+    # non-default temperature; effort is their control. The provider layer drops
+    # it for them and says why, so this demo only varies on models that accept it.
+    spec = REGISTRY.get(default_model(REGISTRY))
+    if not spec.accepts_sampling_params:
+        print(f"  {spec.model_id} does not act on temperature: {spec.sampling_note}")
+        print("  Set LLM_MODEL to a model that does (see llm/models.json) to see the effect.")
+        return
+
     prompt = "Give me one creative name for a coffee shop."
+    unique = {}
+    for temperature in (0.0, 1.0):
+        print(f"\n  temperature={temperature}:")
+        names = set()
+        for _ in range(3):
+            r = call([Message.user(prompt)], temperature=temperature, max_output_tokens=30)
+            name = r.text.strip()
+            names.add(name)
+            print(f"    '{name}'")
+        unique[temperature] = len(names)
 
-    print("  temperature=0.0 (deterministic — same every time):")
-    results_low = set()
-    for _ in range(3):
-        r = client.chat.completions.create(
-            model=model, temperature=0.0, max_tokens=30,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        name = r.choices[0].message.content.strip()
-        results_low.add(name)
-        print(f"    '{name}'")
-
-    print(f"\n  temperature=1.0 (varied — different every time):")
-    results_high = set()
-    for _ in range(3):
-        r = client.chat.completions.create(
-            model=model, temperature=1.0, max_tokens=30,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        name = r.choices[0].message.content.strip()
-        results_high.add(name)
-        print(f"    '{name}'")
-
-    print(f"\n  Unique responses at temp=0.0: {len(results_low)}/3 (expect 1)")
-    print(f"  Unique responses at temp=1.0: {len(results_high)}/3 (expect 3)")
+    print(f"\n  Unique responses at temp=0.0: {unique[0.0]}/3 (expect 1)")
+    print(f"  Unique responses at temp=1.0: {unique[1.0]}/3 (expect 3)")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -222,7 +236,7 @@ def estimate_cost(
 ) -> dict:
     """
     Estimate the cost of a single LLM API call.
-    Prices are approximate — check provider docs for current rates.
+    Prices are the registry's standard rates; the registry names each source.
     """
     try:
         import tiktoken
@@ -233,27 +247,11 @@ def estimate_cost(
 
     output_tokens = int(expected_output_words * 1.3)
 
-    # Approximate pricing per 1M tokens (input/output), mid-2026.
-    # Always re-check current rates — pricing moves faster than course material.
-    pricing = {
-        "gpt-4o-mini":       (0.15,   0.60),
-        "gpt-4o":            (2.50,  10.00),
-        "gpt-4.1":           (2.00,   8.00),
-        "claude-haiku-4-5":  (1.00,   5.00),
-        "claude-sonnet-5":   (3.00,  15.00),
-        "claude-opus-5":     (5.00,  25.00),
-        "claude-fable-5":   (10.00,  50.00),
-    }
-
-    # Normalize model name for lookup
-    lookup = next((k for k in pricing if k in model_name.lower()), None)
-    if lookup:
-        price_in, price_out = pricing[lookup]
-    else:
-        price_in, price_out = 2.50, 10.00  # default: gpt-4o
-
-    input_cost  = (input_tokens  / 1_000_000) * price_in
-    output_cost = (output_tokens / 1_000_000) * price_out
+    # Prices per 1M tokens come from the model registry (llm/models.json), which
+    # records the vendor page and date each price was read from.
+    spec = REGISTRY.get(model_name)
+    input_cost  = spec.cost_usd(input_tokens=int(input_tokens), output_tokens=0)
+    output_cost = spec.cost_usd(input_tokens=0, output_tokens=output_tokens)
 
     return {
         "model": model_name,
@@ -275,7 +273,7 @@ def demo_cost_estimator():
         "The user has the following issue: " + "I can't log into my account. " * 5
     )
 
-    for m in ["gpt-4o-mini", "gpt-4o", "claude-sonnet-5", "claude-opus-5"]:
+    for m in REGISTRY.ids():
         est = estimate_cost(m, sample_input, expected_output_words=150)
         print(
             f"  {m:<25} | in={est['input_tokens']:>5} tok | "
@@ -286,7 +284,7 @@ def demo_cost_estimator():
     # Scale calculation
     print("\n  Scale: 5,000 conversations/day with 500-word context, 150-word response:")
     big_input = "word " * 500
-    for m in ["gpt-4o-mini", "gpt-4o"]:
+    for m in (CHEAPEST.model_id, "claude-sonnet-5"):
         est = estimate_cost(m, big_input, expected_output_words=150)
         daily = est["total_cost_usd"] * 5000
         monthly = daily * 30
@@ -313,5 +311,5 @@ if __name__ == "__main__":
     print("  Tokens — the unit of cost, context, and capacity")
     print("  Embeddings — meaning as geometry; power behind semantic search")
     print("  Context window — stateless; you re-send everything each call")
-    print("  Temperature — 0.0 for deterministic, 0.7 for creative")
+    print("  Temperature — only some models act on it; reasoning models use effort")
     print("  Cost — input is cheap, output is expensive; right-size your model")

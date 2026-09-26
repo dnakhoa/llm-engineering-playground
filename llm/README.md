@@ -85,6 +85,23 @@ registry pins them to that surface. A `ToolSpec` becomes an Anthropic
 `input_schema`, an OpenAI `parameters`, or a Gemini `functionDeclarations`
 entry; calls come back as normalized `ToolCall`s whichever provider answered.
 
+## One line, for scripts and notebooks
+
+The Appendix calls `ask()`: one user turn in, the answer text out, still through
+`complete()`, so the same drops and translations apply.
+
+```python
+from llm import ask, default_model
+
+print(default_model())          # which model will answer
+print(ask("What is 2+2?", system="Answer in one word.", temperature=0.2))
+```
+
+The model is `LLM_MODEL` when set (a registry ID), else the cheapest registry
+model of `LLM_PROVIDER`, else the cheapest model of the first provider whose key
+is in the environment. Load your `.env` first; the layer reads `os.environ` only.
+Use `complete()` when you need tool calls, usage, cost or the adjustments.
+
 ## Offline: record once, replay free
 
 ```python
@@ -125,5 +142,6 @@ reporting green for behaviour nobody ran.
 - The layer speaks raw JSON over a `Transport` rather than using vendor SDKs,
   because the outgoing request is the seam the Checks assert on and the thing
   the replay transport records. An SDK would hide it.
-- `shared/provider.py` is the course's old provider helper. It still exists and
-  is still used by the Appendix modules; it is retired separately.
+- `shared/provider.py` is the course's old provider helper. The Appendix code
+  and notebooks no longer use it (ticket 14); `demo.py` and the MCP example still
+  do until they move, and then it is deleted.
