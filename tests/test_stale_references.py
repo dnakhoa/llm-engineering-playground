@@ -62,6 +62,8 @@ class TestDenylistDataFile:
                 "openai-chat-completions-tool-calls",
             ),
             ("MCP protocol version 2025-06-18", "mcp-2025-06-18"),
+            ("https://modelcontextprotocol.io/specification/2025-06-18", "mcp-2025-06-18"),
+            ('"mcp_spec": "2025-06-18",', "mcp-2025-06-18"),
         ],
     )
     def test_denylisted_reference_is_detected(self, entries, sample, expected_id):
@@ -77,6 +79,8 @@ class TestDenylistDataFile:
             "from langchain_openai import ChatOpenAI",
             "client.responses.create(model=model, tools=tools)",
             "MCP protocol version 2026-07-28",
+            "Last verified 2025-06-18 against the vendor docs.",
+            "## 2025-06-18 — release notes",
         ],
     )
     def test_current_reference_is_not_flagged(self, entries, sample):

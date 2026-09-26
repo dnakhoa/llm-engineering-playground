@@ -6,7 +6,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The denylist is a data file with a replacement hint for each entry.
 - [ ] Adding a new file that contains a denylisted reference fails the test with the file, line and hint.

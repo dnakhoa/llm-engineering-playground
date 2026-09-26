@@ -30,13 +30,13 @@
       "id": "langchain-legacy-imports",
       "pattern": "(?m)^\\s*(?:from|import)\\s+langchain\\.(?:chains|llms|embeddings|chat_models|agents|vectorstores|memory|document_loaders|text_splitter|prompts|tools|docstore|output_parsers)\\b",
       "description": "Pre-1.0 LangChain import paths, removed from the current package layout.",
-      "hint": "Import from the split packages (langchain_openai, langchain_core, langchain_community) or drop the framework — the Flagship Agent is built without one (ADR 0003)."
+      "hint": "Import from the split packages (langchain_openai, langchain_core, langchain_community) or drop the framework \u2014 the Flagship Agent is built without one (ADR 0003)."
     },
     {
       "id": "langchain-legacy-chains",
       "pattern": "\\b(?:LLMChain|ConversationChain|ConversationalRetrievalChain|ConversationBufferMemory|RetrievalQA|SimpleSequentialChain|SequentialChain|load_qa_chain|initialize_agent|AgentExecutor)\\b",
       "description": "Pre-1.0 LangChain chain and agent constructors.",
-      "hint": "Use LCEL / LangGraph in the Appendix framework pages, or plain provider calls — the Flagship Agent is built without a framework (ADR 0003)."
+      "hint": "Use LCEL / LangGraph in the Appendix framework pages, or plain provider calls \u2014 the Flagship Agent is built without a framework (ADR 0003)."
     },
     {
       "id": "openai-assistants-api",
@@ -52,8 +52,8 @@
     },
     {
       "id": "mcp-2025-06-18",
-      "pattern": "2025-06-18",
-      "description": "Superseded MCP specification version.",
+      "pattern": "(?i)(?:\\bmcp|model context protocol|specification/|protocolversion)[^\\n]{0,60}2025-06-18",
+      "description": "Superseded MCP specification version (only in an MCP context, so an unrelated date is not flagged).",
       "hint": "Target MCP 2026-07-28: stateless requests, server/discover, InputRequiredResult and Tasks."
     }
   ]

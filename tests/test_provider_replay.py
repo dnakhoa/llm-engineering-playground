@@ -16,15 +16,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from provider import load_registry  # noqa: E402
-from provider.call import CallOptions, complete  # noqa: E402
-from provider.replay import (  # noqa: E402
+from llm import load_registry  # noqa: E402
+from llm.call import CallOptions, complete  # noqa: E402
+from llm.replay import (  # noqa: E402
     RecordingTransport,
     ReplayMismatchError,
     ReplayTransport,
 )
-from provider.testing import StubTransport  # noqa: E402
-from provider.types import Message  # noqa: E402
+from llm.testing import StubTransport  # noqa: E402
+from llm.types import Message  # noqa: E402
 
 REGISTRY = load_registry()
 MODEL = "claude-sonnet-5"

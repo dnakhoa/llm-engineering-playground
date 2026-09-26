@@ -82,7 +82,7 @@ class Registry:
         known = ", ".join(spec.model_id for spec in self.models)
         raise KeyError(
             "{!r} is not in the model registry. Known models: {}. "
-            "Add it to provider/models.json with its vendor source and "
+            "Add it to llm/models.json with its vendor source and "
             "verification date.".format(model_id, known)
         )
 

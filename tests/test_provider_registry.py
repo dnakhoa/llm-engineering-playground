@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from provider import ApiSurface, load_registry  # noqa: E402
+from llm import ApiSurface, load_registry  # noqa: E402
 
 REGISTRY = load_registry()
 

@@ -6,8 +6,8 @@ One call, many providers. Your Flagship Agent calls `complete()`; this layer
 decides what each model will actually accept and sends that.
 
 ```python
-from provider import CallOptions, Message, complete
-from provider.transport import HttpTransport
+from llm import CallOptions, Message, complete
+from llm.transport import HttpTransport
 
 answer = complete(
     model="claude-sonnet-5",
@@ -75,15 +75,20 @@ entry; calls come back as normalized `ToolCall`s whichever provider answered.
 ## Offline: record once, replay free
 
 ```python
-from provider import RecordingTransport, ReplayTransport
-from provider.transport import HttpTransport
+from llm import RecordingTransport, ReplayTransport
+from llm.transport import HttpTransport
 
-recorder = RecordingTransport(HttpTransport(provider="anthropic"), "cases/refund.json")
+recorder = RecordingTransport(HttpTransport(provider="anthropic"), "refund.recording.json")
 ...                                     # run the Case once, on your own key
 recorder.save()
 
-offline = ReplayTransport("cases/refund.json")   # no key, no network, for ever
+offline = ReplayTransport("refund.recording.json")   # no key, no network, for ever
 ```
+
+A recording holds the full prompt, every tool argument and every tool result, so
+`*.recording.json` is gitignored everywhere. The only recordings committed are the
+reviewed ones the Offline Checks replay, in `company/recordings/`. Read a recording
+before you move it there.
 
 A replay answers only a request it has actually seen. Change the prompt, the
 tools, or an option that reaches the wire, and it raises `ReplayMismatchError`

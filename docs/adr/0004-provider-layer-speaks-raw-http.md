@@ -1,0 +1,3 @@
+# The provider layer speaks raw HTTP JSON, not vendor SDKs
+
+The spec listed the `anthropic`, `openai` and `google-genai` SDKs as dependencies. The provider layer (`llm/`) builds each vendor's request body itself and sends it through a `Transport`. We did this because the outgoing request is the seam the tests assert on (ADR 0002) and the thing the replay transport records, and an SDK would hide that request. The cost is that we track each vendor's wire format, including the `anthropic-version` header, ourselves. The model registry's `verified_on` dates and the per-model outgoing-request tests are how we notice when a format drifts.

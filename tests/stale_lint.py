@@ -66,6 +66,11 @@ EXCLUDED_PATHS = frozenset(
         "tests/stale_lint_denylist.json",
         "tests/stale_lint_baseline.txt",
         "tests/fixtures/stale_lint",
+        # Planning records (spec, tickets, ADRs) name retired APIs as their subject
+        # matter and are never "refreshed"; they are not course content.
+        "docs/specs",
+        "docs/tickets",
+        "docs/adr",
     }
 )
 

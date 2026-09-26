@@ -49,9 +49,6 @@ capstone/README.md
 capstone/app.py
 capstone/observability.py
 demo.py
-docs/specs/graded-attacked-budgeted.md
-docs/tickets/graded-attacked-budgeted/02-stale-reference-lint.md
-docs/tickets/graded-attacked-budgeted/15-appendix-refresh-mcp-frameworks.md
 shared/provider.py
 typescript/agent.ts
 typescript/chat.ts

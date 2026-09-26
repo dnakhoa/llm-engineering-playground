@@ -17,11 +17,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from provider import ApiSurface, load_registry  # noqa: E402
-from provider.call import complete  # noqa: E402
-from provider.surfaces import openai_responses  # noqa: E402
-from provider.testing import StubTransport  # noqa: E402
-from provider.types import (  # noqa: E402
+from llm import ApiSurface, load_registry  # noqa: E402
+from llm.call import complete  # noqa: E402
+from llm.surfaces import openai_responses  # noqa: E402
+from llm.testing import StubTransport  # noqa: E402
+from llm.types import (  # noqa: E402
     STOP_TOOL_USE,
     Message,
     ToolCall,

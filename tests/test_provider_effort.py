@@ -13,10 +13,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from provider import ApiSurface, load_registry  # noqa: E402
-from provider.call import CallOptions, complete  # noqa: E402
-from provider.testing import StubTransport  # noqa: E402
-from provider.types import ACTION_DROPPED, ACTION_TRANSLATED, Message  # noqa: E402
+from llm import ApiSurface, load_registry  # noqa: E402
+from llm.call import CallOptions, complete  # noqa: E402
+from llm.testing import StubTransport  # noqa: E402
+from llm.types import ACTION_DROPPED, ACTION_TRANSLATED, Message  # noqa: E402
 
 REGISTRY = load_registry()
 ALL_MODELS = REGISTRY.models

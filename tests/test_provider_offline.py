@@ -17,12 +17,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from provider import load_registry  # noqa: E402
-from provider.call import CallOptions, complete  # noqa: E402
-from provider.replay import RecordingTransport, ReplayTransport  # noqa: E402
-from provider.testing import StubTransport  # noqa: E402
-from provider.transport import HttpTransport, TransportError  # noqa: E402
-from provider.types import Message, ToolSpec  # noqa: E402
+from llm import load_registry  # noqa: E402
+from llm.call import CallOptions, complete  # noqa: E402
+from llm.replay import RecordingTransport, ReplayTransport  # noqa: E402
+from llm.testing import StubTransport  # noqa: E402
+from llm.transport import HttpTransport, TransportError  # noqa: E402
+from llm.types import Message, ToolSpec  # noqa: E402
 
 REGISTRY = load_registry()
 

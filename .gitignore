@@ -67,3 +67,9 @@ coverage/
 
 # Agent tooling
 .mimocode/
+
+# Model recordings hold full prompts, tool arguments and tool results.
+# Ignored by default; only reviewed recordings for Offline Checks are committed,
+# and they live in company/recordings/.
+*.recording.json
+!company/recordings/*.recording.json

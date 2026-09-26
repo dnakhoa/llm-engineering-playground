@@ -90,10 +90,20 @@ class HttpTransport:
             ) from error
 
 
+#: Other names a Reader's existing `.env` may use for the same key. The vendor's own
+#: name is read first; `GROK_API_KEY` is what `.env.example` shipped before this layer.
+_KEY_ALIASES = {
+    "XAI_API_KEY": ("GROK_API_KEY",),
+    "GEMINI_API_KEY": ("GOOGLE_API_KEY",),
+}
+
+
 def _require_key(env_var: str) -> str:
-    key: Optional[str] = os.environ.get(env_var)
-    if not key:
-        raise TransportError(
-            "{} is not set. Offline Checks need no key; a live run does.".format(env_var)
-        )
-    return key
+    names = (env_var,) + _KEY_ALIASES.get(env_var, ())
+    for name in names:
+        key: Optional[str] = os.environ.get(name)
+        if key:
+            return key
+    raise TransportError(
+        "{} is not set. Offline Checks need no key; a live run does.".format(" or ".join(names))
+    )

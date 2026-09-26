@@ -6,7 +6,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md · ADR 0002
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Registry entries are verified against vendor docs on the day they're written, and each entry notes its source and verification date. Unverified models are left out.
 - [ ] For every registry model, a stub-transport test shows that temperature is never sent where it's rejected, and that effort is mapped to that provider's control.

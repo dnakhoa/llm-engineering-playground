@@ -8,8 +8,8 @@ not pass one set of arguments through. It reads the model registry, drops or
 translates whatever the chosen model cannot act on, and says so in
 ``Response.adjustments`` instead of swallowing it.
 
-    from provider import CallOptions, Message, complete
-    from provider.transport import HttpTransport
+    from llm import CallOptions, Message, complete
+    from llm.transport import HttpTransport
 
     answer = complete(
         model="claude-sonnet-5",
