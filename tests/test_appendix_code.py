@@ -198,27 +198,42 @@ def test_chat_model_ids_are_in_the_registry(path):
     assert unknown == [], f"{_relative(path)} names models missing from llm/models.json"
 
 
+#: Vendor SDK methods that send a request, and LangChain's chat-model wrappers. A
+#: temperature passed to one of these reaches the model whether it accepts it or not.
+_VENDOR_METHODS = frozenset({"create", "stream", "parse", "generate_content"})
+_VENDOR_WRAPPERS = frozenset({"ChatOpenAI", "ChatAnthropic", "ChatGoogleGenerativeAI"})
+#: Building a kwargs dict for `create(**kwargs)` counts as sending it.
+_KWARGS_BUILDERS = frozenset({"dict"})
+
+
 def _temperature_sent_directly(source: str) -> list[int]:
-    """Lines where a temperature reaches a vendor call without going through llm/."""
+    """Lines where a temperature reaches a vendor API without going through llm/.
+
+    That is a temperature keyword on a vendor SDK call or chat-model wrapper, or a
+    "temperature" key in a dict literal (a kwargs dict or a raw request body).
+    Anything else — `ask`, `CallOptions`, a helper that forwards to them, or a local
+    Hugging Face `generate` — is not a request to a hosted model.
+    """
     tree = ast.parse(source)
     lines = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if not any(k.arg == "temperature" for k in node.keywords):
-            continue
-        func = node.func
-        name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
-        if name in {"ask", "CallOptions", "generate", "GenerationConfig"}:
-            # llm/ drops it where rejected; `generate` is a local Hugging Face model.
-            continue
-        lines.append(node.lineno)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Dict):
-            for key in node.keys:
-                if isinstance(key, ast.Constant) and key.value == "temperature":
-                    lines.append(node.lineno)
+        if isinstance(node, ast.Call) and any(k.arg == "temperature" for k in node.keywords):
+            func = node.func
+            if (isinstance(func, ast.Attribute) and func.attr in _VENDOR_METHODS) or (
+                isinstance(func, ast.Name) and func.id in _VENDOR_WRAPPERS | _KWARGS_BUILDERS
+            ):
+                lines.append(node.lineno)
+        elif isinstance(node, ast.Dict):
+            if any(isinstance(k, ast.Constant) and k.value == "temperature" for k in node.keys):
+                lines.append(node.lineno)
     return sorted(lines)
+
+
+def _typescript_temperatures(source: str) -> list[int]:
+    """Lines of TypeScript code (comments aside) that set a temperature."""
+    code = re.sub(r"/\*.*?\*/", lambda m: re.sub(r"[^\n]", " ", m.group(0)), source, flags=re.S)
+    code = re.sub(r"//[^\n]*", "", code)
+    return [_line(code, m.start()) for m in re.finditer(r"\btemperature\s*:", code)]
 
 
 @pytest.mark.parametrize("path", CODE, ids=IDS)
@@ -227,7 +242,7 @@ def test_no_temperature_goes_straight_to_a_vendor_api(path):
     for where, source in code_of(path):
         if path.suffix == ".ts":
             # TypeScript has no provider layer to drop it, so it never sends one.
-            found += [f"line {_line(source, m.start())}" for m in re.finditer(r"\btemperature\s*:", source)]
+            found += [f"line {n}" for n in _typescript_temperatures(source)]
             continue
         try:
             found += [f"{where}line {n}" for n in _temperature_sent_directly(source)]
@@ -253,7 +268,19 @@ def test_the_temperature_check_catches_a_direct_call():
     assert _temperature_sent_directly(source) == [1]
 
 
+def test_the_temperature_check_catches_a_kwargs_dict():
+    source = 'kwargs = dict(model=m, temperature=0)\nbody = {"model": m, "temperature": 0}\n'
+
+    assert _temperature_sent_directly(source) == [1, 2]
+
+
 def test_the_temperature_check_allows_the_provider_layer():
-    source = 'ask("hi", temperature=0.7)\nCallOptions(temperature=0.2)\n'
+    source = 'ask("hi", temperature=0.7)\nCallOptions(temperature=0.2)\nllm(p, temperature=0.7)\n'
 
     assert _temperature_sent_directly(source) == []
+
+
+def test_the_typescript_check_ignores_comments():
+    source = '// never send a temperature: it is rejected\nconst r = { model, temperature: 0.7 };\n'
+
+    assert _typescript_temperatures(source) == [2]
