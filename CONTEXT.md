@@ -37,7 +37,7 @@ The fictional business the Flagship Agent works for: Acme Notes, a note-taking S
 _Avoid_: client, customer org, tenant
 
 **Case**:
-One customer request, from arrival to resolution.
+One customer request, from arrival to resolution. A Case declares which Actions it lets the agent use; the agent is offered only those.
 _Avoid_: ticket, conversation, session, request
 
 **Knowledge Base**:

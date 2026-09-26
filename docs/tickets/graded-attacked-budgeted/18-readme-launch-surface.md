@@ -18,3 +18,13 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 - [ ] Every README link and badge resolves to a real target.
 - [ ] The Drop template exists, and the first "What's New" entry is written.
 - [ ] The launch checklist lists each outward-facing step as needing the maintainer's go-ahead.
+
+## Comments
+
+**Reach additions, 2026-09-26** (from studying why ai-engineering-from-scratch has 58k stars and 10k forks):
+
+- [ ] **Goal-based entry table** above the fold: "I want my agent to… → start at Spine N". For example: survive prompt injection → 5; stop refunding the wrong amount → 3; cost less per Case → 6; answer from our docs → 2; go live → 7.
+- [ ] **"Add the Grader in 30 seconds"**: the one-command Grader install from ticket 11, placed next to the Offline quick start.
+- [ ] **Point of difference, said once, near the top**: the Checks grade *your own* agent against Backend state, not self-reported output. State it plainly, without superlatives.
+- [ ] **Readers' badges**: a short section showing the Reader result badge from ticket 11 and how to add it to your own repo.
+- [ ] **Invite contributions through the Drop**: the Drop template invites the community to submit a new attack Case or an incident Case by PR, with the best one credited in the next "What's New".

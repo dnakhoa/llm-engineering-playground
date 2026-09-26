@@ -19,3 +19,11 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 - [ ] A refund outside the window is refused by the Action.
 - [ ] A multi-turn Case that needs an earlier turn's detail passes.
 - [ ] All Knowledge Checks pass offline, and the Spine 1 Checks still pass.
+
+## Comments
+
+**Decision G2(a), 2026-09-26 (ADR 0005).** Each Case now declares its Actions:
+
+- [ ] A Case file lists the Actions it allows. The runner offers the agent only those, and a call to an undeclared Action is refused and recorded as attempted but not executed.
+- [ ] The upgrade-to-Pro Case declares `look_up_account` and `change_plan`. Adding `issue_refund` leaves its recording and its Offline Check unchanged. Test this explicitly: add the new Action, then replay the old Case.
+- [ ] The system prompt stays in the recording. Changing it *should* require re-recording, and the lesson says so.
