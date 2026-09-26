@@ -106,3 +106,6 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+      - name: Stale-reference lint (retired model IDs and dead APIs)
+        run: pytest tests/test_stale_references.py -v
