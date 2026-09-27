@@ -13,8 +13,6 @@ code, never by running it (the Appendix calls live APIs):
 4. No temperature is handed straight to a vendor API. Through `llm/` it is dropped
    for any model that rejects it; a direct call has no such guard.
 
-The MCP pages and `agentic_workflows.ipynb` belong to ticket 15 and are left out.
-
 Run: pytest tests/test_appendix_code.py -v
 """
 
@@ -38,9 +36,6 @@ from llm import load_registry  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APPENDIX = REPO_ROOT / "appendix"
-
-#: Refreshed by ticket 15 (MCP 2026-07-28 and agent frameworks), not here.
-LATER_BATCH = ("appendix/mcp/", "appendix/agent-frameworks/agentic_workflows.ipynb")
 
 CODE_SUFFIXES = (".py", ".ipynb", ".ts")
 
@@ -75,17 +70,12 @@ def _relative(path: Path) -> str:
     return path.relative_to(REPO_ROOT).as_posix()
 
 
-def _in_scope(relative: str) -> bool:
-    return not any(relative == p or relative.startswith(p) for p in LATER_BATCH)
-
-
 def appendix_code() -> list[Path]:
     return sorted(
         path
         for path in APPENDIX.rglob("*")
         if path.suffix in CODE_SUFFIXES
         and ".ipynb_checkpoints" not in path.parts
-        and _in_scope(_relative(path))
     )
 
 
@@ -143,7 +133,10 @@ def test_the_scan_sees_the_appendix_code():
     assert "appendix/foundations/llm_foundations.py" in IDS
     assert "appendix/rag/rag_systems.ipynb" in IDS
     assert "appendix/typescript/agent.ts" in IDS
-    assert not any(label.startswith("appendix/mcp/") for label in IDS)
+    # Ticket 15 brought the MCP pages and the frameworks notebook into the scan.
+    assert "appendix/mcp/mcp_example.py" in IDS
+    assert "appendix/mcp/servers/example_server.py" in IDS
+    assert "appendix/agent-frameworks/agentic_workflows.ipynb" in IDS
 
 
 def test_no_appendix_code_file_is_in_the_lint_baseline():
@@ -341,7 +334,6 @@ TEXT = sorted(
     for p in APPENDIX.rglob("*")
     if p.suffix in (".md", ".ipynb", ".py")
     and ".ipynb_checkpoints" not in p.parts
-    and _in_scope(_relative(p))
 )
 
 

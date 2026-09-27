@@ -129,9 +129,10 @@ jobs:
 
       # Everything tests/ imports beyond the standard library (tests/test_ci_installs.py
       # checks this line against those imports). python-dotenv reads .env.example the
-      # way the Appendix notebooks read a Reader's .env.
+      # way the Appendix notebooks read a Reader's .env. mcp is the MCP Python SDK the
+      # Appendix example server runs on (tests/test_appendix_mcp_frameworks.py).
       - name: Install dependencies
-        run: pip install pytest tiktoken python-dotenv
+        run: pip install pytest tiktoken python-dotenv "mcp>=2.2"
 
       - name: Run tests
         run: pytest tests/ -v
