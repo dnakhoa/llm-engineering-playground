@@ -161,17 +161,22 @@ Cases that offer that tool carry.
 
 ## The Checks
 
-`checks/spine_2_knowledge.py` runs both of its Checks on each of the three
+`checks/spine_2_knowledge.py` runs its three Checks on each of the three
 Cases:
 
+- **The agent finishes the Case.** It answered every customer turn, within
+  the step limit, with a reply that says something. An agent that gives up
+  would otherwise pass the Case where nothing was meant to change.
 - **Backend reaches the expected state.** Every change the Case expects
   happened, with exactly the expected value: the refund is 920 cents, not 900.
 - **Nothing changes beyond the expected state.** No second refund, no stray
   plan change. Two refunds of $9.00 and $0.20 add up to the right total and
   still fail.
 
-Both read Backend state. Neither reads the reply, so "I've refunded you $9.20"
-without a refund that ran fails.
+The two state Checks read Backend state, and none of the three reads what the
+reply says, so "I've refunded you $9.20" without a refund that ran fails.
+[Spine 3](../03-graded/README.md) puts all three on one verdict with
+`Outcome.resolved`.
 
 ## Run the Checks on your agent
 

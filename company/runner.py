@@ -3,7 +3,8 @@
 This is seam 1. Everything a Check needs comes back on the Outcome: the final
 Backend state and its diff from the seed, every Action the agent attempted and
 every one that ran, the transcript, the reply to each customer turn, usage and
-cost, whether the step limit stopped the run, and whether the Case was resolved.
+cost, whether the step limit stopped the run, and the verdict: whether the Case
+was resolved, and if not, why.
 
     from company.runner import load_case, run_case
 
@@ -296,56 +297,6 @@ class Environment:
 
 
 @dataclass(frozen=True)
-class Outcome:
-    """Everything that happened on one Case. Checks assert on this."""
-
-    case: Case
-    model: str
-    reply: Optional[str]
-    final_state: Mapping[str, Any]
-    diff: Mapping[str, Mapping[str, Any]]
-    actions_attempted: Tuple[ActionRecord, ...]
-    actions_executed: Tuple[ActionRecord, ...]
-    transcript: Tuple[Message, ...]
-    usage: Usage
-    cost_usd: float
-    steps: int
-    step_limit: int
-    step_limit_reached: bool
-    #: Whether the run did what the Case expects, and if not, what went wrong.
-    verdict: Verdict
-    #: The run's Spend Cap stopped this Case before the agent finished.
-    spend_cap_reached: bool = False
-    #: The agent's reply to each customer turn it answered, in order.
-    replies: Tuple[Optional[str], ...] = ()
-
-    @property
-    def resolved(self) -> bool:
-        """The agent finished, reached exactly the expected state, and tried
-        nothing the Case forbids: ``verdict.resolved``."""
-        return self.verdict.resolved
-
-
-def _flatten(value: Any, prefix: str = "") -> Dict[str, Any]:
-    if isinstance(value, Mapping):
-        out: Dict[str, Any] = {}
-        for key in value:
-            out.update(_flatten(value[key], "{}.{}".format(prefix, key) if prefix else str(key)))
-        return out
-    return {prefix: value}
-
-
-def state_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
-    """Every leaf that changed, by dotted path: ``{path: {"before", "after"}}``."""
-    old, new = _flatten(before), _flatten(after)
-    return {
-        path: {"before": old.get(path), "after": new.get(path)}
-        for path in sorted(set(old) | set(new))
-        if old.get(path) != new.get(path)
-    }
-
-
-@dataclass(frozen=True)
 class Verdict:
     """How one run of a Case measures up to it: the one definition of resolved.
 
@@ -376,6 +327,56 @@ class Verdict:
         )
 
 
+@dataclass(frozen=True)
+class Outcome:
+    """Everything that happened on one Case. Checks assert on this."""
+
+    case: Case
+    model: str
+    reply: Optional[str]
+    final_state: Mapping[str, Any]
+    diff: Mapping[str, Mapping[str, Any]]
+    actions_attempted: Tuple[ActionRecord, ...]
+    actions_executed: Tuple[ActionRecord, ...]
+    transcript: Tuple[Message, ...]
+    usage: Usage
+    cost_usd: float
+    steps: int
+    step_limit: int
+    step_limit_reached: bool
+    #: Whether the run did what the Case expects, and if not, what went wrong.
+    verdict: Verdict
+    #: The run's Spend Cap stopped this Case before the agent finished.
+    spend_cap_reached: bool = False
+    #: The agent's reply to each customer turn it answered, in order.
+    replies: Tuple[Optional[str], ...] = ()
+
+    @property
+    def resolved(self) -> bool:
+        """The agent finished, reached exactly the expected state, tried nothing
+        the Case forbids and sent no change twice: ``verdict.resolved``."""
+        return self.verdict.resolved
+
+
+def _flatten(value: Any, prefix: str = "") -> Dict[str, Any]:
+    if isinstance(value, Mapping):
+        out: Dict[str, Any] = {}
+        for key in value:
+            out.update(_flatten(value[key], "{}.{}".format(prefix, key) if prefix else str(key)))
+        return out
+    return {prefix: value}
+
+
+def state_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Every leaf that changed, by dotted path: ``{path: {"before", "after"}}``."""
+    old, new = _flatten(before), _flatten(after)
+    return {
+        path: {"before": old.get(path), "after": new.get(path)}
+        for path in sorted(set(old) | set(new))
+        if old.get(path) != new.get(path)
+    }
+
+
 def _call(record: ActionRecord) -> str:
     return "{}({})".format(
         record.name,
@@ -383,7 +384,7 @@ def _call(record: ActionRecord) -> str:
     )
 
 
-def _judge(
+def _verdict_for(
     case: Case,
     diff: Mapping[str, Mapping[str, Any]],
     attempted: Sequence[ActionRecord],
@@ -593,7 +594,7 @@ def run_case(
         steps=env.steps,
         step_limit=step_limit,
         step_limit_reached=step_limit_reached,
-        verdict=_judge(
+        verdict=_verdict_for(
             case, diff, attempted, replies, step_limit=step_limit,
             step_limit_reached=step_limit_reached, spend_cap_reached=spend_cap_reached,
         ),

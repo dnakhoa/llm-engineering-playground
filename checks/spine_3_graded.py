@@ -1,4 +1,14 @@
-"""Spine 3 (Graded) Checks."""
+"""Spine 3 (Graded) Checks.
+
+The Graded suite covers every Action built so far (look_up_account,
+change_plan, issue_refund) across four Cases, and grades what the agent
+*attempted* as well as what the Backend ended up as. Each state Check reports
+one part of the Outcome's ``verdict``, the same verdict ``Outcome.resolved``
+is read from, so a run these Checks fail is never counted as resolved.
+
+The judge rubric is the one live-only Check: an LLM-as-judge grades the reply
+against the Case's ``judge_rubric``. Offline, the Checks CLI skips it.
+"""
 from __future__ import annotations
 
 from company.runner import Outcome
