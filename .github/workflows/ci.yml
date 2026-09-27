@@ -127,8 +127,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Everything tests/ imports beyond the standard library (tests/test_ci_installs.py
+      # checks this line against those imports). python-dotenv reads .env.example the
+      # way the Appendix notebooks read a Reader's .env.
       - name: Install dependencies
-        run: pip install pytest tiktoken
+        run: pip install pytest tiktoken python-dotenv
 
       - name: Run tests
         run: pytest tests/ -v
