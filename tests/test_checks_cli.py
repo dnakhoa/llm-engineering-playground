@@ -26,7 +26,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from checks import CheckResult  # noqa: E402
 from checks.cli import main, parse_modules, run_checks  # noqa: E402
+from checks.suites import Suite  # noqa: E402
 from company.runner import RECORDINGS_DIR  # noqa: E402
 from llm.replay import ReplayTransport  # noqa: E402
 from tests.fixtures.checks_cli_suites import LOOP, SECOND, SUITES  # noqa: E402
@@ -250,18 +252,25 @@ def test_live_mode_prints_the_cap_and_asks_for_nothing(capsys, fake_http, never_
     assert out[-1] == "Passed through module 1 of 1."
 
 
+LOCAL = ["--mode", "live", "--model", "qwen3:8b", "--base-url", "http://localhost:11434/v1"]
+
+
+def _recording_suite(outcomes):
+    """Module 1's Case, with one Check that keeps the Outcome it is given."""
+
+    def keeps_the_outcome(outcome):
+        outcomes.append(outcome)
+        return CheckResult("outcome kept", True, "kept.")
+
+    return Suite(module=1, title="Loop", cases=("upgrade-to-pro",), checks=(keeps_the_outcome,))
+
+
 def test_a_local_server_needs_no_registry_entry_and_the_cap_does_not_apply(
     capsys, fake_http, never_asks
 ):
     code = main(
-        [
-            "--modules", "1",
-            "--mode", "live",
-            "--model", "qwen3:8b",
-            "--base-url", "http://localhost:11434/v1",
-            "--agent", AGENTS + ":claims_without_acting",
-            "--spend-cap", "0.000001",
-        ]
+        ["--modules", "1", "--agent", AGENTS + ":claims_without_acting", "--spend-cap", "0"]
+        + LOCAL
     )
 
     out = _lines(capsys.readouterr().out)
@@ -272,10 +281,37 @@ def test_a_local_server_needs_no_registry_entry_and_the_cap_does_not_apply(
     assert request.model == "qwen3:8b"
     assert request.base_url == "http://localhost:11434/v1"
     assert request.path == "/chat/completions"
-    # Priced at zero, so a tiny cap cannot stop it: the Case runs and is graded.
+    # A $0 Spend Cap refuses the first call of any run it applies to, because
+    # the cap is checked before every call. So the Case going out and being
+    # graded, rather than stopped, shows that no cap was applied.
+    assert "STOP" not in text
     assert "Stopped by the Spend Cap" not in text
     assert "FAIL  upgrade-to-pro" in text
     assert code == 1
+
+
+def test_a_local_server_is_priced_at_zero_and_runs_under_no_spend_cap(fake_http, never_asks):
+    outcomes = []
+    report = run_checks(
+        through=1,
+        agent=AGENTS + ":claims_without_acting",
+        mode="live",
+        model="qwen3:8b",
+        base_url="http://localhost:11434/v1",
+        spend_cap_usd=0,
+        suites=(_recording_suite(outcomes),),
+    )
+
+    (outcome,) = outcomes
+    # The call went out and was metered: the fake server reports 50,000 tokens
+    # in and 9,000 out, which any registry price would make cost something.
+    assert outcome.steps == 1
+    assert (outcome.usage.input_tokens, outcome.usage.output_tokens) == (50000, 9000)
+    assert outcome.cost_usd == 0
+    assert outcome.spend_cap_reached is False
+    assert report.spend_cap_usd is None
+    assert report.spent_usd == 0
+    assert report.stopped_by_spend_cap is False
 
 
 def test_a_local_server_cannot_run_offline(capsys):

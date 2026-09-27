@@ -99,7 +99,9 @@ print(ask("What is 2+2?", system="Answer in one word.", temperature=0.2))
 
 The model is `LLM_MODEL` when set (a registry ID), else the cheapest registry
 model of `LLM_PROVIDER`, else the cheapest model of the first provider whose key
-is in the environment. Load your `.env` first; the layer reads `os.environ` only.
+is in the environment. A value ending in `...`, like `.env.example`'s
+`sk-ant-...`, is a placeholder and doesn't count as a key. Load your `.env`
+first; the layer reads `os.environ` only.
 Use `complete()` when you need tool calls, usage, cost or the adjustments.
 
 ## Offline: record once, replay free

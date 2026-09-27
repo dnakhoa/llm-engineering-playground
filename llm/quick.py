@@ -14,7 +14,9 @@ Which model answers:
 1. ``LLM_MODEL``, when set. It must be a registry ID (``llm/models.json``).
 2. Otherwise the cheapest registry model of ``LLM_PROVIDER``, when set.
 3. Otherwise the cheapest registry model of the first provider whose API key
-   is in the environment.
+   is in the environment. A value ending in ``...`` is the ``.env.example``
+   placeholder, not a key, so ``cp .env.example .env`` and one real key picks
+   that key's provider.
 
 Load your ``.env`` before calling it; this module reads ``os.environ`` only.
 """
@@ -46,6 +48,15 @@ _PROVIDER_KEYS = (
 #: Names the old ``shared/provider.py`` accepted in ``LLM_PROVIDER``.
 _PROVIDER_ALIASES = {"grok": "xai", "gemini": "google", "claude": "anthropic"}
 
+#: How ``.env.example`` writes a key it leaves for the Reader: ``sk-...``, ``...``.
+_PLACEHOLDER_SUFFIX = "..."
+
+
+def _is_key(value: Optional[str]) -> bool:
+    """A value that can be a real API key: set, and not a template placeholder."""
+    value = (value or "").strip()
+    return bool(value) and not value.endswith(_PLACEHOLDER_SUFFIX)
+
 
 def _cheapest(registry: Registry, provider: str) -> str:
     candidates = [spec for spec in registry.models if spec.provider == provider]
@@ -75,12 +86,13 @@ def default_model(
         return _cheapest(registry, _PROVIDER_ALIASES.get(provider, provider))
 
     for name, keys in _PROVIDER_KEYS:
-        if any(env.get(key) for key in keys):
+        if any(_is_key(env.get(key)) for key in keys):
             return _cheapest(registry, name)
 
     raise RuntimeError(
         "No model configured. Set LLM_MODEL to an ID from llm/models.json, "
-        "or put one provider's API key in the root .env (see .env.example)."
+        "or put one provider's API key in the root .env (see .env.example). "
+        "A value ending in '...' is the template's placeholder, not a key."
     )
 
 

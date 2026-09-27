@@ -19,6 +19,7 @@ from llm import ask, default_model, load_registry  # noqa: E402
 from llm.testing import StubTransport  # noqa: E402
 
 REGISTRY = load_registry()
+ENV_EXAMPLE = Path(__file__).parent.parent / ".env.example"
 
 CREDENTIAL_VARS = (
     "ANTHROPIC_API_KEY",
@@ -119,3 +120,37 @@ def test_llm_provider_env_var_overrides_key_detection(no_keys):
 def test_no_key_and_no_model_is_a_clear_error(no_keys):
     with pytest.raises(RuntimeError, match="LLM_MODEL"):
         default_model()
+
+
+# ── The documented setup: cp .env.example .env ───────────────────────────────
+
+
+def _env_example():
+    """The root .env.example as python-dotenv reads it, which is how the
+    Appendix notebooks load a Reader's .env."""
+    from dotenv import dotenv_values
+
+    return dict(dotenv_values(ENV_EXAMPLE))
+
+
+@pytest.mark.parametrize(
+    "key, provider",
+    [
+        ("OPENAI_API_KEY", "openai"),  # the one SETUP.md asks for
+        ("ANTHROPIC_API_KEY", "anthropic"),
+        ("DEEPSEEK_API_KEY", "deepseek"),
+        ("XAI_API_KEY", "xai"),
+        ("GEMINI_API_KEY", "google"),
+    ],
+)
+def test_the_key_pasted_over_the_template_picks_the_model_not_a_placeholder(key, provider):
+    env = _env_example()
+    assert key in env, "{} is no longer in .env.example".format(key)
+    env[key] = "a-real-key-for-{}".format(provider)
+
+    assert REGISTRY.get(default_model(environ=env)).provider == provider
+
+
+def test_a_fresh_copy_of_the_template_configures_no_provider():
+    with pytest.raises(RuntimeError, match="placeholder"):
+        default_model(environ=_env_example())
