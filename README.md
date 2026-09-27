@@ -9,6 +9,16 @@
 
 > **The most comprehensive open-source LLM engineering course** — 17 hands-on modules covering RAG, agents, loop and graph engineering, fine-tuning, prompt engineering, deployment, guardrails, and more. From beginner to production-ready in 33 hours.
 
+**Grade your own agent from your coding agent.** The Grader skill runs the
+course's Checks against your agent, Offline and free by default, and links each
+failure to the lesson that covers it. Install it in one command, no clone:
+
+```bash
+npx skills add dnakhoa/llm-engineering-playground --skill grader
+```
+
+Then ask your coding agent to "grade my agent". See [skills/grader](skills/grader/SKILL.md).
+
 
 ## What You'll Learn
 
