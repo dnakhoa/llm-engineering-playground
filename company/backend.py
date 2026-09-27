@@ -214,6 +214,9 @@ TOOL_SPECS: Tuple[ToolSpec, ...] = (
 
 #: Every Action the Backend has. A Case offers the agent only the ones it declares.
 ACTION_NAMES: Tuple[str, ...] = tuple(spec.name for spec in TOOL_SPECS)
+#: The Actions that only read. Every other Action changes Backend state, so
+#: sending it twice is how a customer gets charged, or refunded, twice.
+READ_ONLY_ACTIONS: Tuple[str, ...] = ("look_up_account",)
 _SPECS_BY_NAME = {spec.name: spec for spec in TOOL_SPECS}
 
 

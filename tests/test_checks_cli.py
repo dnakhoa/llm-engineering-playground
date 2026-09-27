@@ -218,7 +218,10 @@ def test_a_spend_cap_below_the_run_cost_stops_it_and_reports_what_finished(
     )
 
     assert report.stopped_by_spend_cap is True
-    assert report.spent_usd == pytest.approx(0.009366)
+    # Offline, the cap stops the run where the same run live would have stopped,
+    # and reports that cost as what it would have cost, not as spend.
+    assert report.would_have_cost_usd == pytest.approx(0.009366)
+    assert report.spent_usd == 0
     by_case = {(r.case_id, r.name): r.status for r in report.results}
     assert by_case[("upgrade-to-pro", "plan_changed_to_pro_exactly_once")] == "pass"
     assert by_case[("upgrade-to-pro-again", "plan_changed_to_pro_exactly_once")] == "stopped"
@@ -226,6 +229,7 @@ def test_a_spend_cap_below_the_run_cost_stops_it_and_reports_what_finished(
 
     out = _lines(capsys.readouterr().out)
     assert any(line.startswith("Stopped by the Spend Cap") for line in out)
+    assert not [line for line in out if "spent $" in line.lower()]
     assert out[-1] == "Passed through module 1 of 2."
 
 
@@ -236,7 +240,7 @@ def test_a_spend_cap_stops_a_case_mid_loop_and_later_cases_do_not_run(no_network
         through=2, agent="flagship.loop:run", spend_cap_usd=0.003, suites=SUITES
     )
 
-    assert report.spent_usd == pytest.approx(0.004656)
+    assert report.would_have_cost_usd == pytest.approx(0.004656)
     assert [(r.module, r.status) for r in report.results] == [
         (1, "stopped"),
         (2, "not run"),
@@ -285,6 +289,40 @@ def test_live_mode_prints_the_cap_and_asks_for_nothing(capsys, fake_http, never_
     assert any(line.startswith("Spend Cap: $0.25") for line in out[:3])
     assert fake_http.instances and fake_http.instances[0].provider == "anthropic"
     assert out[-1] == "Passed through module 1 of 1."
+
+
+# ── What an Offline run cost ──────────────────────────────────────────────────
+
+
+def test_an_offline_run_reports_what_it_would_have_cost_live_and_claims_no_spend(
+    capsys, no_network
+):
+    # The four recorded Cases through module 3, at claude-sonnet-5's prices:
+    # $0.007132 + $0.01778 + $0.011888 + $0.01842 = $0.05522. Nothing was billed.
+    code = main(["--modules", "3"])
+
+    out = _lines(capsys.readouterr().out)
+    assert code == 0
+    assert not [line for line in out if line.startswith("Spent")]
+    assert "Would have cost $0.05522 live. Offline, nothing was spent." in out
+    assert out[-1] == "Passed through module 3 of 3."
+
+
+def test_an_offline_report_keeps_the_recorded_cost_apart_from_spend(no_network):
+    report = run_checks(through=1, agent="flagship.loop:run", out=lambda line: None)
+
+    assert report.spent_usd == 0
+    assert report.would_have_cost_usd == pytest.approx(0.007132)
+
+
+def test_a_live_run_reports_what_it_spent_against_the_cap(capsys, fake_http, never_asks):
+    report = run_checks(through=1, agent="flagship.loop:run", mode="live",
+                        spend_cap_usd=0.25)
+
+    out = _lines(capsys.readouterr().out)
+    assert report.spent_usd == pytest.approx(0.007132)
+    assert report.would_have_cost_usd == 0
+    assert "Spent $0.007132 of the $0.25 Spend Cap." in out
 
 
 LOCAL = ["--mode", "live", "--model", "qwen3:8b", "--base-url", "http://localhost:11434/v1"]

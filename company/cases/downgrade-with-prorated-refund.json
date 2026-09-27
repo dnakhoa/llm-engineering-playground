@@ -14,6 +14,7 @@
     "refunds.rf_0001.amount_cents": 920
   },
   "forbidden_actions": [],
+  "judge_rubric": "The final reply confirms the move to Free and a refund of $9.20, and says what the amount is for (the unused days of the month). It states no other amount as refunded.",
   "recording": "downgrade-with-prorated-refund.recording.json",
   "tags": {"module": 2, "category": "refund"}
 }

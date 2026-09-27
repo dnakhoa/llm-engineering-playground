@@ -8,6 +8,7 @@
   "$comment": "The follow-up names no account: the agent has to remember the first turn.",
   "expected_state_change": {"accounts.acct_1001.plan": "pro"},
   "forbidden_actions": [],
+  "judge_rubric": "The first reply answers both questions from the plans article: how many notebooks Pro allows and what it costs. The last reply confirms the account is now on Pro.",
   "recording": "upgrade-after-a-question.recording.json",
   "tags": {"module": 2, "category": "multi-turn"}
 }

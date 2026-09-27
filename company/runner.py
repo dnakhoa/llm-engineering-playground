@@ -3,7 +3,8 @@
 This is seam 1. Everything a Check needs comes back on the Outcome: the final
 Backend state and its diff from the seed, every Action the agent attempted and
 every one that ran, the transcript, the reply to each customer turn, usage and
-cost, whether the step limit stopped the run, and whether the Case was resolved.
+cost, whether the step limit stopped the run, and the verdict: whether the Case
+was resolved, and if not, why.
 
     from company.runner import load_case, run_case
 
@@ -42,7 +43,7 @@ from llm.types import (
     Usage,
 )
 
-from .backend import ACTION_NAMES, ActionRecord, Actions, Backend
+from .backend import ACTION_NAMES, READ_ONLY_ACTIONS, ActionRecord, Actions, Backend
 from .knowledge import SEARCH_TOOL, LexicalRetriever, Retriever, load_articles, run_search
 
 COMPANY_DIR = Path(__file__).resolve().parent
@@ -85,6 +86,8 @@ class Case:
     knowledge_base: bool = False
     recording: Optional[str] = None
     tags: Mapping[str, Any] = field(default_factory=dict)
+    #: What a good reply does, in words, for an LLM-as-judge Check to grade.
+    judge_rubric: Optional[str] = None
 
     @property
     def customer_turns(self) -> Tuple[str, ...]:
@@ -126,6 +129,12 @@ def load_case(case_id_or_path: Union[str, Path]) -> Case:
                 data.get("id", path.stem), knowledge_base
             )
         )
+    judge_rubric = data.get("judge_rubric")
+    if judge_rubric is not None and not (isinstance(judge_rubric, str) and judge_rubric.strip()):
+        raise ValueError(
+            "Case {}: \"judge_rubric\" is a sentence saying what a good reply does, "
+            "not {!r}.".format(data.get("id", path.stem), judge_rubric)
+        )
     return Case(
         id=data["id"],
         customer_account_id=data["customer"]["account_id"],
@@ -137,6 +146,7 @@ def load_case(case_id_or_path: Union[str, Path]) -> Case:
         knowledge_base=knowledge_base,
         recording=data.get("recording"),
         tags=dict(data.get("tags") or {}),
+        judge_rubric=judge_rubric,
     )
 
 
@@ -287,6 +297,37 @@ class Environment:
 
 
 @dataclass(frozen=True)
+class Verdict:
+    """How one run of a Case measures up to it: the one definition of resolved.
+
+    ``Outcome.resolved`` is ``verdict.resolved``, and each Graded Check reports
+    one part of the verdict, so a run the Checks fail is never counted as
+    resolved by the Budgeted Checks or the Scoreboard. Each part is a tuple of
+    findings, written for the Reader; an empty part is a right one.
+    """
+
+    #: Why the agent did not finish the Case: the step limit, the Spend Cap,
+    #: or a customer turn it answered with an empty reply.
+    unfinished: Tuple[str, ...] = ()
+    #: Expected changes that did not happen, or happened with another value.
+    missing: Tuple[str, ...] = ()
+    #: Backend changes the Case did not ask for.
+    unexpected: Tuple[str, ...] = ()
+    #: Attempts at an Action the Case forbids, whether or not they ran.
+    forbidden: Tuple[str, ...] = ()
+    #: Changes the agent sent more than once with the same arguments, whether
+    #: or not the Backend let the repeat through.
+    repeated: Tuple[str, ...] = ()
+
+    @property
+    def resolved(self) -> bool:
+        return not (
+            self.unfinished or self.missing or self.unexpected or self.forbidden
+            or self.repeated
+        )
+
+
+@dataclass(frozen=True)
 class Outcome:
     """Everything that happened on one Case. Checks assert on this."""
 
@@ -303,11 +344,18 @@ class Outcome:
     steps: int
     step_limit: int
     step_limit_reached: bool
-    resolved: bool
+    #: Whether the run did what the Case expects, and if not, what went wrong.
+    verdict: Verdict
     #: The run's Spend Cap stopped this Case before the agent finished.
     spend_cap_reached: bool = False
     #: The agent's reply to each customer turn it answered, in order.
     replies: Tuple[Optional[str], ...] = ()
+
+    @property
+    def resolved(self) -> bool:
+        """The agent finished, reached exactly the expected state, tried nothing
+        the Case forbids and sent no change twice: ``verdict.resolved``."""
+        return self.verdict.resolved
 
 
 def _flatten(value: Any, prefix: str = "") -> Dict[str, Any]:
@@ -329,14 +377,72 @@ def state_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> Dict[str,
     }
 
 
-def _resolved(case: Case, diff, executed, stopped: bool) -> bool:
-    if stopped:
-        return False
-    if any(record.name in case.forbidden_actions for record in executed):
-        return False
-    return all(
-        path in diff and diff[path]["after"] == value
-        for path, value in case.expected_state_change.items()
+def _call(record: ActionRecord) -> str:
+    return "{}({})".format(
+        record.name,
+        ", ".join("{}={!r}".format(k, v) for k, v in sorted(record.arguments.items())),
+    )
+
+
+def _verdict_for(
+    case: Case,
+    diff: Mapping[str, Mapping[str, Any]],
+    attempted: Sequence[ActionRecord],
+    replies: Sequence[Optional[str]],
+    *,
+    step_limit: int,
+    step_limit_reached: bool,
+    spend_cap_reached: bool,
+) -> Verdict:
+    """The Verdict on one run of ``case``.
+
+    The agent must answer every customer turn with a reply that says something:
+    a run stopped by the step limit, or a turn answered with nothing, is
+    unfinished whatever the Backend looks like. Every expected path must have
+    changed to exactly its expected value, and nothing else may have changed:
+    a Case that expects no change is met only by a run that changed nothing.
+    A forbidden Action counts when it was attempted, even if the Backend
+    refused it, and so does a change sent twice: the Backend refusing the
+    second refund this time is luck, not a property of the agent.
+    """
+    unfinished = []
+    if step_limit_reached:
+        unfinished.append("the agent hit the step limit ({} model calls)".format(step_limit))
+    if spend_cap_reached:
+        unfinished.append("the Spend Cap stopped the run mid-Case")
+    for turn, reply in enumerate(replies, start=1):
+        if not (reply or "").strip():
+            unfinished.append("the agent's reply to customer turn {} was empty".format(turn))
+    missing = []
+    for path, value in sorted(case.expected_state_change.items()):
+        change = diff.get(path)
+        if change is None or change["after"] != value:
+            missing.append("{}: expected {!r}, got {!r}".format(
+                path, value, change["after"] if change else "no change"))
+    unexpected = [
+        "{}: {!r} -> {!r}".format(path, change["before"], change["after"])
+        for path, change in sorted(diff.items())
+        if path not in case.expected_state_change
+    ]
+    forbidden = [
+        "{}, {}".format(
+            _call(record), "which ran" if record.executed else "which the Backend refused")
+        for record in attempted
+        if record.name in case.forbidden_actions
+    ]
+    sent: Dict[str, int] = {}
+    for record in attempted:
+        if record.name not in READ_ONLY_ACTIONS:
+            sent[_call(record)] = sent.get(_call(record), 0) + 1
+    repeated = [
+        "{} {} times".format(call, times) for call, times in sent.items() if times > 1
+    ]
+    return Verdict(
+        unfinished=tuple(unfinished),
+        missing=tuple(missing),
+        unexpected=tuple(unexpected),
+        forbidden=tuple(forbidden),
+        repeated=tuple(repeated),
     )
 
 
@@ -488,8 +594,9 @@ def run_case(
         steps=env.steps,
         step_limit=step_limit,
         step_limit_reached=step_limit_reached,
-        resolved=_resolved(
-            case, diff, executed, step_limit_reached or spend_cap_reached
+        verdict=_verdict_for(
+            case, diff, attempted, replies, step_limit=step_limit,
+            step_limit_reached=step_limit_reached, spend_cap_reached=spend_cap_reached,
         ),
         spend_cap_reached=spend_cap_reached,
         replies=tuple(replies),

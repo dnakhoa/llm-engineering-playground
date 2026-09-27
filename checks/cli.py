@@ -37,6 +37,7 @@ from company.runner import (
     Agent,
     Outcome,
     SpendCap,
+    SpendCapReached,
     load_agent,
     load_case,
     run_case,
@@ -47,6 +48,7 @@ from llm.replay import ReplayMismatchError
 from llm.transport import TransportError
 
 from . import is_live_only
+from .judge import Judge, judging_with
 from .suites import Check, Suite, discover_suites
 
 #: The reference Flagship Agent at the latest Spine module's end state.
@@ -91,7 +93,12 @@ class Report:
     through: int
     results: List[CheckRun] = field(default_factory=list)
     spend_cap_usd: Optional[float] = None
+    #: What the run billed to the Reader's key. Always 0 Offline.
     spent_usd: float = 0.0
+    #: Offline only: the recorded usage at registry prices, what the same run
+    #: would have cost live. The Spend Cap stops an Offline run at this cost,
+    #: where the live run would stop, but none of it is spent.
+    would_have_cost_usd: float = 0.0
     stopped_by_spend_cap: bool = False
     stopped_reason: Optional[str] = None
     passed_through: int = 0
@@ -194,7 +201,14 @@ def run_checks(
         write("Spend Cap: {} for this run, at registry prices for {} ({}).".format(
             _usd(cap.limit_usd), model, _price_line(spec)))
         if mode == OFFLINE:
-            write("Offline: recorded usage is priced against the cap, and nothing is billed.")
+            write("Offline: nothing is spent. Recorded usage is priced at these rates to "
+                  "show what the run would cost live, and stops where the cap would.")
+
+    # Live, a judge-rubric Check grades on the same model and key as the agent,
+    # and its calls count against the same Spend Cap.
+    judge: Optional[Judge] = None
+    if mode == LIVE:
+        judge = Judge(model=model, transport=transport, registry=registry, spend_cap=cap)
 
     outcomes: Dict[str, Outcome] = {}
     for suite in selected:
@@ -253,21 +267,41 @@ def run_checks(
                 if mode == OFFLINE and is_live_only(check):
                     emit(check, SKIP, "Live only: it needs a model call no recording holds.")
                     continue
-                result = check(outcome)
+                try:
+                    with judging_with(judge):
+                        result = check(outcome)
+                except SpendCapReached:  # a live-only Check's own model call
+                    report.stopped_by_spend_cap = True
+                    emit(check, STOPPED, "Stopped by the Spend Cap before its model call.")
+                    continue
+                except TransportError as error:
+                    report.stopped_reason = str(error)
+                    emit(check, ERROR, str(error))
+                    continue
                 emit(check, PASS if result.passed else FAIL, result.detail, result.name)
 
-    report.spent_usd = cap.spent_usd if cap is not None else 0.0
+    priced = cap.spent_usd if cap is not None else 0.0
+    if mode == OFFLINE:
+        report.would_have_cost_usd = priced
+    else:
+        report.spent_usd = priced
     report.passed_through = _passed_through(selected, report.results)
 
     write("")
     if report.stopped_by_spend_cap:
         unfinished = sum(1 for r in report.results if r.status in (STOPPED, NOT_RUN))
-        write("Stopped by the Spend Cap: spent {} of {}. {} Checks did not finish.".format(
-            _usd(report.spent_usd), _usd(cap.limit_usd if cap else 0.0), unfinished))
+        if mode == OFFLINE:
+            cost = "this run would have cost {} live, and nothing was spent".format(_usd(priced))
+        else:
+            cost = "spent {}".format(_usd(priced))
+        write("Stopped by the Spend Cap of {}: {}. {} Checks did not finish.".format(
+            _usd(cap.limit_usd if cap else 0.0), cost, unfinished))
     elif report.stopped_reason:
         write("Stopped: {}".format(report.stopped_reason))
+    elif cap is not None and mode == OFFLINE:
+        write("Would have cost {} live. Offline, nothing was spent.".format(_usd(priced)))
     elif cap is not None:
-        write("Spent {} of the {} Spend Cap.".format(_usd(report.spent_usd), _usd(cap.limit_usd)))
+        write("Spent {} of the {} Spend Cap.".format(_usd(priced), _usd(cap.limit_usd)))
     write("Passed through module {} of {}.".format(report.passed_through, through))
     return report
 
