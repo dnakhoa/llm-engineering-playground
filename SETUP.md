@@ -36,14 +36,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**One module at a time (faster, less disk space):**
+**One Appendix topic at a time (faster, less disk space):**
 ```bash
-cd 01-prompt-engineering
+cd appendix/prompt-engineering
 pip install -r requirements.txt
 ```
 
 > **Mac note:** `bitsandbytes` (GPU quantization, Module 03) is Linux/Windows only.
-> Comment it out in `03-fine-tuning/requirements.txt` if on macOS.
+> Comment it out in `appendix/fine-tuning/requirements.txt` if on macOS.
 
 ---
 
@@ -99,11 +99,11 @@ jupyter notebook
 jupyter lab
 ```
 
-Then navigate to any module and open the `.ipynb` file.
+Then open any topic folder listed in the [Appendix index](appendix/README.md) and open its `.ipynb` file.
 
 **Recommended order:**
-1. `01-prompt-engineering/prompt_engineering.ipynb`
-2. `02-rag-systems/rag_systems.ipynb`
+1. [`appendix/prompt-engineering/prompt_engineering.ipynb`](appendix/prompt-engineering/prompt_engineering.ipynb)
+2. [`appendix/rag/rag_systems.ipynb`](appendix/rag/rag_systems.ipynb)
 3. Read the README + run the `.py` script for modules 03–11
 
 ---
@@ -122,10 +122,10 @@ pip install chromadb --no-binary chromadb
 
 **`bitsandbytes` fails on macOS**
 ```bash
-# Comment out bitsandbytes in 03-fine-tuning/requirements.txt
+# Comment out bitsandbytes in appendix/fine-tuning/requirements.txt
 # Run QLoRA in Google Colab instead (free GPU)
 ```
 
 **OpenAI `AuthenticationError`**
-- Check your `.env` file exists at the repo root (not inside a module folder)
+- Check your `.env` file exists at the repo root (not inside an Appendix topic folder)
 - Verify the key starts with `sk-` and has no trailing spaces

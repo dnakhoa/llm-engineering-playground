@@ -1,0 +1,55 @@
+# Stale-reference lint baseline — files that already fail.
+#
+# Every path here contains at least one retired model ID or dead API (see
+# tests/stale_lint_denylist.json). The lint reports them as known-stale instead of
+# failing, so CI stays green while the Appendix refresh works through them.
+#
+# This is the expand step of an expand-contract sequence: entries come OUT of this
+# file as tickets 14-16 fix each page, and ticket 17 deletes the file entirely. Never
+# add a path here for new work — fix the reference, or mark the line
+# `historical-exception` if it is genuinely prose about the past.
+#
+# Regenerate the list of currently failing files with:
+#     python tests/stale_lint.py
+#
+# Generated 2026-09-26. Paths updated for the Appendix move (ticket 13), which also
+# removed capstone/: 39 files, 110 matches.
+appendix/foundations/README.md
+appendix/foundations/llm_foundations.ipynb
+appendix/foundations/llm_foundations.py
+appendix/prompt-engineering/README.md
+appendix/prompt-engineering/prompt_engineering.ipynb
+appendix/rag/README.md
+appendix/rag/rag_example.py
+appendix/rag/rag_systems.ipynb
+appendix/fine-tuning/README.md
+appendix/fine-tuning/finetune_example.py
+appendix/evaluation/evaluation.ipynb
+appendix/deployment/README.md
+appendix/deployment/deployment.ipynb
+appendix/deployment/deployment_example.py
+appendix/optimization/README.md
+appendix/optimization/optimization.ipynb
+appendix/agent-frameworks/README.md
+appendix/agent-frameworks/agentic_workflows.ipynb
+appendix/observability/README.md
+appendix/observability/llmops_observability.ipynb
+appendix/observability/observability_example.py
+appendix/evalops/eval_ops.ipynb
+appendix/guardrails/gateway_guardrails.ipynb
+appendix/memory/README.md
+appendix/memory/memory_context.ipynb
+appendix/mcp/README.md
+appendix/mcp/mcp_example.py
+appendix/mcp/servers/example_server.py
+appendix/multimodal/README.md
+CHANGELOG.md
+README.md
+SETUP.md
+demo.py
+shared/provider.py
+appendix/typescript/agent.ts
+appendix/typescript/chat.ts
+appendix/typescript/rag.ts
+appendix/typescript/streaming.ts
+appendix/typescript/structured-output.ts

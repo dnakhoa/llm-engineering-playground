@@ -18,16 +18,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install nbformat
-        run: pip install nbformat
+      - name: Install nbformat and pytest
+        run: pip install nbformat pytest
 
       - name: Validate notebook structure
         run: |
           python - <<'EOF'
           import nbformat, pathlib, sys
 
-          notebooks = list(pathlib.Path(".").rglob("*.ipynb"))
+          notebooks = sorted(pathlib.Path(".").rglob("*.ipynb"))
           errors = []
+
+          # The course notebooks live in the Appendix topic folders. Finding none there
+          # means the layout moved again and this check would pass on nothing.
+          if not any(nb.parts[0] == "appendix" for nb in notebooks):
+              print("❌ No notebooks found under appendix/")
+              sys.exit(1)
 
           for nb_path in notebooks:
               try:
@@ -45,6 +51,12 @@ jobs:
 
           print(f"\n{len(notebooks)} notebooks validated.")
           EOF
+
+      # Valid JSON says nothing about whether a notebook can run from its folder. This
+      # evaluates each notebook's and script's load_dotenv and sys.path setup where it
+      # sits, so a path one level off after a move fails here, not on a missing API key.
+      - name: Notebooks and scripts reach shared/ and the root .env from their folders
+        run: pytest tests/test_appendix_paths.py -v
 
   structure-check:
     name: Repo structure check
@@ -65,8 +77,14 @@ jobs:
               ".env.example",
               ".gitignore",
           ]
-          module_required = ["README.md", "requirements.txt"]
-          modules = [f"0{i}" for i in range(0, 10)] + [str(i) for i in range(10, 17)]
+          # Every Appendix topic folder (tests/test_repo_layout.py keeps the same list).
+          topics = [
+              "foundations", "prompt-engineering", "rag", "fine-tuning", "evaluation",
+              "deployment", "optimization", "agent-frameworks", "observability",
+              "evalops", "guardrails", "memory", "context-engineering", "agent-harness",
+              "mcp", "multimodal", "graph-engineering", "typescript",
+          ]
+          non_python = {"typescript"}
 
           missing = []
 
@@ -74,14 +92,22 @@ jobs:
               if not pathlib.Path(f).exists():
                   missing.append(f"Missing root file: {f}")
 
-          for mod in modules:
-              dirs = list(pathlib.Path(".").glob(f"{mod}-*"))
-              if not dirs:
-                  missing.append(f"Missing module dir: {mod}-*")
+          if not pathlib.Path("appendix/README.md").exists():
+              missing.append("Missing Appendix index: appendix/README.md")
+
+          for topic in topics:
+              folder = pathlib.Path("appendix") / topic
+              if not folder.is_dir():
+                  missing.append(f"Missing Appendix topic: {folder}")
                   continue
-              for req in module_required:
-                  if not (dirs[0] / req).exists():
-                      missing.append(f"Missing {dirs[0]}/{req}")
+              needed = ["README.md"] if topic in non_python else ["README.md", "requirements.txt"]
+              for req in needed:
+                  if not (folder / req).exists():
+                      missing.append(f"Missing {folder}/{req}")
+
+          numbered = sorted(p.name for p in pathlib.Path(".").glob("[0-9][0-9]-*") if p.is_dir())
+          if numbered:
+              missing.append(f"Numbered module folders belong in appendix/: {numbered}")
 
           if missing:
               print("\n".join(missing))
@@ -106,3 +132,9 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+      - name: Stale-reference lint (retired model IDs and dead APIs)
+        run: pytest tests/test_stale_references.py -v
+
+      - name: Appendix layout and internal link check
+        run: pytest tests/test_repo_layout.py -v

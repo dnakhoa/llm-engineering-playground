@@ -7,7 +7,7 @@ Contributions are welcome — bug fixes, better examples, new exercises, improve
 - **Fix broken code** — API changes (LangChain, OpenAI) break examples fast
 - **Add exercises** — practical challenges at the end of any module
 - **Improve notebooks** — richer explanations, better visualisations
-- **New modules** — suggest topics via an issue first
+- **New topics** — suggest them via an issue first
 
 ## How to contribute
 
@@ -19,13 +19,26 @@ Contributions are welcome — bug fixes, better examples, new exercises, improve
 ## Standards
 
 - Code must run without errors when `OPENAI_API_KEY` is set
+- No retired model IDs or dead APIs. `pytest tests/test_stale_references.py` scans
+  Markdown, Python, TypeScript and notebooks against `tests/stale_lint_denylist.json`
+  and reports the file, line and replacement hint for each match. To write about the
+  past, put the marker in a comment on the same line — `<!-- historical-exception -->`
+  in Markdown, `# historical-exception` in Python, `// historical-exception` in
+  TypeScript. `tests/stale_lint_baseline.txt` holds the pages that already fail; it
+  only ever shrinks
+- No dangling internal links. `pytest tests/test_repo_layout.py` checks every relative
+  link in Markdown and notebook markdown cells (`python tests/link_check.py` lists them)
+- Appendix code reaches `shared/` and the root `.env` from its own folder.
+  `pytest tests/test_appendix_paths.py` evaluates every script's and notebook's
+  `sys.path` and `load_dotenv` paths where the file sits, so build them from `__file__`
+  (scripts) or relative to the notebook's folder, with `os.path` or `pathlib`
 - New notebooks follow the existing structure: Setup → Concepts → Code → Exercises
-- Keep `requirements.txt` files per-module in sync with imports
+- Keep each Appendix topic's `requirements.txt` (under `appendix/<topic>/`) in sync with its imports
 - Do not commit `.env` files or API keys
 
 ## Reporting issues
 
 Open a GitHub issue with:
-- Module number and file name
+- Appendix topic and file name
 - Error message or unexpected behaviour
 - Python version and OS

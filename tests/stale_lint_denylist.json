@@ -1,0 +1,60 @@
+{
+  "$comment": "Denylist for the stale-reference lint (tests/test_stale_references.py). One entry per retired model ID or dead API. 'pattern' is a Python regular expression; 'hint' is the replacement the reader should reach for instead. A line carrying the marker 'historical-exception' is allowed to mention any of these.",
+  "verified": "2026-09-26",
+  "entries": [
+    {
+      "id": "gpt-4o-mini",
+      "pattern": "(?i)gpt-4o-mini",
+      "description": "Retired OpenAI model ID, used as the course default throughout the old modules.",
+      "hint": "Use a current model ID from the model registry (docs/adr/0002-provider-agnostic-capability-aware.md)."
+    },
+    {
+      "id": "gpt-3.5-turbo",
+      "pattern": "(?i)gpt-3\\.5-turbo",
+      "description": "Retired OpenAI model ID.",
+      "hint": "Use a current model ID from the model registry; for a cheap tier pick the registry's small model."
+    },
+    {
+      "id": "gpt-4-as-default",
+      "pattern": "(?i)(?:model|model_name|deployment|llm_model|default_model)\\s*[=:]\\s*[\"']?gpt-4(?![\\w.\\-])",
+      "description": "Bare gpt-4 selected as a default model. Prose about GPT-4 is fine; selecting it is not.",
+      "hint": "Select a current model ID from the model registry instead of gpt-4."
+    },
+    {
+      "id": "llama-2",
+      "pattern": "(?i)\\bllama[-\\s]?2\\b",
+      "description": "Llama-2 family, superseded as the open-weights example.",
+      "hint": "Use a current open-weights model from the model registry (Llama 3.x or later)."
+    },
+    {
+      "id": "langchain-legacy-imports",
+      "pattern": "(?m)^\\s*(?:from|import)\\s+langchain\\.(?:chains|llms|embeddings|chat_models|agents|vectorstores|memory|document_loaders|text_splitter|prompts|tools|docstore|output_parsers)\\b",
+      "description": "Pre-1.0 LangChain import paths, removed from the current package layout.",
+      "hint": "Import from the split packages (langchain_openai, langchain_core, langchain_community) or drop the framework \u2014 the Flagship Agent is built without one (ADR 0003)."
+    },
+    {
+      "id": "langchain-legacy-chains",
+      "pattern": "\\b(?:LLMChain|ConversationChain|ConversationalRetrievalChain|ConversationBufferMemory|RetrievalQA|SimpleSequentialChain|SequentialChain|load_qa_chain|initialize_agent|AgentExecutor)\\b",
+      "description": "Pre-1.0 LangChain chain and agent constructors.",
+      "hint": "Use LCEL / LangGraph in the Appendix framework pages, or plain provider calls \u2014 the Flagship Agent is built without a framework (ADR 0003)."
+    },
+    {
+      "id": "openai-assistants-api",
+      "pattern": "(?i)\\bassistants\\s+api\\b|\\.beta\\.assistants\\b|\\.beta\\.threads\\b",
+      "description": "OpenAI Assistants API, retired in favour of the Responses API.",
+      "hint": "Use the Responses API through the provider layer."
+    },
+    {
+      "id": "openai-chat-completions-tool-calls",
+      "pattern": "chat\\.completions\\.create\\s*\\((?s:.{0,600}?)\\btools\\s*[=:]",
+      "description": "OpenAI tool calls made through Chat Completions instead of the Responses API.",
+      "hint": "Make OpenAI tool calls through the Responses API (client.responses.create) via the provider layer."
+    },
+    {
+      "id": "mcp-2025-06-18",
+      "pattern": "(?i)(?:\\bmcp|model context protocol|specification/|protocolversion)[^\\n]{0,60}2025-06-18",
+      "description": "Superseded MCP specification version (only in an MCP context, so an unrelated date is not flagged).",
+      "hint": "Target MCP 2026-07-28: stateless requests, server/discover, InputRequiredResult and Tasks."
+    }
+  ]
+}
