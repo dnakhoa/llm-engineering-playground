@@ -22,6 +22,7 @@ Nothing here asks a question on the terminal or goes live on its own.
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import re
 import subprocess
@@ -31,7 +32,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import quote
 
-from company.runner import LIVE, OFFLINE, Agent
+from company.runner import LIVE, OFFLINE, Agent, load_agent
 
 from . import cli, is_live_only
 from .cli import (
@@ -53,6 +54,8 @@ from .suites import Suite, discover_suites
 COURSE_URL = "https://github.com/dnakhoa/llm-engineering-playground"
 ROOT = Path(__file__).resolve().parent.parent
 SPINE = ROOT / "spine"
+#: The reference Flagship Agent's code: an agent from here earns no badge.
+FLAGSHIP = ROOT / "flagship"
 DEFAULT_BADGE_FILE = "grader-badge.json"
 
 #: The thesis's three milestones and the Spine module that earns each.
@@ -264,9 +267,26 @@ def badge_markdown(raw_url: Optional[str]) -> str:
         url, COURSE_URL)
 
 
-def _is_reference(agent: Union[str, Agent]) -> bool:
-    name = agent if isinstance(agent, str) else getattr(agent, "__module__", "")
-    return str(name).split(":")[0].split(".")[0] == "flagship"
+def _is_reference(agent: Agent) -> bool:
+    """Whether ``agent``'s code is the reference Flagship Agent's.
+
+    Decided by where the resolved callable's code lives, not by how it was
+    named: its module's file is inside this repo's ``flagship/`` folder. So
+    ``flagship.loop:run``, ``flagship/loop.py:run``, the function itself and a
+    Reader's file that only re-exports it are all the reference agent.
+    """
+    target = inspect.unwrap(agent)
+    target = getattr(target, "func", target)  # a functools.partial
+    target = getattr(target, "__func__", target)  # a bound method
+    # A function's own globals are its module's, even for a Reader's file that
+    # another file of the same name has since replaced in sys.modules.
+    source = getattr(target, "__globals__", {}).get("__file__")
+    if not source:
+        module = sys.modules.get(getattr(target, "__module__", None) or "")
+        source = getattr(module, "__file__", None)
+    if not source:
+        return False
+    return FLAGSHIP in Path(source).resolve().parents
 
 
 def share_text(earned: Claim) -> str:
@@ -324,10 +344,14 @@ def grade(
     selected = tuple(suites) if suites is not None else discover_suites()
     lines: List[str] = []
     kwargs = {} if model is None else {"model": model}
+    # Loaded once, so a Reader's file runs once, and the badge decision below
+    # is about the very code the Checks graded.
+    run_agent = load_agent(agent)
+    label = agent if isinstance(agent, str) else getattr(agent, "__name__", repr(agent))
     report = run_checks(
-        through=through, agent=agent, mode=mode, spend_cap_usd=spend_cap_usd,
-        base_url=base_url, suites=selected, transport=transport, out=lines.append,
-        **kwargs,
+        through=through, agent=run_agent, agent_name=label, mode=mode,
+        spend_cap_usd=spend_cap_usd, base_url=base_url, suites=selected,
+        transport=transport, out=lines.append, **kwargs,
     )
     # The Checks' own summary line moves to the end, just above the share text.
     summary = lines.pop() if lines and lines[-1].startswith("Passed through") else None
@@ -347,10 +371,10 @@ def grade(
     if badge_file is not None:
         path = Path(badge_file)
         write("")
-        if _is_reference(agent):
+        if _is_reference(run_agent):
             earned = Claim(module=0, mode=mode)
             write("No badge: {} is the reference Flagship Agent, not yours. "
-                  "Point --agent at your own agent to earn one.".format(agent))
+                  "Point --agent at your own agent to earn one.".format(label))
         elif earned.module or path.exists():
             written = badge(earned)
             path.parent.mkdir(parents=True, exist_ok=True)

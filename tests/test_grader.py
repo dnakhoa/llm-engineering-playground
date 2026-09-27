@@ -321,6 +321,56 @@ def test_the_reference_agent_earns_no_badge(capsys, tmp_path):
     assert "reference" in capsys.readouterr().out.lower()
 
 
+def _reference_forms(tmp_path):
+    """Every way to name the reference Flagship Agent, or hand it over."""
+    import flagship.loop
+
+    reexport = tmp_path / "my_agent.py"
+    reexport.write_text("from flagship.loop import run  # noqa: F401\n", encoding="utf-8")
+    return {
+        "dotted": "flagship.loop:run",
+        "path": str(ROOT / "flagship" / "loop.py") + ":run",
+        "relative path": "flagship/loop.py:run",
+        "dot-slash path": "./flagship/loop.py:run",
+        "callable": flagship.loop.run,
+        "a Reader file that re-exports it": str(reexport) + ":run",
+    }
+
+
+@pytest.mark.parametrize("form", [
+    "dotted", "path", "relative path", "dot-slash path", "callable",
+    "a Reader file that re-exports it",
+])
+def test_the_reference_agent_earns_no_badge_however_it_is_named(
+        monkeypatch, tmp_path, form):
+    # The Grader decides by where the agent's code lives, not how it is spelled.
+    monkeypatch.chdir(ROOT)
+    agent = _reference_forms(tmp_path)[form]
+    badge_file = tmp_path / "badge.json"
+
+    result = _quiet(through=1, agent=agent, suites=(_module_1(),), badge_file=badge_file)
+
+    assert result.report.passed is True
+    assert result.badge_module == 0
+    assert not badge_file.exists()
+
+
+def test_a_readers_file_outside_flagship_still_earns_a_badge(monkeypatch, tmp_path):
+    # Named like the reference agent's file, but it is the Reader's own code.
+    mine = tmp_path / "flagship" / "loop.py"
+    mine.parent.mkdir()
+    mine.write_text((ROOT / "tests" / "fixtures" / "grader_agents.py").read_text(
+        encoding="utf-8"), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    badge_file = tmp_path / "badge.json"
+
+    result = _quiet(through=1, agent="flagship/loop.py:upgrades_without_a_model",
+                    suites=(_module_1(),), badge_file=badge_file)
+
+    assert result.badge_module == 1
+    assert badge_file.exists()
+
+
 def test_the_badge_markdown_points_at_the_readers_github_repo(capsys, tmp_path):
     import subprocess
 

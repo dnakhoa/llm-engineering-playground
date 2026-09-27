@@ -164,12 +164,14 @@ def run_checks(
     suites: Optional[Sequence[Suite]] = None,
     transport=None,
     out: Optional[Callable[[str], None]] = None,
+    agent_name: Optional[str] = None,
 ) -> Report:
     """Run the suites of modules 1 to ``through`` against ``agent``.
 
     ``base_url`` points at a local OpenAI-compatible server serving ``model``;
     it needs no registry entry, is priced at zero, and runs live. ``suites``
-    and ``transport`` replace the real ones, for tests.
+    and ``transport`` replace the real ones, for tests. ``agent_name`` is what
+    the first line calls the agent, for a caller that loaded it already.
     """
     write = out or (lambda line: print(line, flush=True))
     if mode not in (OFFLINE, LIVE):
@@ -190,7 +192,8 @@ def run_checks(
         raise ValueError("There are no Check suites for modules 1 to {}.".format(through))
     _require_tracing_for(selected)
     run_agent = load_agent(agent)
-    agent_name = agent if isinstance(agent, str) else getattr(agent, "__name__", repr(agent))
+    if agent_name is None:
+        agent_name = agent if isinstance(agent, str) else getattr(agent, "__name__", repr(agent))
 
     report = Report(through=through)
     write("Checks for modules 1 to {} · agent {} · {} · {}".format(
