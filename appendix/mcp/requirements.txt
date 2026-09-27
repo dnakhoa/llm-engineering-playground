@@ -1,4 +1,4 @@
-anthropic>=0.40.0
-openai>=1.50.0
-mcp>=1.0.0
-httpx>=0.27.0
+# The MCP Python SDK 2.x speaks protocol version 2026-07-28 (verified on 2.2.0).
+mcp>=2.2.0
+python-dotenv>=1.0.0
+httpx>=0.27.0   # the weather server example in README.md

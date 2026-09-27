@@ -16,19 +16,15 @@
 # removed capstone/: 39 files, 110 matches.
 #
 # Ticket 14 (Appendix code and notebooks) took out 20 files; 19 remain.
+# Ticket 15 (MCP 2026-07-28 and agent frameworks) took out 5 files; 14 remain.
 appendix/foundations/README.md
 appendix/prompt-engineering/README.md
 appendix/rag/README.md
 appendix/fine-tuning/README.md
 appendix/deployment/README.md
 appendix/optimization/README.md
-appendix/agent-frameworks/README.md
-appendix/agent-frameworks/agentic_workflows.ipynb
 appendix/observability/README.md
 appendix/memory/README.md
-appendix/mcp/README.md
-appendix/mcp/mcp_example.py
-appendix/mcp/servers/example_server.py
 appendix/multimodal/README.md
 CHANGELOG.md
 README.md
