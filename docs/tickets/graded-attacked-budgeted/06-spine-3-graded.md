@@ -12,7 +12,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** 04, 05
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The Graded suite passes offline against the reference agent.
 - [ ] A seeded regression in the reference agent (for example, refunding twice) fails the suite.

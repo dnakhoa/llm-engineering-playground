@@ -10,7 +10,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** 13
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The MCP material cites the 2026-07-28 spec, and no 2025-06-18 references remain outside the historical-exception marker.
 - [ ] The MCP example server runs against the current MCP SDK, or the page states that the SDK isn't current yet (verified).
