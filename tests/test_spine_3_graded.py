@@ -9,6 +9,8 @@ Ticket: docs/tickets/graded-attacked-budgeted/06-spine-3-graded.md
 """
 from __future__ import annotations
 
+import re
+import shlex
 import socket
 import sys
 from pathlib import Path
@@ -298,6 +300,66 @@ def test_without_a_judge_the_rubric_check_says_to_run_it_live(no_network):
     result = reply_meets_the_judge_rubric(outcome)
     assert result.passed is False
     assert "live" in result.detail
+
+
+# ── CI runs the Offline Checks ────────────────────────────────────────────────
+
+CI_WORKFLOW = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "ci.yml"
+
+
+def _ci_checks_step():
+    """The job and the command of the CI step that runs the Checks CLI."""
+    job, found = None, []
+    for line in CI_WORKFLOW.read_text(encoding="utf-8").splitlines():
+        header = re.match(r"^  ([\w-]+):\s*$", line)
+        if header:
+            job = header.group(1)
+        command = re.sub(r"^\s*(?:-\s+)?(?:run:\s*)?", "", line).strip()
+        if re.match(r"^python3?\s+-m\s+checks\b", command):
+            found.append((job, command))
+    assert len(found) == 1, found
+    return found[0]
+
+
+def test_ci_runs_the_offline_checks_for_every_module():
+    job, command = _ci_checks_step()
+
+    args = shlex.split(command)[3:]
+    assert "live" not in args
+    assert "--modules" not in args  # every module, so a new suite joins CI by existing
+
+
+def test_ci_needs_no_secrets_to_run_the_checks():
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "secrets." not in workflow
+    from llm import credentials
+
+    assert [name for name in credentials.ENV_VARS if name in workflow] == []
+
+
+def test_the_ci_checks_job_installs_what_the_checks_cli_imports():
+    from tests.test_ci_installs import parse_jobs
+
+    job_name, _ = _ci_checks_step()
+    (job,) = [j for j in parse_jobs(CI_WORKFLOW.read_text(encoding="utf-8"), CI_WORKFLOW.parents[2])
+              if j.name == job_name]
+    assert "python-dotenv" in job.installs  # checks.cli loads the Reader's .env
+
+
+def test_the_ci_command_passes_offline_with_no_key_and_no_network(capsys, no_network, monkeypatch):
+    from checks.cli import main
+    from llm import credentials
+
+    for name in credentials.ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+    _, command = _ci_checks_step()
+
+    code = main(shlex.split(command)[3:])
+
+    out = capsys.readouterr().out
+    assert code == 0, out
+    assert out.strip().splitlines()[-1].startswith("Passed through module 3 of")
 
 
 PANEL = (

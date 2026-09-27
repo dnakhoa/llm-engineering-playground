@@ -39,8 +39,9 @@ def the_agent_finishes_the_case(outcome: Outcome) -> CheckResult:
     name = "the agent finishes the Case"
     unfinished = outcome.verdict.unfinished
     if not unfinished:
-        return CheckResult(name, True, "It answered all {} customer turns.".format(
-            len(outcome.case.customer_turns)))
+        turns = len(outcome.case.customer_turns)
+        return CheckResult(name, True, "It answered the customer's {}.".format(
+            "turn" if turns == 1 else "{} turns".format(turns)))
     return CheckResult(name, False, "Unfinished: " + "; ".join(unfinished) + ".")
 
 
