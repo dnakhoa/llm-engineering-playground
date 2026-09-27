@@ -42,6 +42,7 @@ from .cli import (
     FAIL,
     PASS,
     SKIP,
+    WARN,
     CheckRun,
     Report,
     _model_and_base_url,
@@ -153,7 +154,7 @@ def check_link(module: int, name: str) -> str:
 
 
 def explain(result: CheckRun, mode: str) -> str:
-    """The lesson link for one failed or errored Check."""
+    """The lesson link for one failed, errored or warning Check."""
     if result.status == ERROR:
         if result.detail.startswith("The agent raised"):
             return lesson_link(*AGENT_RAISED)
@@ -178,18 +179,19 @@ class Claim:
 
 def claim(report: Report, mode: str, suites: Sequence[Suite]) -> Claim:
     """The last module N such that modules 1 to N each had a Check that ran and
-    passed, and none that did anything but pass or skip.
+    passed, and none that did anything but pass, warn or skip.
 
     Stricter than "Passed through module N": a skipped Check proved nothing, so
     a module whose every Check was skipped is not claimed, and the count is of
-    the Checks that ran.
+    the Checks that ran and passed. A warning neither blocks a claim nor counts
+    towards one.
     """
     module = 0
     for number in range(1, report.through + 1):
         mine = [r for r in report.results if r.module == number]
         if not any(r.status == PASS for r in mine):
             break
-        if any(r.status not in (PASS, SKIP) for r in mine):
+        if any(r.status not in (PASS, WARN, SKIP) for r in mine):
             break
         module = number
     claimed = [r for r in report.results if r.module <= module]
@@ -363,6 +365,13 @@ def grade(
         write("")
         write("What to read next:")
         for result in failures:
+            write("  {}: {}".format(result.case_id, result.name.replace("_", " ")))
+            write("    {}".format(explain(result, mode)))
+    warnings = [r for r in report.results if r.status == WARN]
+    if warnings:
+        write("")
+        write("Warnings, which fail nothing:")
+        for result in warnings:
             write("  {}: {}".format(result.case_id, result.name.replace("_", " ")))
             write("    {}".format(explain(result, mode)))
 

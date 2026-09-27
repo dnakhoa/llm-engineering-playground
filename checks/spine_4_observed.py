@@ -186,14 +186,20 @@ def _number(value: float) -> str:
 
 @needs_trace
 def the_agent_span_names_the_agent(outcome: Outcome) -> CheckResult:
-    """The agent says who it is (``env.describe_agent``), so a backend can find its traces."""
+    """The agent says who it is (``env.describe_agent``), so a backend can find its traces.
+
+    A warning, never a failure: the conventions set ``gen_ai.agent.name`` only
+    "if provided by the application", so an agent that leaves it out breaks
+    none of them, and a correct Spine 1 to 3 agent still passes module 4.
+    """
     name = "the agent span names the agent"
     agents = outcome.trace.agent_spans
     named = [span.attributes.get(AGENT_NAME) for span in agents if span.attributes.get(AGENT_NAME)]
     if agents and len(named) == len(agents):
         return CheckResult(name, True, "The agent is {!r}.".format(named[0]))
-    return CheckResult(name, False, "No {} on the invoke_agent span: call "
-                       "env.describe_agent(name) from your agent.".format(AGENT_NAME))
+    return CheckResult.warn(name, "No {} on the invoke_agent span, so a tracing backend "
+                            "cannot tell this agent's traces from another's: call "
+                            "env.describe_agent(name) from your agent.".format(AGENT_NAME))
 
 
 CHECKS = (

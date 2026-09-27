@@ -181,10 +181,14 @@ single-turn upgrade, the Knowledge Base Cases and the multi-turn one:
   The Budgeted module prices your agent from the trace, so a trace that
   undercounts would make it look cheaper than it is.
 - **The agent span names the agent.** `gen_ai.agent.name` is set, so a backend
-  can find your agent's traces.
+  can find your agent's traces. This one is a warning: it prints `WARN` and
+  never fails a module, the exit code or your badge. The conventions set the
+  name only "if provided by the application", so an agent that leaves it out
+  breaks none of them. Name yours anyway, with `env.describe_agent`: in a
+  backend full of other services' traces, an unnamed agent is hard to find.
 
 The Spine 2 agent passes the first five as it is, because the environment
-traces it; it fails the last until it names itself.
+traces it, and gets the naming warning until it names itself.
 
 The suite lists only these six. A module 4 run runs modules 1 to 3 first, and
 the Checks on the verdict hold on every Case, so each Case here is graded on the

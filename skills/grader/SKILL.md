@@ -104,7 +104,10 @@ Two errors are common Offline:
 
 A `SKIP` line is not a failure: Offline skips live-only Checks, such as the
 judge rubric, because a recording holds the agent's calls and not the judge's.
-Say which Checks were skipped. A `STOP` line means the Spend Cap stopped the
+Say which Checks were skipped. A `WARN` line is not a failure either: it never
+fails a module, the exit code or the badge. The command lists each warning
+with its lesson link under "Warnings, which fail nothing:"; relay it as advice,
+such as naming the agent on its trace. A `STOP` line means the Spend Cap stopped the
 run. Report what finished and what it spent; a higher cap is the Reader's call.
 
 ## 5. The badge

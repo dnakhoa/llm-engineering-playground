@@ -98,3 +98,14 @@ def test_the_notebook_runs_offline_and_its_checks_pass(monkeypatch):
     assert namespace["refused_span"].status == "ERROR"
     assert len(namespace["exported"]) > 0
     assert namespace["report"].passed is True
+
+
+def test_the_lesson_teaches_naming_the_agent_and_says_it_is_a_warning():
+    readme = " ".join(README.read_text(encoding="utf-8").split())
+    bullet = readme[readme.index("**The agent span names the agent.**"):]
+    bullet = bullet[:bullet.index("## ")]
+
+    assert "env.describe_agent" in readme
+    assert "a warning" in bullet
+    assert "never fails" in bullet
+

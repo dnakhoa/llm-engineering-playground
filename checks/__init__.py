@@ -23,9 +23,29 @@ from typing import Callable, TypeVar
 
 @dataclass(frozen=True)
 class CheckResult:
+    """What one Check saw on one Outcome.
+
+    A ``warning`` is a result that does not fail: something worth fixing that
+    breaks no rule the Check enforces, such as an agent span with no agent
+    name, which the conventions leave to the application. It is ``passed``, so
+    it never blocks what a pass would not, and the Checks CLI prints it as
+    ``WARN`` and counts it apart from the passes. Make one with ``warn``.
+    """
+
     name: str
     passed: bool
     detail: str
+    warning: bool = False
+
+    def __post_init__(self) -> None:
+        if self.warning and not self.passed:
+            raise ValueError(
+                "A warning never fails, so it is passed: use CheckResult.warn(name, detail).")
+
+    @classmethod
+    def warn(cls, name: str, detail: str) -> "CheckResult":
+        """A result that does not fail, but that the Reader should read."""
+        return cls(name, True, detail, warning=True)
 
 
 F = TypeVar("F", bound=Callable[..., CheckResult])

@@ -62,6 +62,8 @@ DEFAULT_SPEND_CAP_USD = 1.00
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 PASS = "pass"
+#: A result that does not fail (``CheckResult.warn``): printed, counted apart.
+WARN = "warn"
 FAIL = "fail"
 SKIP = "skip"
 STOPPED = "stopped"
@@ -70,6 +72,7 @@ ERROR = "error"
 
 _LABELS = {
     PASS: "PASS",
+    WARN: "WARN",
     FAIL: "FAIL",
     SKIP: "SKIP",
     STOPPED: "STOP",
@@ -109,6 +112,11 @@ class Report:
     @property
     def passed(self) -> bool:
         return self.passed_through == self.through and self.stopped_reason is None
+
+    @property
+    def warnings(self) -> int:
+        """Results that warned. A warning fails no module and no exit code."""
+        return sum(1 for result in self.results if result.status == WARN)
 
 
 # ── Arguments ─────────────────────────────────────────────────────────────────
@@ -293,7 +301,7 @@ def run_checks(
                     report.stopped_reason = str(error)
                     emit(check, ERROR, str(error))
                     continue
-                emit(check, PASS if result.passed else FAIL, result.detail, result.name)
+                emit(check, _status(result), result.detail, result.name)
         carried.extend(
             check for check in suite.checks if is_on_every_case(check) and check not in carried)
 
@@ -319,8 +327,18 @@ def run_checks(
         write("Would have cost {} live. Offline, nothing was spent.".format(_usd(priced)))
     elif cap is not None:
         write("Spent {} of the {} Spend Cap.".format(_usd(priced), _usd(cap.limit_usd)))
+    if report.warnings:
+        write("{} warning{}: {} not fail a module.".format(
+            report.warnings, "" if report.warnings == 1 else "s",
+            "it does" if report.warnings == 1 else "they do"))
     write("Passed through module {} of {}.".format(report.passed_through, through))
     return report
+
+
+def _status(result) -> str:
+    if not result.passed:
+        return FAIL
+    return WARN if getattr(result, "warning", False) else PASS
 
 
 def _require_tracing_for(suites: Sequence[Suite]) -> None:
@@ -355,11 +373,12 @@ def _checks_for(
 
 
 def _passed_through(suites: Sequence[Suite], results: Sequence[CheckRun]) -> int:
-    """The last module N such that modules 1 to N all passed. A skip is not a failure."""
+    """The last module N such that modules 1 to N all passed. A skip or a
+    warning is not a failure."""
     passed = 0
     for suite in suites:
         mine = [r for r in results if r.module == suite.module]
-        if any(r.status not in (PASS, SKIP) for r in mine):
+        if any(r.status not in (PASS, WARN, SKIP) for r in mine):
             break
         passed = suite.module
     return passed

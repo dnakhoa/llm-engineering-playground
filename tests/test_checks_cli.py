@@ -552,3 +552,51 @@ def test_a_missing_package_is_a_run_that_could_not_start_not_a_failed_check(
 
     assert code == 2
     assert "pip install python-dotenv" in capsys.readouterr().err
+
+
+# ── Warnings ──────────────────────────────────────────────────────────────────
+
+
+def _warns(outcome):
+    return CheckResult.warn("names itself", "No name on the agent span.")
+
+
+def _warning_suite():
+    from checks.spine_1_loop import plan_changed_to_pro_exactly_once
+
+    return Suite(module=1, title="Loop", cases=("upgrade-to-pro",),
+                 checks=(plan_changed_to_pro_exactly_once, _warns))
+
+
+def test_a_warning_is_a_result_that_does_not_fail():
+    result = CheckResult.warn("names itself", "No name.")
+
+    assert result.warning is True
+    assert result.passed is True  # it never blocks what a pass would not
+    with pytest.raises(ValueError):
+        CheckResult("names itself", False, "No name.", warning=True)
+
+
+def test_a_warning_is_printed_counted_apart_and_never_fails_a_module(no_network):
+    lines = []
+
+    report = run_checks(through=1, agent="flagship.loop:run", suites=(_warning_suite(),),
+                        out=lines.append)
+
+    assert [r.status for r in report.results] == ["pass", "warn"]
+    assert report.warnings == 1
+    assert report.passed is True and report.passed_through == 1
+    assert "  WARN  upgrade-to-pro: names itself. No name on the agent span." in lines
+    assert lines[-2:] == ["1 warning: it does not fail a module.",
+                          "Passed through module 1 of 1."]
+
+
+def test_a_warning_leaves_the_exit_code_alone(capsys, monkeypatch, no_network):
+    import checks.cli
+
+    monkeypatch.setattr(checks.cli, "discover_suites", lambda: (_warning_suite(),))
+
+    code = main(["--modules", "1", "--agent", "flagship.loop:run"])
+
+    assert code == 0
+    assert "WARN" in capsys.readouterr().out

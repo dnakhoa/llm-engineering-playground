@@ -294,6 +294,50 @@ def test_an_unresolved_case_blocks_the_graded_badge_and_share_line(capsys, tmp_p
     assert "Spine module 2," in lines[-1] and "Graded" not in lines[-1]
 
 
+def test_a_warning_never_counts_against_the_badge_or_towards_it(tmp_path):
+    from checks import CheckResult
+
+    def warns(outcome):
+        return CheckResult.warn("names itself", "No name on the agent span.")
+
+    badge_file = tmp_path / "badge.json"
+    suite = _suite(1, _passes(), warns)
+
+    result = _quiet(through=1, agent=PASSES, suites=(suite,), badge_file=badge_file)
+
+    assert result.report.passed is True
+    assert result.badge_module == 1
+    assert "1 Check passed" in _badge(badge_file)["message"]  # the warning is not a pass
+
+
+def test_a_module_with_only_warnings_is_not_claimed(tmp_path):
+    from checks import CheckResult
+
+    def warns(outcome):
+        return CheckResult.warn("names itself", "No name on the agent span.")
+
+    result = _quiet(through=1, agent=PASSES, suites=(_suite(1, warns),),
+                    badge_file=tmp_path / "badge.json")
+
+    assert result.report.passed is True
+    assert result.badge_module == 0  # a warning proved nothing, like a skip
+
+
+def test_the_grader_links_each_warning_to_its_lesson(capsys, tmp_path):
+    main(["--modules", "4", "--agent", "flagship.knowledge:run",
+          "--badge-file", str(tmp_path / "badge.json")])
+
+    from checks.grader import check_link
+
+    out = capsys.readouterr().out
+    assert "Warnings, which fail nothing:" in out
+    assert "the agent span names the agent" in out
+    link = check_link(4, "the_agent_span_names_the_agent")
+    assert link.startswith(BLOB + "spine/04-observed/README.md#")
+    assert link in out
+    _heading_exists(link)
+
+
 def test_a_failing_run_writes_no_new_badge(tmp_path):
     badge_file = tmp_path / "badge.json"
     main(["--modules", "1", "--agent", FAILING, "--badge-file", str(badge_file)])

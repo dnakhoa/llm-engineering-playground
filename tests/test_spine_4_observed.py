@@ -268,11 +268,34 @@ def test_a_span_on_another_convention_version_fails(no_network):
     assert "1.41.0" in result.name and "1.44.0" in result.detail
 
 
-def test_an_agent_that_never_names_itself_fails_only_the_naming_check(no_network):
+def test_an_agent_that_never_names_itself_is_warned_not_failed(no_network):
+    # gen_ai.agent.name is set "if provided by the application": leaving it
+    # out breaks no convention, so a correct Spine 1 to 3 agent is not failed.
     outcome = run_case(UPGRADE, AGENT, mode="offline")  # the Spine 2 agent
 
-    failed = [name for name, r in _results(outcome).items() if not r.passed]
-    assert failed == ["the_agent_span_names_the_agent"]
+    results = _results(outcome)
+    assert [name for name, r in results.items() if not r.passed] == []
+    assert [name for name, r in results.items() if r.warning] == [
+        "the_agent_span_names_the_agent"]
+    assert "env.describe_agent" in results["the_agent_span_names_the_agent"].detail
+
+
+def test_an_agent_that_names_itself_gets_no_warning(no_network):
+    outcome = run_case(UPGRADE, OBSERVED_AGENT, mode="offline")
+
+    assert not any(r.warning for r in _results(outcome).values())
+
+
+def test_the_spine_2_agent_passes_module_4_with_a_naming_warning(no_network):
+    lines = []
+
+    report = run_checks(through=4, agent=AGENT, out=lines.append)
+
+    assert report.passed is True, "\n".join(lines)
+    assert lines[-1] == "Passed through module 4 of 4."
+    warned = [r for r in report.results if r.status == "warn"]
+    assert {r.name for r in warned} == {"the_agent_span_names_the_agent"}
+    assert report.warnings == len(warned) > 0
 
 
 def test_the_checks_cli_passes_the_reference_agent_through_module_4(no_network):
