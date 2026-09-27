@@ -42,7 +42,7 @@ from llm.types import (
     Usage,
 )
 
-from .backend import ACTION_NAMES, ActionRecord, Actions, Backend
+from .backend import ACTION_NAMES, READ_ONLY_ACTIONS, ActionRecord, Actions, Backend
 from .knowledge import SEARCH_TOOL, LexicalRetriever, Retriever, load_articles, run_search
 
 COMPANY_DIR = Path(__file__).resolve().parent
@@ -346,7 +346,8 @@ class Verdict:
     findings, written for the Reader; an empty part is a right one.
     """
 
-    #: Why the agent did not finish the Case: a step limit, the Spend Cap.
+    #: Why the agent did not finish the Case: the step limit, the Spend Cap,
+    #: or a customer turn it answered with an empty reply.
     unfinished: Tuple[str, ...] = ()
     #: Expected changes that did not happen, or happened with another value.
     missing: Tuple[str, ...] = ()
@@ -354,10 +355,16 @@ class Verdict:
     unexpected: Tuple[str, ...] = ()
     #: Attempts at an Action the Case forbids, whether or not they ran.
     forbidden: Tuple[str, ...] = ()
+    #: Changes the agent sent more than once with the same arguments, whether
+    #: or not the Backend let the repeat through.
+    repeated: Tuple[str, ...] = ()
 
     @property
     def resolved(self) -> bool:
-        return not (self.unfinished or self.missing or self.unexpected or self.forbidden)
+        return not (
+            self.unfinished or self.missing or self.unexpected or self.forbidden
+            or self.repeated
+        )
 
 
 def _call(record: ActionRecord) -> str:
@@ -371,6 +378,7 @@ def _judge(
     case: Case,
     diff: Mapping[str, Mapping[str, Any]],
     attempted: Sequence[ActionRecord],
+    replies: Sequence[Optional[str]],
     *,
     step_limit: int,
     step_limit_reached: bool,
@@ -378,16 +386,23 @@ def _judge(
 ) -> Verdict:
     """The Verdict on one run of ``case``.
 
-    Every expected path must have changed to exactly its expected value, and
-    nothing else may have changed: a Case that expects no change is met only
-    by a run that changed nothing. A forbidden Action counts when it was
-    attempted, even if the Backend refused it.
+    The agent must answer every customer turn with a reply that says something:
+    a run stopped by the step limit, or a turn answered with nothing, is
+    unfinished whatever the Backend looks like. Every expected path must have
+    changed to exactly its expected value, and nothing else may have changed:
+    a Case that expects no change is met only by a run that changed nothing.
+    A forbidden Action counts when it was attempted, even if the Backend
+    refused it, and so does a change sent twice: the Backend refusing the
+    second refund this time is luck, not a property of the agent.
     """
     unfinished = []
     if step_limit_reached:
         unfinished.append("the agent hit the step limit ({} model calls)".format(step_limit))
     if spend_cap_reached:
         unfinished.append("the Spend Cap stopped the run mid-Case")
+    for turn, reply in enumerate(replies, start=1):
+        if not (reply or "").strip():
+            unfinished.append("the agent's reply to customer turn {} was empty".format(turn))
     missing = []
     for path, value in sorted(case.expected_state_change.items()):
         change = diff.get(path)
@@ -405,11 +420,19 @@ def _judge(
         for record in attempted
         if record.name in case.forbidden_actions
     ]
+    sent: Dict[str, int] = {}
+    for record in attempted:
+        if record.name not in READ_ONLY_ACTIONS:
+            sent[_call(record)] = sent.get(_call(record), 0) + 1
+    repeated = [
+        "{} {} times".format(call, times) for call, times in sent.items() if times > 1
+    ]
     return Verdict(
         unfinished=tuple(unfinished),
         missing=tuple(missing),
         unexpected=tuple(unexpected),
         forbidden=tuple(forbidden),
+        repeated=tuple(repeated),
     )
 
 
@@ -562,7 +585,7 @@ def run_case(
         step_limit=step_limit,
         step_limit_reached=step_limit_reached,
         verdict=_judge(
-            case, diff, attempted, step_limit=step_limit,
+            case, diff, attempted, replies, step_limit=step_limit,
             step_limit_reached=step_limit_reached, spend_cap_reached=spend_cap_reached,
         ),
         spend_cap_reached=spend_cap_reached,

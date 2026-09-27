@@ -24,7 +24,8 @@ from checks.spine_3_graded import (  # noqa: E402
     CHECKS,
     no_forbidden_action_is_attempted,
 )
-from company.runner import load_case, run_case  # noqa: E402
+from checks.cli import run_checks  # noqa: E402
+from company.runner import StepLimitReached, load_case, run_case  # noqa: E402
 from llm.testing import StubTransport  # noqa: E402
 from llm.types import ToolCall  # noqa: E402
 
@@ -94,3 +95,133 @@ def test_the_reference_agent_attempts_no_forbidden_action(no_network):
 
     assert _graded(outcome)["no_forbidden_action_is_attempted"] is True
     assert outcome.resolved is True
+
+
+# ── An agent that never finishes fails ───────────────────────────────────────
+
+
+def _replies_empty(customer_turn, env):
+    return ""
+
+
+def _replies_blank(customer_turn, env):
+    return "  \n"
+
+
+def _replies_nothing(customer_turn, env):
+    return None
+
+
+def _hits_the_step_limit(customer_turn, env):
+    raise StepLimitReached(env.step_limit)
+
+
+NEVER_FINISHES = (_replies_empty, _replies_blank, _replies_nothing, _hits_the_step_limit)
+
+
+@pytest.mark.parametrize("agent", NEVER_FINISHES, ids=lambda agent: agent.__name__)
+@pytest.mark.parametrize("case_id", CASES)
+def test_an_agent_that_never_finishes_fails_every_case(agent, case_id):
+    # Including the Case where nothing was meant to change, which an agent
+    # that does nothing would otherwise reach by doing nothing.
+    outcome = run_case(load_case(case_id), agent, transport=StubTransport())
+
+    assert outcome.resolved is False
+    assert _graded(outcome)["the_agent_finishes_the_case"] is False
+
+
+@pytest.mark.parametrize("agent", NEVER_FINISHES, ids=lambda agent: agent.__name__)
+def test_the_checks_cli_fails_every_case_of_an_agent_that_never_finishes(agent, no_network):
+    report = run_checks(through=3, agent=agent, out=lambda line: None)
+
+    failed = {(r.module, r.case_id) for r in report.results if r.status == "fail"}
+    graded = {(r.module, r.case_id) for r in report.results}
+    assert failed == graded
+    assert report.passed_through == 0
+
+
+# ── A seeded regression: refunding twice ─────────────────────────────────────
+
+REFUNDS_TWICE = "tests.fixtures.graded_agents:refunds_twice"
+PRORATED = load_case("downgrade-with-prorated-refund")
+
+
+def test_refunding_twice_leaves_the_right_state_but_is_not_resolved(no_network):
+    # The Backend refuses the second refund, because the first used up what the
+    # invoice owes. A $5.00 refund sent twice would have run twice.
+    outcome = run_case(PRORATED, REFUNDS_TWICE, mode="offline")
+
+    assert [(a.name, a.executed) for a in outcome.actions_attempted] == [
+        ("look_up_account", True), ("change_plan", True),
+        ("issue_refund", True), ("issue_refund", False)]
+    assert outcome.verdict.missing == () and outcome.verdict.unexpected == ()
+    assert outcome.resolved is False
+    assert _graded(outcome)["each_change_is_attempted_once"] is False
+
+
+def test_the_seeded_regression_fails_the_graded_suite(capsys, no_network):
+    from checks.cli import main
+
+    code = main(["--modules", "3", "--agent", REFUNDS_TWICE])
+
+    out = capsys.readouterr().out
+    failed = [line.split() for line in out.splitlines() if line.strip().startswith("FAIL")]
+    assert code == 1, out
+    assert [row[1] for row in failed] == [PRORATED.id + ":"], out
+    assert "issue_refund" in "\n".join(line for line in out.splitlines() if "FAIL" in line)
+    # The Knowledge suite reads only the Backend's final state, which is right.
+    assert out.strip().splitlines()[-1] == "Passed through module 2 of 3."
+
+
+# ── The Graded suite ──────────────────────────────────────────────────────────
+
+
+def test_the_reference_agent_passes_modules_1_to_3_offline(no_network):
+    report = run_checks(through=3, agent=AGENT, out=lambda line: None)
+
+    assert report.passed is True, [(r.case_id, r.name, r.detail) for r in report.results
+                                   if r.status not in ("pass", "skip")]
+    assert {r.module for r in report.results} == {1, 2, 3}
+    assert report.passed_through == 3
+
+
+def test_the_graded_suite_covers_every_action_built_so_far(no_network):
+    from company.backend import ACTION_NAMES
+
+    ran = {
+        record.name
+        for case_id in CASES
+        for record in run_case(load_case(case_id), AGENT, mode="offline").actions_executed
+    }
+    assert set(ACTION_NAMES) == {"look_up_account", "change_plan", "issue_refund"}
+    assert ran == set(ACTION_NAMES)
+
+
+def test_every_graded_case_has_a_recording_so_it_runs_offline():
+    assert all(load_case(case_id).recording for case_id in CASES)
+
+
+PANEL = (
+    AGENT,
+    REFUNDS_TWICE,
+    _downgrades_unasked,
+    _refunds_anyway,
+    *NEVER_FINISHES,
+    "tests.fixtures.knowledge_agents:refunds_five_dollars",
+    "tests.fixtures.knowledge_agents:refunds_the_policy_amount_in_two_parts",
+    "tests.fixtures.case_runner_agents:upgrades_downgrades_and_upgrades_again",
+    "tests.fixtures.case_runner_agents:changes_someone_elses_plan",
+)
+
+
+@pytest.mark.parametrize("agent", PANEL, ids=lambda a: a if isinstance(a, str) else a.__name__)
+@pytest.mark.parametrize("case_id", CASES)
+def test_resolved_is_exactly_every_offline_graded_check_passing(agent, case_id):
+    # One definition: the Budgeted Checks and the Scoreboard count `resolved`,
+    # so it must never call resolved a run the Graded Checks fail, or the
+    # other way round.
+    case = load_case(case_id)
+    transport = None if agent in (AGENT, REFUNDS_TWICE) else StubTransport()
+    outcome = run_case(case, agent, transport=transport)
+
+    assert outcome.resolved is all(_graded(outcome).values()), _graded(outcome)

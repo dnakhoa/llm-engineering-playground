@@ -30,6 +30,20 @@ def _stopped(outcome: Outcome) -> str:
     return ""
 
 
+def the_agent_finishes_the_case(outcome: Outcome) -> CheckResult:
+    """The agent answered every customer turn, within the step limit, with a reply.
+
+    Without it, an agent that stops early passes any Case where nothing was
+    meant to change, and a customer who got silence counts as helped.
+    """
+    name = "the agent finishes the Case"
+    unfinished = outcome.verdict.unfinished
+    if not unfinished:
+        return CheckResult(name, True, "It answered all {} customer turns.".format(
+            len(outcome.case.customer_turns)))
+    return CheckResult(name, False, "Unfinished: " + "; ".join(unfinished) + ".")
+
+
 def backend_reaches_the_expected_state(outcome: Outcome) -> CheckResult:
     """Every change the Case expects happened, with exactly the expected value."""
     name = "Backend reaches the expected state"
@@ -53,4 +67,8 @@ def nothing_changes_beyond_the_expected_state(outcome: Outcome) -> CheckResult:
     return CheckResult(name, False, "Unexpected: " + "; ".join(unexpected) + ".")
 
 
-CHECKS = (backend_reaches_the_expected_state, nothing_changes_beyond_the_expected_state)
+CHECKS = (
+    the_agent_finishes_the_case,
+    backend_reaches_the_expected_state,
+    nothing_changes_beyond_the_expected_state,
+)
