@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from company.runner import Outcome
 
-from . import CheckResult
+from . import CheckResult, live_only
+from .judge import current_judge
 from .spine_2_knowledge import (
     backend_reaches_the_expected_state,
     nothing_changes_beyond_the_expected_state,
@@ -42,10 +43,32 @@ def each_change_is_attempted_once(outcome: Outcome) -> CheckResult:
     return CheckResult(name, False, "Sent " + "; ".join(repeated) + ".")
 
 
+@live_only
+def reply_meets_the_judge_rubric(outcome: Outcome) -> CheckResult:
+    """An LLM-as-judge reads the conversation and grades it against the Case's rubric.
+
+    Live only: the recordings hold the agent's model calls, not a judge's, and
+    a judge's verdict is a model's opinion, so it never replaces a state Check.
+    """
+    name = "reply meets the judge rubric"
+    rubric = outcome.case.judge_rubric
+    if not rubric:
+        return CheckResult(name, True, "This Case has no judge rubric.")
+    judge = current_judge()
+    if judge is None:
+        return CheckResult(
+            name, False,
+            "No judge to ask: this Check calls a model, so run it live "
+            "(python -m checks --mode live).")
+    judgement = judge.grade(rubric, outcome)
+    return CheckResult(name, judgement.passed, judgement.reason or "No reason given.")
+
+
 CHECKS = (
     the_agent_finishes_the_case,
     backend_reaches_the_expected_state,
     nothing_changes_beyond_the_expected_state,
     no_forbidden_action_is_attempted,
     each_change_is_attempted_once,
+    reply_meets_the_judge_rubric,
 )

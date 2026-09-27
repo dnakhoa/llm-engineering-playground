@@ -23,8 +23,10 @@ from checks.spine_3_graded import (  # noqa: E402
     CASES,
     CHECKS,
     no_forbidden_action_is_attempted,
+    reply_meets_the_judge_rubric,
 )
 from checks.cli import run_checks  # noqa: E402
+from checks.suites import Suite  # noqa: E402
 from company.runner import StepLimitReached, load_case, run_case  # noqa: E402
 from llm.testing import StubTransport  # noqa: E402
 from llm.types import ToolCall  # noqa: E402
@@ -199,6 +201,103 @@ def test_the_graded_suite_covers_every_action_built_so_far(no_network):
 
 def test_every_graded_case_has_a_recording_so_it_runs_offline():
     assert all(load_case(case_id).recording for case_id in CASES)
+
+
+def test_every_graded_case_carries_a_judge_rubric():
+    assert all(load_case(case_id).judge_rubric for case_id in CASES)
+
+
+# ── The judge rubric: live only ───────────────────────────────────────────────
+
+
+def test_the_judge_rubric_is_live_only_and_skipped_offline(no_network):
+    report = run_checks(through=3, agent=AGENT, out=lambda line: None)
+
+    judged = [r for r in report.results if r.name == reply_meets_the_judge_rubric.__name__]
+    assert is_live_only(reply_meets_the_judge_rubric)
+    assert [r.case_id for r in judged] == list(CASES)
+    assert {r.status for r in judged} == {"skip"}
+    assert report.passed is True
+
+
+def _verdict(text, input_tokens=1000, output_tokens=100):
+    return {
+        "content": [{"type": "text", "text": text}],
+        "stop_reason": "end_turn",
+        "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
+    }
+
+
+def _upgrades_without_the_model(customer_turn, env):
+    env.act(ToolCall("c1", "look_up_account", {"account_id": "acct_1001"}))
+    env.act(ToolCall("c2", "change_plan", {"account_id": "acct_1001", "plan": "pro"}))
+    return "UPGRADED-REPLY: you're on Pro now."
+
+
+def _judged(transport, spend_cap_usd=1.00):
+    """A live run of one Graded Case whose only model call is the judge's."""
+    suite = Suite(module=3, title="Graded", cases=("upgrade-to-pro",),
+                  checks=(reply_meets_the_judge_rubric,))
+    return run_checks(through=3, agent=_upgrades_without_the_model, mode="live",
+                      transport=transport, suites=(suite,), spend_cap_usd=spend_cap_usd,
+                      out=lambda line: None)
+
+
+def test_live_the_judge_reads_the_rubric_and_the_reply_and_its_verdict_counts():
+    stub = StubTransport([_verdict('{"verdict": "pass", "reason": "Confirms the new plan."}')])
+
+    report = _judged(stub)
+
+    (result,) = report.results
+    assert (result.status, result.detail) == ("pass", "Confirms the new plan.")
+    (request,) = stub.requests
+    sent = str(request.body)
+    assert load_case("upgrade-to-pro").judge_rubric in sent
+    assert "UPGRADED-REPLY" in sent
+    assert "change_plan" in sent  # the judge sees what actually ran
+
+
+def test_live_a_failing_verdict_fails_the_check_with_the_judges_reason():
+    report = _judged(StubTransport([
+        _verdict('Here is my verdict: {"verdict": "fail", "reason": "Never names the plan."}')]))
+
+    (result,) = report.results
+    assert (result.status, result.detail) == ("fail", "Never names the plan.")
+    assert report.passed is False
+
+
+def test_live_an_answer_that_is_not_a_verdict_fails_the_check():
+    report = _judged(StubTransport([_verdict("Looks fine to me!")]))
+
+    (result,) = report.results
+    assert result.status == "fail"
+    assert "Looks fine to me!" in result.detail
+
+
+def test_live_the_judges_calls_count_against_the_spend_cap():
+    # 1,000 in and 100 out on claude-sonnet-5: $0.002 + $0.001.
+    report = _judged(StubTransport([_verdict('{"verdict": "pass", "reason": "ok"}')]))
+
+    assert report.spent_usd == pytest.approx(0.003)
+
+
+def test_live_a_spend_cap_the_run_has_used_up_stops_the_judge():
+    stub = StubTransport([_verdict('{"verdict": "pass", "reason": "ok"}')])
+
+    report = _judged(stub, spend_cap_usd=0.0)
+
+    (result,) = report.results
+    assert result.status == "stopped"
+    assert stub.requests == []
+    assert report.stopped_by_spend_cap is True
+
+
+def test_without_a_judge_the_rubric_check_says_to_run_it_live(no_network):
+    outcome = run_case(load_case("upgrade-to-pro"), AGENT, mode="offline")
+
+    result = reply_meets_the_judge_rubric(outcome)
+    assert result.passed is False
+    assert "live" in result.detail
 
 
 PANEL = (

@@ -85,6 +85,8 @@ class Case:
     knowledge_base: bool = False
     recording: Optional[str] = None
     tags: Mapping[str, Any] = field(default_factory=dict)
+    #: What a good reply does, in words, for an LLM-as-judge Check to grade.
+    judge_rubric: Optional[str] = None
 
     @property
     def customer_turns(self) -> Tuple[str, ...]:
@@ -126,6 +128,12 @@ def load_case(case_id_or_path: Union[str, Path]) -> Case:
                 data.get("id", path.stem), knowledge_base
             )
         )
+    judge_rubric = data.get("judge_rubric")
+    if judge_rubric is not None and not (isinstance(judge_rubric, str) and judge_rubric.strip()):
+        raise ValueError(
+            "Case {}: \"judge_rubric\" is a sentence saying what a good reply does, "
+            "not {!r}.".format(data.get("id", path.stem), judge_rubric)
+        )
     return Case(
         id=data["id"],
         customer_account_id=data["customer"]["account_id"],
@@ -137,6 +145,7 @@ def load_case(case_id_or_path: Union[str, Path]) -> Case:
         knowledge_base=knowledge_base,
         recording=data.get("recording"),
         tags=dict(data.get("tags") or {}),
+        judge_rubric=judge_rubric,
     )
 
 

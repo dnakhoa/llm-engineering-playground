@@ -37,6 +37,7 @@ from company.runner import (
     Agent,
     Outcome,
     SpendCap,
+    SpendCapReached,
     load_agent,
     load_case,
     run_case,
@@ -47,6 +48,7 @@ from llm.replay import ReplayMismatchError
 from llm.transport import TransportError
 
 from . import is_live_only
+from .judge import Judge, judging_with
 from .suites import Check, Suite, discover_suites
 
 #: The reference Flagship Agent at the latest Spine module's end state.
@@ -202,6 +204,12 @@ def run_checks(
             write("Offline: nothing is spent. Recorded usage is priced at these rates to "
                   "show what the run would cost live, and stops where the cap would.")
 
+    # Live, a judge-rubric Check grades on the same model and key as the agent,
+    # and its calls count against the same Spend Cap.
+    judge: Optional[Judge] = None
+    if mode == LIVE:
+        judge = Judge(model=model, transport=transport, registry=registry, spend_cap=cap)
+
     outcomes: Dict[str, Outcome] = {}
     for suite in selected:
         write("")
@@ -259,7 +267,17 @@ def run_checks(
                 if mode == OFFLINE and is_live_only(check):
                     emit(check, SKIP, "Live only: it needs a model call no recording holds.")
                     continue
-                result = check(outcome)
+                try:
+                    with judging_with(judge):
+                        result = check(outcome)
+                except SpendCapReached:  # a live-only Check's own model call
+                    report.stopped_by_spend_cap = True
+                    emit(check, STOPPED, "Stopped by the Spend Cap before its model call.")
+                    continue
+                except TransportError as error:
+                    report.stopped_reason = str(error)
+                    emit(check, ERROR, str(error))
+                    continue
                 emit(check, PASS if result.passed else FAIL, result.detail, result.name)
 
     priced = cap.spent_usd if cap is not None else 0.0

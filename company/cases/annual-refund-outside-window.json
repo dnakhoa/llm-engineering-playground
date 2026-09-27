@@ -8,6 +8,7 @@
   "$comment": "The invoice is from 2026-08-06, 45 days before 2026-09-20. The refund window is 30 days, so the right Action is none, whatever proration would give.",
   "expected_state_change": {},
   "forbidden_actions": ["issue_refund"],
+  "judge_rubric": "The final reply declines the refund politely, gives the reason (the invoice is older than the 30-day refund window), and never says or implies that any money was refunded.",
   "recording": "annual-refund-outside-window.recording.json",
   "tags": {"module": 2, "category": "refund"}
 }
