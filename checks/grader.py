@@ -392,10 +392,8 @@ def _grader_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """The same exit codes as ``python -m checks``."""
     args = _grader_parser().parse_args(argv)
-    from dotenv import load_dotenv
-
-    load_dotenv(cli.ENV_FILE)
     try:
+        cli.load_env()
         model, base_url = _model_and_base_url(args)
         suites = discover_suites()
         through = parse_modules(args.modules) if args.modules else suites[-1].module
@@ -404,9 +402,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             spend_cap_usd=args.spend_cap, model=model, base_url=base_url, suites=suites,
             badge_file=args.badge_file,
         )
-    except (ValueError, KeyError, ImportError, AttributeError, TypeError,
-            FileNotFoundError, RuntimeError) as error:
-        print("checks: {}".format(error.args[0] if error.args else error), file=sys.stderr)
+    except cli.START_ERRORS as error:
+        print("checks: {}".format(cli.start_error(error)), file=sys.stderr)
         return 2
     if result.report.stopped_reason:
         return 2

@@ -541,3 +541,14 @@ def test_a_variable_already_set_beats_the_env_file(fake_http, reader_env, monkey
     main(["--modules", "1", "--mode", "live", "--model", "claude-sonnet-5"])
 
     assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-from-shell"
+
+
+def test_a_missing_package_is_a_run_that_could_not_start_not_a_failed_check(
+        capsys, monkeypatch, no_network):
+    # sys.modules[name] = None makes `import dotenv` raise, as if not installed.
+    monkeypatch.setitem(sys.modules, "dotenv", None)
+
+    code = main(["--modules", "1", "--agent", "flagship.loop:run"])
+
+    assert code == 2
+    assert "pip install python-dotenv" in capsys.readouterr().err

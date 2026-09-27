@@ -44,12 +44,13 @@ from company.runner import (
     load_case,
     run_case,
 )
+from company import tracing
 from llm import load_registry, resolve_model
 from llm.registry import LOCAL_PROVIDER, ModelSpec, local_model
 from llm.replay import ReplayMismatchError
 from llm.transport import TransportError
 
-from . import is_live_only, is_on_every_case
+from . import is_live_only, is_needs_trace, is_on_every_case
 from .judge import Judge, judging_with
 from .suites import Check, Suite, discover_suites
 
@@ -187,6 +188,7 @@ def run_checks(
     selected = [s for s in (suites if suites is not None else discover_suites()) if s.module <= through]
     if not selected:
         raise ValueError("There are no Check suites for modules 1 to {}.".format(through))
+    _require_tracing_for(selected)
     run_agent = load_agent(agent)
     agent_name = agent if isinstance(agent, str) else getattr(agent, "__name__", repr(agent))
 
@@ -318,6 +320,22 @@ def run_checks(
     return report
 
 
+def _require_tracing_for(suites: Sequence[Suite]) -> None:
+    """Refuse, before anything runs, a run whose Checks read traces when the
+    OpenTelemetry SDK that records them is not installed."""
+    if tracing.available():
+        return
+    traced = next((suite for suite in suites
+                   if any(is_needs_trace(check) for check in suite.checks)), None)
+    if traced is not None:
+        earlier = traced.module - 1
+        tracing.require(
+            "Module {} ({}) grades each Case's OpenTelemetry trace".format(
+                traced.module, traced.title),
+            "Modules 1 to {} run without it: --modules {}.".format(earlier, earlier)
+            if earlier else "")
+
+
 def _checks_for(
     case_id: str,
     carried: Sequence[Check],
@@ -397,15 +415,41 @@ def _model_and_base_url(args: argparse.Namespace) -> Tuple[str, Optional[str]]:
     return spec.model_id, args.base_url
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
-    """0: passed through the last module. 1: a Check failed or the cap stopped
-    the run. 2: the run could not start or could not reach the model."""
-    args = _parser().parse_args(argv)
+#: Packages the Checks import, by import name, and the pip name that installs each.
+_PIP_NAMES = {"dotenv": "python-dotenv", "opentelemetry": tracing.INSTALL_HINT.split()[-1]}
+
+
+def start_error(error: BaseException) -> str:
+    """The one line a run that could not start prints: what went wrong, and
+    for a package the course needs that is missing, the pip line that fixes it."""
+    missing = getattr(error, "name", None) if isinstance(error, ImportError) else None
+    root = (missing or "").split(".")[0]
+    if root in _PIP_NAMES and not isinstance(error, tracing.TracingUnavailable):
+        return "{} is not installed: pip install {} (it is in requirements.txt).".format(
+            _PIP_NAMES[root], _PIP_NAMES[root])
+    return str(error.args[0] if error.args else error)
+
+
+def load_env() -> None:
+    """The Reader's keys and model settings, from the root .env. A variable
+    already set wins."""
     from dotenv import load_dotenv
 
-    # The Reader's keys and model settings. A variable already set wins.
     load_dotenv(ENV_FILE)
+
+
+#: What stops a run before it starts: exit code 2, never 1, which blames a Check.
+START_ERRORS = (ValueError, KeyError, ImportError, AttributeError, TypeError,
+                FileNotFoundError, RuntimeError)
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """0: passed through the last module. 1: a Check failed or the cap stopped
+    the run. 2: the run could not start or could not reach the model, such as
+    when a package it needs is not installed."""
+    args = _parser().parse_args(argv)
     try:
+        load_env()
         model, base_url = _model_and_base_url(args)
         suites = discover_suites()
         through = parse_modules(args.modules) if args.modules else suites[-1].module
@@ -418,9 +462,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             base_url=base_url,
             suites=suites,
         )
-    except (ValueError, KeyError, ImportError, AttributeError, TypeError,
-            FileNotFoundError, RuntimeError) as error:
-        print("checks: {}".format(error.args[0] if error.args else error), file=sys.stderr)
+    except START_ERRORS as error:
+        print("checks: {}".format(start_error(error)), file=sys.stderr)
         return 2
     if report.stopped_reason:
         return 2

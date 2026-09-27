@@ -29,6 +29,17 @@ Reader the command to get it
 (`git clone https://github.com/dnakhoa/llm-engineering-playground.git`).
 Do not clone it yourself unless they say to.
 
+**Setup.** The course's packages come from `pip install -r requirements.txt`
+in that folder. Modules 1 to 3 need only the small core of it; module 4 and
+later also need `opentelemetry-sdk`, because they grade each Case's trace. You
+do not have to check for them first: when a package is missing, the command
+checks before it runs anything, exits 2, and prints one `checks:` line with
+the `pip install ...` that fixes it. Exit code 2 means the Checks never ran,
+so nothing is known about the Reader's agent yet. Never say the agent failed
+on an exit code 2. Quote the `checks:` line, give the Reader its `pip install`
+command (or `pip install -r requirements.txt` for everything), and run it only
+if they say to. Then run the Checks again.
+
 ## 2. Find the agent and the modules
 
 - **The agent** is the Reader's own: `path/to/my_agent.py:run` or
@@ -64,7 +75,8 @@ A local OpenAI-compatible server is live too:
 same per-Check lines, plus the lesson links, the result badge and the share
 line. It never asks a question on the terminal. Exit code 0 means every module
 passed, 1 means a Check failed or the Spend Cap stopped the run, 2 means the run
-could not start or could not reach the model.
+could not start or could not reach the model, such as a missing package (see
+Setup, in section 1).
 
 ## 4. Explain each failure
 

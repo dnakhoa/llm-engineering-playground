@@ -477,3 +477,16 @@ def test_the_readme_shows_the_one_command_install_above_the_fold():
     assert INSTALL in readme[:first_section]
     assert "git clone" not in readme[:first_section]
     assert INSTALL in SKILL.read_text(encoding="utf-8")
+
+
+def test_the_skill_reports_a_missing_package_as_setup_not_as_the_agent_failing():
+    # Exit code 2 with a pip line means the Checks never ran: telling the
+    # Reader "your agent failed" there would blame their agent for a package.
+    _, body = _frontmatter(SKILL.read_text(encoding="utf-8"))
+    setup = _prose(_section(body, 1))
+
+    assert "exits 2" in setup
+    assert "pip install" in setup
+    assert "pip install -r requirements.txt" in setup
+    assert "never say the agent failed" in setup.lower()
+    assert "opentelemetry-sdk" in setup and "module 4" in setup.lower()

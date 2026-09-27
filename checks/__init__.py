@@ -59,3 +59,18 @@ def on_every_case(check: F) -> F:
 
 def is_on_every_case(check: Callable[..., CheckResult]) -> bool:
     return bool(getattr(check, "on_every_case", False))
+
+
+def needs_trace(check: F) -> F:
+    """Mark a Check that reads the Outcome's OpenTelemetry trace.
+
+    Only such a Check needs ``opentelemetry-sdk``. Without it, the Checks CLI
+    will not start a run that includes one, and says how to install it, rather
+    than fail every trace Check on an empty trace.
+    """
+    setattr(check, "needs_trace", True)
+    return check
+
+
+def is_needs_trace(check: Callable[..., CheckResult]) -> bool:
+    return bool(getattr(check, "needs_trace", False))

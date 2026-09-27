@@ -229,6 +229,7 @@ class Environment:
     span, under the Case's ``invoke_agent`` span (``company.tracing``). An agent
     names itself on that span with ``describe_agent``, and can add spans of its
     own with ``tracer``, an OpenTelemetry tracer: they join the same trace.
+    Without the OpenTelemetry SDK, both are no-ops and the trace is empty.
     """
 
     def __init__(
@@ -581,7 +582,9 @@ def run_case(
 
     Every run is traced (``company.tracing``); the trace is ``outcome.trace``.
     Pass OpenTelemetry span ``exporters``, such as an ``OTLPSpanExporter``, to
-    send the same spans to a tracing backend as well.
+    send the same spans to a tracing backend as well. Without
+    ``opentelemetry-sdk`` installed the run is the same and its trace is empty,
+    and passing an exporter raises ``TracingUnavailable``, with the install line.
     """
     registry = registry or load_registry()
     run_agent = load_agent(agent)

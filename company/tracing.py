@@ -25,13 +25,21 @@ A finished trace comes back on the Outcome as a ``Trace``: plain records, so a
 Check reads it without the SDK. The same spans go, as they end, to any
 exporter passed in, which is how a trace reaches Jaeger, Honeycomb, Langfuse
 or any other OpenTelemetry backend.
+
+The SDK (``opentelemetry-sdk``) is needed only for traces, which Spine 4 is the
+first module to grade. Without it this module still imports, a Case still
+runs, and its ``Trace`` is empty: the spans are no-ops, ``env.tracer`` too.
+Whatever does need the spans, such as an exporter or a Check that reads them,
+calls ``require`` first and gets ``TracingUnavailable`` with the install line.
 """
 from __future__ import annotations
 
 import os
-from contextlib import contextmanager
-from dataclasses import dataclass, field
+from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass
 from typing import Any, Iterator, Mapping, Optional, Sequence, Tuple
+
+from llm.types import Response, ToolCall, ToolResult
 
 try:
     from opentelemetry.sdk.resources import Resource
@@ -39,13 +47,32 @@ try:
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
     from opentelemetry.trace import Span, SpanKind, Status, StatusCode, Tracer
-except ImportError as error:  # pragma: no cover - depends on what is installed
-    raise ImportError(
-        "The Case runner traces every run with OpenTelemetry, which is not "
-        "installed: pip install opentelemetry-sdk (it is in requirements.txt)."
-    ) from error
+except ImportError as error:  # depends on what is installed
+    _SDK_MISSING: Optional[ImportError] = error
+else:
+    _SDK_MISSING = None
 
-from llm.types import Response, ToolCall, ToolResult
+#: What to run when the SDK is missing.
+INSTALL_HINT = "pip install opentelemetry-sdk"
+
+
+class TracingUnavailable(ImportError):
+    """Something needs a trace, and the OpenTelemetry SDK is not installed."""
+
+
+def available() -> bool:
+    """Whether the OpenTelemetry SDK is installed, so Case runs record spans."""
+    return _SDK_MISSING is None
+
+
+def require(why: str, then: str = "") -> None:
+    """Raise ``TracingUnavailable``, saying ``why`` and how to install the SDK,
+    then ``then``, unless it is installed."""
+    if _SDK_MISSING is not None:
+        raise TracingUnavailable(
+            "{}, and OpenTelemetry is not installed: {} (it is in "
+            "requirements.txt).{}".format(why, INSTALL_HINT, " " + then if then else "")
+        ) from _SDK_MISSING
 
 #: The OpenTelemetry semantic conventions release every span follows.
 SEMCONV_VERSION = "1.41.0"
@@ -180,24 +207,79 @@ def _record(span: ReadableSpan) -> SpanRecord:
 # ── Emitting the spans ────────────────────────────────────────────────────────
 
 
+class _NoSpan:
+    """A span that records nothing: what every span is without the SDK."""
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        pass
+
+    def set_attributes(self, attributes: Mapping[str, Any]) -> None:
+        pass
+
+    def update_name(self, name: str) -> None:
+        pass
+
+    def set_status(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_event(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def record_exception(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def is_recording(self) -> bool:
+        return False
+
+    def end(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def __enter__(self) -> "_NoSpan":
+        return self
+
+    def __exit__(self, *exc: Any) -> bool:
+        return False
+
+
+class _NoTracer:
+    """``env.tracer`` without the SDK: an agent's own spans go nowhere, quietly."""
+
+    @contextmanager
+    def start_as_current_span(self, name: str, *args: Any, **kwargs: Any) -> Iterator[_NoSpan]:
+        yield _NoSpan()
+
+    def start_span(self, name: str, *args: Any, **kwargs: Any) -> _NoSpan:
+        return _NoSpan()
+
+
 def _set_error(span: Span, error_type: str, description: str) -> None:
+    if isinstance(span, _NoSpan):
+        return
     span.set_attribute(ERROR_TYPE, error_type)
     span.set_status(Status(StatusCode.ERROR, description))
 
 
-@dataclass
 class CaseTracer:
     """Traces one Case: keeps its spans in memory and sends them to ``exporters``.
 
     Each Case gets its own tracer provider, so its trace holds its spans and no
     other Case's. An exporter is only ever flushed, never shut down, so one
     exporter can serve every Case in a run.
+
+    Without the SDK it records nothing, and ``finish`` returns an empty
+    ``Trace``. An exporter needs the spans, so passing one then raises
+    ``TracingUnavailable``.
     """
 
-    exporters: Sequence[SpanExporter] = ()
-    _memory: InMemorySpanExporter = field(default_factory=InMemorySpanExporter, init=False)
-
-    def __post_init__(self) -> None:
+    def __init__(self, exporters: Sequence[SpanExporter] = ()) -> None:
+        self.exporters = tuple(exporters)
+        if not available():
+            if self.exporters:
+                require("A span exporter sends a Case's trace")
+            self._provider = None
+            self.tracer: Tracer = _NoTracer()  # type: ignore[assignment]
+            return
+        self._memory = InMemorySpanExporter()
         service = os.environ.get("OTEL_SERVICE_NAME") or SERVICE_NAME
         self._provider = TracerProvider(
             resource=Resource.create({"service.name": service}),
@@ -206,17 +288,21 @@ class CaseTracer:
         self._provider.add_span_processor(SimpleSpanProcessor(self._memory))
         for exporter in self.exporters:
             self._provider.add_span_processor(SimpleSpanProcessor(exporter))
-        self.tracer: Tracer = self._provider.get_tracer(
-            INSTRUMENTATION_NAME, schema_url=SCHEMA_URL
-        )
+        self.tracer = self._provider.get_tracer(INSTRUMENTATION_NAME, schema_url=SCHEMA_URL)
+
+    def _span(self, name: str, kind: str, attributes: Mapping[str, Any], **options: Any):
+        if self._provider is None:
+            return nullcontext(_NoSpan())
+        return self.tracer.start_as_current_span(
+            name, kind=getattr(SpanKind, kind), attributes=dict(attributes), **options)
 
     @contextmanager
     def agent(self, *, case_id: str, model: str, provider: str) -> Iterator[Span]:
         """The root span: one agent working one Case, every turn of it."""
-        with self.tracer.start_as_current_span(
+        with self._span(
             INVOKE_AGENT,
-            kind=SpanKind.INTERNAL,
-            attributes={
+            "INTERNAL",
+            {
                 OPERATION_NAME: INVOKE_AGENT,
                 PROVIDER_NAME: provider_name(provider),
                 REQUEST_MODEL: model,
@@ -228,10 +314,10 @@ class CaseTracer:
     @contextmanager
     def chat(self, *, model: str, provider: str) -> Iterator[Span]:
         """One model call. ``record_response`` puts its tokens and cost on it."""
-        with self.tracer.start_as_current_span(
+        with self._span(
             "{} {}".format(CHAT, model),
-            kind=SpanKind.CLIENT,
-            attributes={
+            "CLIENT",
+            {
                 OPERATION_NAME: CHAT,
                 PROVIDER_NAME: provider_name(provider),
                 REQUEST_MODEL: model,
@@ -256,10 +342,10 @@ class CaseTracer:
         }
         if description:
             attributes[TOOL_DESCRIPTION] = description
-        with self.tracer.start_as_current_span(
+        with self._span(
             "{} {}".format(EXECUTE_TOOL, call.name),
-            kind=SpanKind.INTERNAL,
-            attributes=attributes,
+            "INTERNAL",
+            attributes,
             record_exception=True,
             set_status_on_exception=False,
         ) as span:
@@ -271,6 +357,8 @@ class CaseTracer:
 
     def finish(self) -> Trace:
         """Flush every exporter and return this Case's spans, in start order."""
+        if self._provider is None:
+            return Trace()
         self._provider.force_flush()
         spans = sorted(self._memory.get_finished_spans(), key=lambda s: s.start_time or 0)
         return Trace(spans=tuple(_record(span) for span in spans))

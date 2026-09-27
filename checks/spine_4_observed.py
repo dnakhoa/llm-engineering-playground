@@ -36,7 +36,7 @@ from company.tracing import (
 )
 from llm.types import ROLE_ASSISTANT
 
-from . import CheckResult
+from . import CheckResult, needs_trace
 
 MODULE = 4
 TITLE = "Observed"
@@ -60,6 +60,7 @@ def _describe(span: SpanRecord) -> str:
     return "'{}'".format(span.name)
 
 
+@needs_trace
 def trace_is_one_tree_under_the_agent_span(outcome: Outcome) -> CheckResult:
     """One trace, one ``invoke_agent`` span at its root, every other span below it."""
     name = "trace is one tree under the agent span"
@@ -82,6 +83,7 @@ def trace_is_one_tree_under_the_agent_span(outcome: Outcome) -> CheckResult:
         len(trace.spans) - 1, _describe(agents[0])))
 
 
+@needs_trace
 def spans_follow_the_pinned_conventions(outcome: Outcome) -> CheckResult:
     """Every GenAI span has the pinned schema, its operation's name, kind and attributes."""
     name = "spans follow GenAI conventions {}".format(SEMCONV_VERSION)
@@ -112,6 +114,7 @@ def spans_follow_the_pinned_conventions(outcome: Outcome) -> CheckResult:
     return CheckResult(name, True, "{} spans checked.".format(len(outcome.trace.spans)))
 
 
+@needs_trace
 def every_model_call_has_a_chat_span(outcome: Outcome) -> CheckResult:
     """One ``chat`` span per model call the agent made, each under the agent span."""
     name = "every model call has a chat span"
@@ -126,6 +129,7 @@ def every_model_call_has_a_chat_span(outcome: Outcome) -> CheckResult:
     return CheckResult(name, True, "{0} model calls, {0} chat spans.".format(outcome.steps))
 
 
+@needs_trace
 def every_tool_call_has_a_tool_span(outcome: Outcome) -> CheckResult:
     """Each tool call the model asked for has an ``execute_tool`` span with its call id."""
     name = "every tool call has a tool span"
@@ -149,6 +153,7 @@ def every_tool_call_has_a_tool_span(outcome: Outcome) -> CheckResult:
     return CheckResult(name, True, "{0} tool calls, {0} traced.".format(len(asked)))
 
 
+@needs_trace
 def span_tokens_and_cost_match_the_outcome(outcome: Outcome) -> CheckResult:
     """The chat spans' tokens and cost add up to the Outcome's, and so does the agent span."""
     name = "span tokens and cost match the Outcome"
@@ -179,6 +184,7 @@ def _number(value: float) -> str:
     return str(value) if float(value).is_integer() else "{:.6f}".format(value)
 
 
+@needs_trace
 def the_agent_span_names_the_agent(outcome: Outcome) -> CheckResult:
     """The agent says who it is (``env.describe_agent``), so a backend can find its traces."""
     name = "the agent span names the agent"
