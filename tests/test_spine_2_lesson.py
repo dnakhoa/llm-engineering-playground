@@ -61,10 +61,29 @@ def test_the_setup_cell_is_spine_1s_setup_cell():
     assert _code_cells(NOTEBOOK)[0] == _code_cells(SPINE_1_NOTEBOOK)[0]
 
 
+SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\n\s*\n")
+NEGATION = re.compile(r"\b(?:no|not|never|without|nothing|needn)\b|n['’]t\b", re.IGNORECASE)
+
+
+def _sentences(text):
+    return [" ".join(s.split()) for s in SENTENCE_BREAK.split(text) if s.strip()]
+
+
 def test_the_lesson_says_a_new_system_prompt_needs_new_recordings():
+    # The two phrases must meet in one sentence: "re-record" also appears where
+    # the lesson talks about adding Actions, and "system prompt" in "Try it".
+    # tests/test_case_runner.py proves the claim; this proves the lesson makes it.
     readme = (LESSON / "README.md").read_text(encoding="utf-8")
 
-    assert "system prompt" in readme and "re-record" in readme
+    said = [
+        s for s in _sentences(readme)
+        if "system prompt" in s.lower() and "re-record" in s.lower()
+    ]
+
+    assert said, "the lesson never says a changed system prompt needs re-recording"
+    assert [s for s in said if NEGATION.search(s)] == [], (
+        "the lesson says a changed system prompt does not need re-recording"
+    )
 
 
 def test_the_notebook_runs_offline_and_its_checks_pass(monkeypatch):
