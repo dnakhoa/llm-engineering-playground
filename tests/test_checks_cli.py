@@ -30,6 +30,7 @@ from checks import CheckResult  # noqa: E402
 from checks.cli import main, parse_modules, run_checks  # noqa: E402
 from checks.suites import Suite  # noqa: E402
 from company.runner import RECORDINGS_DIR  # noqa: E402
+from llm import credentials  # noqa: E402
 from llm.replay import ReplayTransport  # noqa: E402
 from tests.fixtures.checks_cli_suites import LOOP, SECOND, SUITES  # noqa: E402
 
@@ -69,6 +70,13 @@ class FakeHttp:
         self.requests.append(request)
         if request.model == "claude-sonnet-5":
             return self._replay.send(request)
+        if request.path.endswith("/responses"):
+            return {
+                "status": "completed",
+                "output": [{"type": "message", "content": [
+                    {"type": "output_text", "text": "Done! You're on Pro now."}]}],
+                "usage": {"input_tokens": 50, "output_tokens": 9},
+            }
         return {
             "choices": [
                 {"message": {"role": "assistant", "content": "Done! You're on Pro now."},
@@ -85,6 +93,31 @@ def fake_http(monkeypatch):
     FakeHttp.instances = []
     monkeypatch.setattr(llm.transport, "HttpTransport", FakeHttp)
     return FakeHttp
+
+
+#: Every variable the Checks CLI's model choice reads, cleared for each test.
+_MODEL_ENV = credentials.ENV_VARS
+
+
+@pytest.fixture(autouse=True)
+def reader_env(monkeypatch, tmp_path):
+    """No keys in the environment, and the CLI reads a .env the test writes.
+
+    `main()` loads `.env` into os.environ, which monkeypatch does not track, so
+    the environment is restored by hand afterwards.
+    """
+    import os
+
+    import checks.cli
+
+    saved = dict(os.environ)
+    for name in _MODEL_ENV:
+        os.environ.pop(name, None)
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr(checks.cli, "ENV_FILE", env_file)
+    yield env_file
+    os.environ.clear()
+    os.environ.update(saved)
 
 
 def _lines(text):
@@ -243,7 +276,9 @@ def test_an_agent_file_outside_the_repo_is_loaded_and_graded(tmp_path, capsys, n
 
 
 def test_live_mode_prints_the_cap_and_asks_for_nothing(capsys, fake_http, never_asks):
-    code = main(["--modules", "1", "--mode", "live", "--spend-cap", "0.25"])
+    code = main(
+        ["--modules", "1", "--mode", "live", "--spend-cap", "0.25", "--model", "claude-sonnet-5"]
+    )
 
     out = _lines(capsys.readouterr().out)
     assert code == 0
@@ -340,3 +375,102 @@ def test_the_real_suites_are_discovered_in_module_order():
     assert [s.module for s in suites] == sorted(s.module for s in suites)
     assert LOOP.checks == suites[0].checks
     assert SECOND.module == 2
+
+
+# ── Which model, when --model is not given ────────────────────────────────────
+#
+# The CLI loads the root .env and uses llm.default_model(), the same policy as
+# ask(): a Reader with only an OpenAI key runs live on an OpenAI model, not on
+# a Claude model their key cannot call. Offline replays recordings made on one
+# model, so it stays on that model and needs no key at all.
+
+
+def _write_env(env_file, **values):
+    template = (Path(__file__).resolve().parent.parent / ".env.example").read_text()
+    lines = [template] + ["{}={}".format(name, value) for name, value in values.items()]
+    env_file.write_text("\n".join(lines) + "\n")
+
+
+def test_live_mode_without_a_model_uses_the_key_in_the_readers_env(
+    capsys, fake_http, never_asks, reader_env
+):
+    _write_env(reader_env, OPENAI_API_KEY="sk-real-openai")
+
+    main(["--modules", "1", "--mode", "live", "--agent", AGENTS + ":claims_without_acting"])
+
+    captured = capsys.readouterr()
+    assert "ANTHROPIC_API_KEY" not in captured.out + captured.err
+    assert "· live · gpt-6-luna" in captured.out
+    assert fake_http.instances[0].provider == "openai"
+
+
+def test_live_mode_without_a_model_follows_llm_model(capsys, fake_http, reader_env):
+    _write_env(reader_env, LLM_MODEL="claude-sonnet-5", ANTHROPIC_API_KEY="sk-ant-real")
+
+    code = main(["--modules", "1", "--mode", "live"])
+
+    assert "· live · claude-sonnet-5" in capsys.readouterr().out
+    assert code == 0
+
+
+def test_live_mode_without_a_model_runs_on_the_readers_local_server(
+    capsys, fake_http, never_asks, reader_env
+):
+    _write_env(reader_env, LLM_PROVIDER="ollama", LLM_MODEL="llama3.2",
+               OPENAI_BASE_URL="http://localhost:11434/v1")
+
+    main(["--modules", "1", "--mode", "live", "--agent", AGENTS + ":claims_without_acting"])
+
+    out = capsys.readouterr().out
+    assert "Spend Cap does not apply" in out
+    request = fake_http.instances[0].requests[0]
+    assert (request.model, request.base_url) == ("llama3.2", "http://localhost:11434/v1")
+
+
+def test_live_mode_with_no_key_anywhere_says_how_to_configure_one(capsys, fake_http, reader_env):
+    _write_env(reader_env)
+
+    code = main(["--modules", "1", "--mode", "live"])
+
+    assert code == 2
+    assert "LLM_MODEL" in capsys.readouterr().err
+    assert fake_http.instances == []
+
+
+def test_offline_mode_needs_no_key_whatever_the_env_holds(capsys, no_network, reader_env):
+    _write_env(reader_env, OPENAI_API_KEY="sk-real-openai")
+
+    code = main(["--modules", "1"])
+
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "· offline · claude-sonnet-5" in out
+
+
+def test_offline_mode_with_no_env_file_and_no_key_passes(capsys, no_network, reader_env):
+    assert not reader_env.exists()
+
+    assert main(["--modules", "1"]) == 0
+
+
+def test_live_mode_with_a_model_still_reads_the_key_from_the_readers_env(
+    fake_http, reader_env
+):
+    import os
+
+    _write_env(reader_env, ANTHROPIC_API_KEY="sk-ant-real")
+
+    main(["--modules", "1", "--mode", "live", "--model", "claude-sonnet-5"])
+
+    assert os.environ.get("ANTHROPIC_API_KEY") == "sk-ant-real"
+
+
+def test_a_variable_already_set_beats_the_env_file(fake_http, reader_env, monkeypatch):
+    import os
+
+    _write_env(reader_env, ANTHROPIC_API_KEY="sk-ant-from-file")
+    os.environ["ANTHROPIC_API_KEY"] = "sk-ant-from-shell"
+
+    main(["--modules", "1", "--mode", "live", "--model", "claude-sonnet-5"])
+
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-from-shell"

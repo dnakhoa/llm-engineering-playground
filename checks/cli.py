@@ -13,14 +13,22 @@ live-only Checks such as judge rubrics are reported as skipped. Live mode calls
 the model on the Reader's own key, under a Spend Cap that is printed before
 anything runs. A run that reaches the cap stops, and reports what finished.
 Nothing here ever asks a question on the terminal, so it runs the same in CI.
+
+Without ``--model``, a live run loads the root ``.env`` and asks
+``llm.default_model()``, the same policy ``ask()`` uses: ``LLM_MODEL``, a local
+server (``LLM_PROVIDER=ollama``, ``OPENAI_BASE_URL``), or the cheapest model of
+the provider whose key is set. An offline run replays recordings made on one
+model, so it stays on that model and needs no key.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Sequence, Union
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from company.runner import (
     DEFAULT_MODEL,
@@ -33,7 +41,7 @@ from company.runner import (
     load_case,
     run_case,
 )
-from llm import load_registry
+from llm import load_registry, resolve_model
 from llm.registry import LOCAL_PROVIDER, ModelSpec, local_model
 from llm.replay import ReplayMismatchError
 from llm.transport import TransportError
@@ -43,6 +51,9 @@ from .suites import Check, Suite, discover_suites
 
 DEFAULT_AGENT = "flagship.loop:run"
 DEFAULT_SPEND_CAP_USD = 1.00
+
+#: The Reader's settings: the root .env that `cp .env.example .env` creates.
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 PASS = "pass"
 FAIL = "fail"
@@ -294,19 +305,46 @@ def _parser() -> argparse.ArgumentParser:
         help="stop the run once it has spent this much (default: {})".format(
             _usd(DEFAULT_SPEND_CAP_USD)))
     parser.add_argument(
-        "--model", default=DEFAULT_MODEL,
-        help="a registry model ID, or a local server's model name with --base-url")
+        "--model", default=None,
+        help="a registry model ID, or a local server's model name with --base-url "
+             "(default: offline, {}, the model the recordings were made on; live, "
+             "the model your .env selects, as llm.default_model() picks it)".format(
+                 DEFAULT_MODEL))
     parser.add_argument(
         "--base-url", default=None,
         help="a local OpenAI-compatible server, e.g. http://localhost:11434/v1")
     return parser
 
 
+def _model_and_base_url(args: argparse.Namespace) -> Tuple[str, Optional[str]]:
+    """The model to run, and the local server it is on, if any.
+
+    ``--model`` wins. Offline, the default is the model the recordings were made
+    on. Live, it is ``llm.default_model()`` on the environment ``main()`` loaded.
+    """
+    if args.model:
+        return args.model, args.base_url
+    if args.mode == OFFLINE:
+        return DEFAULT_MODEL, args.base_url
+    environ: Dict[str, str] = dict(os.environ)
+    if args.base_url:
+        environ.update(LLM_PROVIDER="local", OPENAI_BASE_URL=args.base_url)
+    spec = resolve_model(load_registry(), environ)
+    if spec.provider == LOCAL_PROVIDER:
+        return spec.model_id, spec.base_url
+    return spec.model_id, args.base_url
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """0: passed through the last module. 1: a Check failed or the cap stopped
     the run. 2: the run could not start or could not reach the model."""
     args = _parser().parse_args(argv)
+    from dotenv import load_dotenv
+
+    # The Reader's keys and model settings. A variable already set wins.
+    load_dotenv(ENV_FILE)
     try:
+        model, base_url = _model_and_base_url(args)
         suites = discover_suites()
         through = parse_modules(args.modules) if args.modules else suites[-1].module
         report = run_checks(
@@ -314,12 +352,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             agent=args.agent,
             mode=args.mode,
             spend_cap_usd=args.spend_cap,
-            model=args.model,
-            base_url=args.base_url,
+            model=model,
+            base_url=base_url,
             suites=suites,
         )
     except (ValueError, KeyError, ImportError, AttributeError, TypeError,
-            FileNotFoundError) as error:
+            FileNotFoundError, RuntimeError) as error:
         print("checks: {}".format(error.args[0] if error.args else error), file=sys.stderr)
         return 2
     if report.stopped_reason:
