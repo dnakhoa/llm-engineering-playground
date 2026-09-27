@@ -65,3 +65,25 @@ def upgrades_someone_elses_account(customer_turn, env):
         )
     )
     return "Done! You're on Pro now."
+
+
+def refunds_on_a_case_that_offers_no_refunds(customer_turn, env):
+    """Calls issue_refund, which the upgrade-to-pro Case never offered."""
+    env.act(
+        ToolCall(
+            id="call_r",
+            name="issue_refund",
+            arguments={"account_id": "acct_1001", "invoice_id": "inv_2002", "amount_usd": 1},
+        )
+    )
+    return "Refunded."
+
+
+def loop_with_another_system_prompt(customer_turn, env):
+    """The reference loop's first call, with a reworded system prompt."""
+    response = env.complete(
+        [Message.user(customer_turn)],
+        tools=env.tools,
+        system="You are Acme Notes' friendly support agent.",
+    )
+    return response.text

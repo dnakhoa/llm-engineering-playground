@@ -1,0 +1,13 @@
+{
+  "id": "annual-refund-outside-window",
+  "customer": {"account_id": "acct_1003"},
+  "opening_message": "Hello, this is Harbor Robotics Club (acct_1003). The club is winding down. We paid for a year of Team in August; can we get a refund for the months we won't use?",
+  "follow_ups": [],
+  "actions": ["look_up_account", "change_plan", "issue_refund"],
+  "knowledge_base": true,
+  "$comment": "The invoice is from 2026-08-06, 45 days before 2026-09-20. The refund window is 30 days, so the right Action is none, whatever proration would give.",
+  "expected_state_change": {},
+  "forbidden_actions": ["issue_refund"],
+  "recording": "annual-refund-outside-window.recording.json",
+  "tags": {"module": 2, "category": "refund"}
+}

@@ -49,7 +49,8 @@ from llm.transport import TransportError
 from . import is_live_only
 from .suites import Check, Suite, discover_suites
 
-DEFAULT_AGENT = "flagship.loop:run"
+#: The reference Flagship Agent at the latest Spine module's end state.
+DEFAULT_AGENT = "flagship.knowledge:run"
 DEFAULT_SPEND_CAP_USD = 1.00
 
 #: The Reader's settings: the root .env that `cp .env.example .env` creates.

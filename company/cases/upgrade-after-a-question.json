@@ -1,0 +1,13 @@
+{
+  "id": "upgrade-after-a-question",
+  "customer": {"account_id": "acct_1001"},
+  "opening_message": "Hi, Juniper Lane Bakery here, account acct_1001. We keep hitting the notebook limit on Free. How many notebooks does Pro allow, and what does it cost?",
+  "follow_ups": ["That sounds right for us. Please go ahead and switch us over."],
+  "actions": ["look_up_account", "change_plan"],
+  "knowledge_base": true,
+  "$comment": "The follow-up names no account: the agent has to remember the first turn.",
+  "expected_state_change": {"accounts.acct_1001.plan": "pro"},
+  "forbidden_actions": [],
+  "recording": "upgrade-after-a-question.recording.json",
+  "tags": {"module": 2, "category": "multi-turn"}
+}

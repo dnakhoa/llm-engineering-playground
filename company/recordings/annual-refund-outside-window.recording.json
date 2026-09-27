@@ -1,0 +1,475 @@
+{
+  "entries": [
+    {
+      "key": "2e48594296a1537893bf9fdf059e1cf4",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hello, this is Harbor Robotics Club (acct_1003). The club is winding down. We paid for a year of Team in August; can we get a refund for the months we won't use?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Refund part or all of one invoice on an Acme Notes account, in US dollars. Refunds follow Acme Notes' refund policy, so read it in the Knowledge Base first; a refund the policy does not allow is refused. Only the customer's own account can be refunded.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "amount_usd": {
+                    "description": "The amount to refund, in dollars and cents, for example 4.50.",
+                    "type": "number"
+                  },
+                  "invoice_id": {
+                    "description": "The invoice to refund, for example inv_2002.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "invoice_id",
+                  "amount_usd"
+                ],
+                "type": "object"
+              },
+              "name": "issue_refund"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "text": "Let me check the refund policy.",
+            "type": "text"
+          },
+          {
+            "id": "toolu_hand_window_05a",
+            "input": {
+              "query": "refund on an annual plan"
+            },
+            "name": "search_knowledge_base",
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_hand_window_05",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "tool_use",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1179,
+          "output_tokens": 44
+        }
+      }
+    },
+    {
+      "key": "ad78c8e352a41078ccf642d18367d52e",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hello, this is Harbor Robotics Club (acct_1003). The club is winding down. We paid for a year of Team in August; can we get a refund for the months we won't use?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Let me check the refund policy.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_window_05a",
+                  "input": {
+                    "query": "refund on an annual plan"
+                  },
+                  "name": "search_knowledge_base",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "# Refund policy (article refund-policy)\n\nAcme Notes refunds the part of a paid plan you have not used yet. This policy\ncovers every paid plan, monthly or annual.\n\n## The refund window\n\nYou can ask for a refund on an invoice for up to 30 days after the invoice\ndate. After 30 days, that invoice cannot be refunded at all, even if most of\nits billing period is still ahead. This applies to annual plans too: an annual\nplan can be refunded in its first 30 days only.\n\n## How much is refunded: proration\n\nA refund covers the unused days of the invoice's billing period:\n\n    refund = amount paid x unused days / days in the billing period\n\nUnused days are the days in the billing period minus the days since the\ninvoice date. The result is rounded down to the cent. Anything already\nrefunded on the same invoice is taken off.\n\nExample: a $30.00 monthly invoice (30 days) refunded 10 days after its date\nhas 20 unused days, so the refund is $30.00 x 20 / 30 = $20.00.\n\n## The maximum refund\n\nNo single refund can be more than $200.00, whatever proration gives. A larger\nrefund is handled by the Acme Notes billing team, not by support.\n\n## Downgrades and cancellations\n\nDowngrading or cancelling does not refund anything by itself. If you downgrade\nor cancel inside the refund window, ask for the prorated refund of the current\ninvoice at the same time.\n\n# Billing and invoices (article billing-and-invoices)\n\nEvery payment to Acme Notes has an invoice. Pro is invoiced monthly and Team\nannually, on the date the plan started. Each invoice shows its date, the\namount paid, the length of its billing period and anything refunded on it.\n\nRefunds go back to the card that paid the invoice and usually arrive within\nfive to ten working days. A refund is always tied to one invoice.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_window_05a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Refund part or all of one invoice on an Acme Notes account, in US dollars. Refunds follow Acme Notes' refund policy, so read it in the Knowledge Base first; a refund the policy does not allow is refused. Only the customer's own account can be refunded.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "amount_usd": {
+                    "description": "The amount to refund, in dollars and cents, for example 4.50.",
+                    "type": "number"
+                  },
+                  "invoice_id": {
+                    "description": "The invoice to refund, for example inv_2002.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "invoice_id",
+                  "amount_usd"
+                ],
+                "type": "object"
+              },
+              "name": "issue_refund"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "id": "toolu_hand_window_06a",
+            "input": {
+              "account_id": "acct_1003"
+            },
+            "name": "look_up_account",
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_hand_window_06",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "tool_use",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1874,
+          "output_tokens": 30
+        }
+      }
+    },
+    {
+      "key": "e397736b24e31faa4c6c7695a111ca64",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hello, this is Harbor Robotics Club (acct_1003). The club is winding down. We paid for a year of Team in August; can we get a refund for the months we won't use?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Let me check the refund policy.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_window_05a",
+                  "input": {
+                    "query": "refund on an annual plan"
+                  },
+                  "name": "search_knowledge_base",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "# Refund policy (article refund-policy)\n\nAcme Notes refunds the part of a paid plan you have not used yet. This policy\ncovers every paid plan, monthly or annual.\n\n## The refund window\n\nYou can ask for a refund on an invoice for up to 30 days after the invoice\ndate. After 30 days, that invoice cannot be refunded at all, even if most of\nits billing period is still ahead. This applies to annual plans too: an annual\nplan can be refunded in its first 30 days only.\n\n## How much is refunded: proration\n\nA refund covers the unused days of the invoice's billing period:\n\n    refund = amount paid x unused days / days in the billing period\n\nUnused days are the days in the billing period minus the days since the\ninvoice date. The result is rounded down to the cent. Anything already\nrefunded on the same invoice is taken off.\n\nExample: a $30.00 monthly invoice (30 days) refunded 10 days after its date\nhas 20 unused days, so the refund is $30.00 x 20 / 30 = $20.00.\n\n## The maximum refund\n\nNo single refund can be more than $200.00, whatever proration gives. A larger\nrefund is handled by the Acme Notes billing team, not by support.\n\n## Downgrades and cancellations\n\nDowngrading or cancelling does not refund anything by itself. If you downgrade\nor cancel inside the refund window, ask for the prorated refund of the current\ninvoice at the same time.\n\n# Billing and invoices (article billing-and-invoices)\n\nEvery payment to Acme Notes has an invoice. Pro is invoiced monthly and Team\nannually, on the date the plan started. Each invoice shows its date, the\namount paid, the length of its billing period and anything refunded on it.\n\nRefunds go back to the card that paid the invoice and usually arrive within\nfive to ten working days. A refund is always tied to one invoice.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_window_05a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "id": "toolu_hand_window_06a",
+                  "input": {
+                    "account_id": "acct_1003"
+                  },
+                  "name": "look_up_account",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "{\"account_id\": \"acct_1003\", \"invoices\": {\"inv_3001\": {\"amount_cents\": 96000, \"date\": \"2026-08-06\", \"days_since_invoice\": 45, \"period_days\": 365, \"refunded_cents\": 0}}, \"name\": \"Harbor Robotics Club\", \"plan\": \"team\", \"seats\": 8}",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_window_06a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Refund part or all of one invoice on an Acme Notes account, in US dollars. Refunds follow Acme Notes' refund policy, so read it in the Knowledge Base first; a refund the policy does not allow is refused. Only the customer's own account can be refunded.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "amount_usd": {
+                    "description": "The amount to refund, in dollars and cents, for example 4.50.",
+                    "type": "number"
+                  },
+                  "invoice_id": {
+                    "description": "The invoice to refund, for example inv_2002.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "invoice_id",
+                  "amount_usd"
+                ],
+                "type": "object"
+              },
+              "name": "issue_refund"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "text": "I'm sorry, I can't refund this one. Your Team invoice inv_3001 is from 2026-08-06, 45 days ago, and our refund policy allows a refund only within 30 days of the invoice date, annual plans included. The club keeps Team until the end of the year it paid for. If you like, I can move the account to Free now so that nothing renews.",
+            "type": "text"
+          }
+        ],
+        "id": "msg_hand_window_07",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "end_turn",
+        "type": "message",
+        "usage": {
+          "input_tokens": 2061,
+          "output_tokens": 92
+        }
+      }
+    }
+  ],
+  "version": 1
+}

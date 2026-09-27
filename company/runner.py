@@ -2,8 +2,8 @@
 
 This is seam 1. Everything a Check needs comes back on the Outcome: the final
 Backend state and its diff from the seed, every Action the agent attempted and
-every one that ran, the transcript, usage and cost, whether the step limit
-stopped the run, and whether the Case was resolved.
+every one that ran, the transcript, the reply to each customer turn, usage and
+cost, whether the step limit stopped the run, and whether the Case was resolved.
 
     from company.runner import load_case, run_case
 
@@ -12,7 +12,9 @@ stopped the run, and whether the Case was resolved.
     outcome.diff           # {"accounts.acct_1001.plan": {"before": "free", "after": "pro"}}
 
 The agent is anything callable as ``agent(customer_turn, env)`` that returns
-its final reply. Pass it, or pass an importable reference such as
+its reply to that turn. A Case with follow-up turns calls it once per turn,
+with the same ``env``, so an agent that needs an earlier turn must remember it
+(``env.memory``). Pass the agent, or an importable reference such as
 ``"my_agent.loop:run"``, so the Checks grade the Reader's code, not ours.
 """
 from __future__ import annotations
@@ -40,7 +42,8 @@ from llm.types import (
     Usage,
 )
 
-from .backend import ActionRecord, Actions, Backend
+from .backend import ACTION_NAMES, ActionRecord, Actions, Backend
+from .knowledge import SEARCH_TOOL, LexicalRetriever, Retriever, load_articles, run_search
 
 COMPANY_DIR = Path(__file__).resolve().parent
 CASES_DIR = COMPANY_DIR / "cases"
@@ -64,16 +67,29 @@ Agent = Callable[[str, "Environment"], Optional[str]]
 
 @dataclass(frozen=True)
 class Case:
-    """One customer request, as a data file in ``company/cases/``."""
+    """One customer request, as a data file in ``company/cases/``.
+
+    ``actions`` is the Actions the Case lets the agent use, in the order it is
+    offered them (ADR 0005). Anything else the agent calls is refused, and
+    logged as attempted but not executed. ``knowledge_base`` says whether the
+    agent may search the Knowledge Base too.
+    """
 
     id: str
     customer_account_id: str
     opening_message: str
     expected_state_change: Mapping[str, Any]
+    actions: Tuple[str, ...]
     forbidden_actions: Tuple[str, ...] = ()
     follow_ups: Tuple[str, ...] = ()
+    knowledge_base: bool = False
     recording: Optional[str] = None
     tags: Mapping[str, Any] = field(default_factory=dict)
+
+    @property
+    def customer_turns(self) -> Tuple[str, ...]:
+        """The opening message, then each follow-up, in the order they arrive."""
+        return (self.opening_message,) + self.follow_ups
 
 
 def load_case(case_id_or_path: Union[str, Path]) -> Case:
@@ -82,13 +98,43 @@ def load_case(case_id_or_path: Union[str, Path]) -> Case:
     if not path.suffix:
         path = CASES_DIR / "{}.json".format(case_id_or_path)
     data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data.get("actions"), list):
+        raise ValueError(
+            "Case {} does not declare its Actions. Add \"actions\": a list of the "
+            "Actions it lets the agent use, from: {}.".format(
+                data.get("id", path.stem), ", ".join(ACTION_NAMES)
+            )
+        )
+    repeated = sorted({name for name in data["actions"] if data["actions"].count(name) > 1})
+    if repeated:
+        raise ValueError(
+            "Case {} declares {} more than once.".format(
+                data.get("id", path.stem), ", ".join(repeated)
+            )
+        )
+    unknown = [name for name in data["actions"] if name not in ACTION_NAMES]
+    if unknown:
+        raise ValueError(
+            "Case {} declares {}, which the Backend does not have. It has: {}.".format(
+                data.get("id", path.stem), ", ".join(unknown), ", ".join(ACTION_NAMES)
+            )
+        )
+    knowledge_base = data.get("knowledge_base", False)
+    if not isinstance(knowledge_base, bool):
+        raise ValueError(
+            "Case {}: \"knowledge_base\" is true or false, not {!r}.".format(
+                data.get("id", path.stem), knowledge_base
+            )
+        )
     return Case(
         id=data["id"],
         customer_account_id=data["customer"]["account_id"],
         opening_message=data["opening_message"],
         expected_state_change=dict(data.get("expected_state_change") or {}),
+        actions=tuple(data["actions"]),
         forbidden_actions=tuple(data.get("forbidden_actions") or ()),
         follow_ups=tuple(data.get("follow_ups") or ()),
+        knowledge_base=knowledge_base,
         recording=data.get("recording"),
         tags=dict(data.get("tags") or {}),
     )
@@ -148,11 +194,16 @@ class SpendCap:
 
 
 class Environment:
-    """What an agent works with: the Actions as tools, and the model.
+    """What an agent works with: the Case's tools, the model and its memory.
 
-    ``complete`` is the provider layer's ``llm.complete`` with the model and
-    transport already chosen, so the same agent code runs Offline or live.
-    Every call counts toward the step limit and toward usage and cost.
+    ``tools`` is the Actions the Case declares, plus ``search_knowledge_base``
+    when the Case lets the agent use the Knowledge Base; ``act`` runs any of
+    them. ``knowledge`` is that Case's retriever, or ``None``. ``complete`` is
+    the provider layer's ``llm.complete`` with the model and transport already
+    chosen, so the same agent code runs Offline or live. Every call counts
+    toward the step limit and toward usage and cost. ``memory`` is the agent's
+    own, for the length of one Case: empty at the first turn, kept across the
+    follow-ups, gone before the next Case.
     """
 
     def __init__(
@@ -165,8 +216,11 @@ class Environment:
         step_limit: int,
         options: Optional[CallOptions] = None,
         spend_cap: Optional[SpendCap] = None,
+        knowledge: Optional[Retriever] = None,
     ) -> None:
         self._actions = actions
+        self.knowledge = knowledge
+        self.memory: Dict[str, Any] = {}
         self._spend_cap = spend_cap
         self._transport = transport
         self._registry = registry
@@ -179,7 +233,9 @@ class Environment:
 
     @property
     def tools(self) -> Tuple[ToolSpec, ...]:
-        return self._actions.tools
+        if self.knowledge is None:
+            return self._actions.tools
+        return self._actions.tools + (SEARCH_TOOL,)
 
     def complete(
         self,
@@ -210,8 +266,15 @@ class Environment:
         return response
 
     def act(self, call: ToolCall) -> ToolResult:
-        """Run one Action. Refusals come back as an error result for the model."""
-        result = self._actions.run(call)
+        """Run one tool call. Refusals come back as an error result for the model.
+
+        A Knowledge Base search reads and changes nothing, so it is not an
+        Action: it goes into the transcript but not into the Action log.
+        """
+        if self.knowledge is not None and call.name == SEARCH_TOOL.name:
+            result = run_search(self.knowledge, call)
+        else:
+            result = self._actions.run(call)
         last = self.transcript[-1] if self.transcript else None
         if last is not None and last.role == ROLE_TOOL:
             self.transcript[-1] = Message.tool(last.tool_results + (result,))
@@ -243,6 +306,8 @@ class Outcome:
     resolved: bool
     #: The run's Spend Cap stopped this Case before the agent finished.
     spend_cap_reached: bool = False
+    #: The agent's reply to each customer turn it answered, in order.
+    replies: Tuple[Optional[str], ...] = ()
 
 
 def _flatten(value: Any, prefix: str = "") -> Dict[str, Any]:
@@ -335,6 +400,12 @@ def _transport_for(case: Case, mode: str, model: str, registry: Registry):
     raise ValueError("mode is 'offline' or 'live', not {!r}.".format(mode))
 
 
+def _knowledge_for(case: Case, retriever: Optional[Retriever]) -> Optional[Retriever]:
+    if not case.knowledge_base:
+        return None
+    return retriever if retriever is not None else LexicalRetriever(load_articles())
+
+
 def run_case(
     case: Case,
     agent: Union[str, Agent],
@@ -346,8 +417,13 @@ def run_case(
     options: Optional[CallOptions] = None,
     registry: Optional[Registry] = None,
     spend_cap: Optional[SpendCap] = None,
+    retriever: Optional[Retriever] = None,
 ) -> Outcome:
     """Run ``case`` against ``agent`` on a fresh Backend and report the Outcome.
+
+    Each customer turn goes to the agent in order, with the same environment.
+    A Case that declares the Knowledge Base searches it with ``retriever``,
+    by default the lexical one; pass an ``EmbeddingsRetriever`` to upgrade.
 
     Offline mode (the default) replays the Case's reviewed recording and needs
     no key. Pass ``transport`` to supply your own, for example a stub in tests.
@@ -361,7 +437,7 @@ def run_case(
     run_agent = load_agent(agent)
     backend = Backend.seeded()
     seed = backend.export_state()
-    actions = backend.actions_for(case.customer_account_id)
+    actions = backend.actions_for(case.customer_account_id, allowed=case.actions)
     env = Environment(
         actions=actions,
         model=model,
@@ -370,18 +446,22 @@ def run_case(
         step_limit=step_limit,
         options=options,
         spend_cap=spend_cap,
+        knowledge=_knowledge_for(case, retriever),
     )
-    env.transcript.append(Message.user(case.opening_message))
 
-    reply: Optional[str] = None
+    replies: List[Optional[str]] = []
     step_limit_reached = False
     spend_cap_reached = False
     try:
-        reply = run_agent(case.opening_message, env)
+        for turn in case.customer_turns:
+            env.transcript.append(Message.user(turn))
+            replies.append(run_agent(turn, env))
     except StepLimitReached:
         step_limit_reached = True
     except SpendCapReached:
         spend_cap_reached = True
+    # The final reply is the answer to the last turn; a Case stopped before it has none.
+    reply = replies[-1] if len(replies) == len(case.customer_turns) else None
 
     final_state = backend.export_state()
     diff = state_diff(seed, final_state)
@@ -412,4 +492,5 @@ def run_case(
             case, diff, executed, step_limit_reached or spend_cap_reached
         ),
         spend_cap_reached=spend_cap_reached,
+        replies=tuple(replies),
     )

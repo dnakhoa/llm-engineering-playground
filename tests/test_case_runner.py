@@ -221,3 +221,95 @@ def test_a_cross_account_plan_change_is_attempted_but_never_executed():
     assert outcome.actions_executed == ()
     assert outcome.final_state["accounts"]["acct_1002"]["plan"] == "pro"
     assert outcome.diff == {}
+
+
+# ── Each Case declares its Actions (ADR 0005) ─────────────────────────────────
+
+
+def test_adding_issue_refund_leaves_the_upgrade_to_pro_replay_unchanged(no_network):
+    # The Backend now has an Action Spine 1 never had...
+    from company.backend import ACTION_NAMES
+
+    assert "issue_refund" in ACTION_NAMES
+    # ...but the old Case offers only what it declares, so its request, and
+    # therefore its reviewed recording and its Offline Check, stay as they were.
+    assert UPGRADE.actions == ("look_up_account", "change_plan")
+    for agent in ("flagship.loop:run", "flagship.knowledge:run"):
+        outcome = run_case(UPGRADE, agent, mode="offline")
+        assert outcome.resolved is True, agent
+        assert plan_changed_to_pro_exactly_once(outcome).passed is True, agent
+
+
+def test_the_upgrade_to_pro_request_offers_only_the_declared_actions():
+    stub = StubTransport()
+
+    run_case(UPGRADE, "flagship.loop:run", transport=stub)
+
+    offered = [tool["name"] for tool in stub.last_request.body["tools"]]
+    assert offered == ["look_up_account", "change_plan"]
+
+
+def test_offering_every_action_would_have_broken_the_old_recording(no_network):
+    from dataclasses import replace
+
+    from company.backend import ACTION_NAMES
+
+    every_action = replace(UPGRADE, actions=ACTION_NAMES)
+
+    with pytest.raises(ReplayMismatchError, match="body.tools"):
+        run_case(every_action, "flagship.loop:run", mode="offline")
+
+
+def test_a_call_to_an_undeclared_action_is_refused_and_recorded_as_attempted():
+    outcome = run_case(
+        UPGRADE, AGENTS + ":refunds_on_a_case_that_offers_no_refunds",
+        transport=StubTransport(),
+    )
+
+    assert [(a.name, a.executed) for a in outcome.actions_attempted] == [
+        ("issue_refund", False)
+    ]
+    assert outcome.actions_executed == ()
+    assert "not available on this Case" in outcome.actions_attempted[0].result
+    assert outcome.final_state["refunds"] == {}
+
+
+def test_the_system_prompt_is_part_of_the_recording(no_network):
+    # Changing the system prompt changes the request, so it needs a re-recording.
+    with pytest.raises(ReplayMismatchError, match="body.system"):
+        run_case(UPGRADE, AGENTS + ":loop_with_another_system_prompt", mode="offline")
+
+
+def test_a_case_that_does_not_declare_its_actions_will_not_load(tmp_path):
+    case_file = tmp_path / "undeclared.json"
+    case_file.write_text(
+        '{"id": "undeclared", "customer": {"account_id": "acct_1001"}, '
+        '"opening_message": "Hi", "expected_state_change": {}}'
+    )
+
+    with pytest.raises(ValueError, match="declare"):
+        load_case(case_file)
+
+
+def test_a_case_that_declares_an_action_the_backend_lacks_will_not_load(tmp_path):
+    case_file = tmp_path / "unknown.json"
+    case_file.write_text(
+        '{"id": "unknown", "customer": {"account_id": "acct_1001"}, '
+        '"opening_message": "Hi", "expected_state_change": {}, '
+        '"actions": ["look_up_account", "delete_everything"]}'
+    )
+
+    with pytest.raises(ValueError, match="delete_everything"):
+        load_case(case_file)
+
+
+def test_a_case_that_declares_an_action_twice_will_not_load(tmp_path):
+    case_file = tmp_path / "twice.json"
+    case_file.write_text(
+        '{"id": "twice", "customer": {"account_id": "acct_1001"}, '
+        '"opening_message": "Hi", "expected_state_change": {}, '
+        '"actions": ["change_plan", "change_plan"]}'
+    )
+
+    with pytest.raises(ValueError, match="more than once"):
+        load_case(case_file)

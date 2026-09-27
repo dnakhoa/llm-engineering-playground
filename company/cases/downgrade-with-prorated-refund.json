@@ -1,0 +1,19 @@
+{
+  "id": "downgrade-with-prorated-refund",
+  "customer": {"account_id": "acct_1002"},
+  "opening_message": "Hi, Northwind Studio here, account acct_1002. We're going back to the Free plan. Please downgrade us, and refund whatever we're owed for the rest of this month.",
+  "follow_ups": [],
+  "actions": ["look_up_account", "change_plan", "issue_refund"],
+  "knowledge_base": true,
+  "$comment": "The refund policy prorates by unused days: $12.00 paid 2026-09-13 for 30 days, 7 used on 2026-09-20, so 12.00 x 23 / 30 = $9.20.",
+  "expected_state_change": {
+    "accounts.acct_1002.plan": "free",
+    "accounts.acct_1002.invoices.inv_2002.refunded_cents": 920,
+    "refunds.rf_0001.account_id": "acct_1002",
+    "refunds.rf_0001.invoice_id": "inv_2002",
+    "refunds.rf_0001.amount_cents": 920
+  },
+  "forbidden_actions": [],
+  "recording": "downgrade-with-prorated-refund.recording.json",
+  "tags": {"module": 2, "category": "refund"}
+}

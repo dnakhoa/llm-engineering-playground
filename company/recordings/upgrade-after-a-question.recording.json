@@ -1,0 +1,769 @@
+{
+  "entries": [
+    {
+      "key": "578f163d242cb418c540042541380a5a",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hi, Juniper Lane Bakery here, account acct_1001. We keep hitting the notebook limit on Free. How many notebooks does Pro allow, and what does it cost?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "text": "Let me check what Pro includes.",
+            "type": "text"
+          },
+          {
+            "id": "toolu_hand_memory_08a",
+            "input": {
+              "query": "Pro plan notebook limit and price"
+            },
+            "name": "search_knowledge_base",
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_hand_memory_08",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "tool_use",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1150,
+          "output_tokens": 45
+        }
+      }
+    },
+    {
+      "key": "94c6e92f2d528cad07ca9c355f7af16c",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hi, Juniper Lane Bakery here, account acct_1001. We keep hitting the notebook limit on Free. How many notebooks does Pro allow, and what does it cost?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Let me check what Pro includes.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_memory_08a",
+                  "input": {
+                    "query": "Pro plan notebook limit and price"
+                  },
+                  "name": "search_knowledge_base",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "# Changing your plan (article changing-your-plan)\n\nYou can move between Free, Pro and Team at any time.\n\n## Upgrading\n\nAn upgrade takes effect straight away, and the new plan's limits apply at\nonce. The first invoice for the new plan is dated the day you upgrade.\n\n## Downgrading\n\nA downgrade also takes effect straight away. If you now have more notebooks\nthan the new plan allows, nothing is deleted: the extra notebooks become\nread-only until you remove some or upgrade again.\n\nA downgrade does not refund the old plan on its own. See the refund policy for\nwhat can be refunded, and ask for it when you downgrade.\n\n# Plans and pricing (article plans-and-pricing)\n\nAcme Notes has three plans.\n\n## Free\n\nFor trying Acme Notes out. Up to 3 notebooks, 100 MB of storage and one\nmember. No invoices, because there is nothing to pay.\n\n## Pro\n\nFor one person who writes a lot. Unlimited notebooks, 10 GB of storage,\nversion history and offline access. Pro costs $12.00 a month, billed monthly.\n\n## Team\n\nFor groups working in shared notebooks. Everything in Pro, plus shared\nnotebooks, admin controls and 50 GB of storage per seat. Team costs\n$120.00 per seat a year, billed annually for every seat on the account.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_08a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "text": "Pro has unlimited notebooks (Free allows 3), plus 10 GB of storage, version history and offline access. It costs $12.00 a month, billed monthly. Would you like me to move acct_1001 to Pro?",
+            "type": "text"
+          }
+        ],
+        "id": "msg_hand_memory_09",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "end_turn",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1602,
+          "output_tokens": 63
+        }
+      }
+    },
+    {
+      "key": "4da85983173ef10d09ff434f1ad9d9af",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hi, Juniper Lane Bakery here, account acct_1001. We keep hitting the notebook limit on Free. How many notebooks does Pro allow, and what does it cost?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Let me check what Pro includes.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_memory_08a",
+                  "input": {
+                    "query": "Pro plan notebook limit and price"
+                  },
+                  "name": "search_knowledge_base",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "# Changing your plan (article changing-your-plan)\n\nYou can move between Free, Pro and Team at any time.\n\n## Upgrading\n\nAn upgrade takes effect straight away, and the new plan's limits apply at\nonce. The first invoice for the new plan is dated the day you upgrade.\n\n## Downgrading\n\nA downgrade also takes effect straight away. If you now have more notebooks\nthan the new plan allows, nothing is deleted: the extra notebooks become\nread-only until you remove some or upgrade again.\n\nA downgrade does not refund the old plan on its own. See the refund policy for\nwhat can be refunded, and ask for it when you downgrade.\n\n# Plans and pricing (article plans-and-pricing)\n\nAcme Notes has three plans.\n\n## Free\n\nFor trying Acme Notes out. Up to 3 notebooks, 100 MB of storage and one\nmember. No invoices, because there is nothing to pay.\n\n## Pro\n\nFor one person who writes a lot. Unlimited notebooks, 10 GB of storage,\nversion history and offline access. Pro costs $12.00 a month, billed monthly.\n\n## Team\n\nFor groups working in shared notebooks. Everything in Pro, plus shared\nnotebooks, admin controls and 50 GB of storage per seat. Team costs\n$120.00 per seat a year, billed annually for every seat on the account.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_08a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Pro has unlimited notebooks (Free allows 3), plus 10 GB of storage, version history and offline access. It costs $12.00 a month, billed monthly. Would you like me to move acct_1001 to Pro?",
+                  "type": "text"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "text": "That sounds right for us. Please go ahead and switch us over.",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "id": "toolu_hand_memory_10a",
+            "input": {
+              "account_id": "acct_1001"
+            },
+            "name": "look_up_account",
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_hand_memory_10",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "tool_use",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1701,
+          "output_tokens": 29
+        }
+      }
+    },
+    {
+      "key": "7e4aa859235f3d2bd9d00223eabb3e73",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hi, Juniper Lane Bakery here, account acct_1001. We keep hitting the notebook limit on Free. How many notebooks does Pro allow, and what does it cost?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Let me check what Pro includes.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_memory_08a",
+                  "input": {
+                    "query": "Pro plan notebook limit and price"
+                  },
+                  "name": "search_knowledge_base",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "# Changing your plan (article changing-your-plan)\n\nYou can move between Free, Pro and Team at any time.\n\n## Upgrading\n\nAn upgrade takes effect straight away, and the new plan's limits apply at\nonce. The first invoice for the new plan is dated the day you upgrade.\n\n## Downgrading\n\nA downgrade also takes effect straight away. If you now have more notebooks\nthan the new plan allows, nothing is deleted: the extra notebooks become\nread-only until you remove some or upgrade again.\n\nA downgrade does not refund the old plan on its own. See the refund policy for\nwhat can be refunded, and ask for it when you downgrade.\n\n# Plans and pricing (article plans-and-pricing)\n\nAcme Notes has three plans.\n\n## Free\n\nFor trying Acme Notes out. Up to 3 notebooks, 100 MB of storage and one\nmember. No invoices, because there is nothing to pay.\n\n## Pro\n\nFor one person who writes a lot. Unlimited notebooks, 10 GB of storage,\nversion history and offline access. Pro costs $12.00 a month, billed monthly.\n\n## Team\n\nFor groups working in shared notebooks. Everything in Pro, plus shared\nnotebooks, admin controls and 50 GB of storage per seat. Team costs\n$120.00 per seat a year, billed annually for every seat on the account.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_08a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Pro has unlimited notebooks (Free allows 3), plus 10 GB of storage, version history and offline access. It costs $12.00 a month, billed monthly. Would you like me to move acct_1001 to Pro?",
+                  "type": "text"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "text": "That sounds right for us. Please go ahead and switch us over.",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "id": "toolu_hand_memory_10a",
+                  "input": {
+                    "account_id": "acct_1001"
+                  },
+                  "name": "look_up_account",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "{\"account_id\": \"acct_1001\", \"name\": \"Juniper Lane Bakery\", \"plan\": \"free\", \"seats\": 1}",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_10a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "text": "Juniper Lane Bakery is on Free. Moving it to Pro now.",
+            "type": "text"
+          },
+          {
+            "id": "toolu_hand_memory_11a",
+            "input": {
+              "account_id": "acct_1001",
+              "plan": "pro"
+            },
+            "name": "change_plan",
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_hand_memory_11",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "tool_use",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1788,
+          "output_tokens": 52
+        }
+      }
+    },
+    {
+      "key": "6ad084f2313dd5a7284bbe7a95b8e8c3",
+      "request": {
+        "body": {
+          "max_tokens": 4096,
+          "messages": [
+            {
+              "content": [
+                {
+                  "text": "Hi, Juniper Lane Bakery here, account acct_1001. We keep hitting the notebook limit on Free. How many notebooks does Pro allow, and what does it cost?",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Let me check what Pro includes.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_memory_08a",
+                  "input": {
+                    "query": "Pro plan notebook limit and price"
+                  },
+                  "name": "search_knowledge_base",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "# Changing your plan (article changing-your-plan)\n\nYou can move between Free, Pro and Team at any time.\n\n## Upgrading\n\nAn upgrade takes effect straight away, and the new plan's limits apply at\nonce. The first invoice for the new plan is dated the day you upgrade.\n\n## Downgrading\n\nA downgrade also takes effect straight away. If you now have more notebooks\nthan the new plan allows, nothing is deleted: the extra notebooks become\nread-only until you remove some or upgrade again.\n\nA downgrade does not refund the old plan on its own. See the refund policy for\nwhat can be refunded, and ask for it when you downgrade.\n\n# Plans and pricing (article plans-and-pricing)\n\nAcme Notes has three plans.\n\n## Free\n\nFor trying Acme Notes out. Up to 3 notebooks, 100 MB of storage and one\nmember. No invoices, because there is nothing to pay.\n\n## Pro\n\nFor one person who writes a lot. Unlimited notebooks, 10 GB of storage,\nversion history and offline access. Pro costs $12.00 a month, billed monthly.\n\n## Team\n\nFor groups working in shared notebooks. Everything in Pro, plus shared\nnotebooks, admin controls and 50 GB of storage per seat. Team costs\n$120.00 per seat a year, billed annually for every seat on the account.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_08a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Pro has unlimited notebooks (Free allows 3), plus 10 GB of storage, version history and offline access. It costs $12.00 a month, billed monthly. Would you like me to move acct_1001 to Pro?",
+                  "type": "text"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "text": "That sounds right for us. Please go ahead and switch us over.",
+                  "type": "text"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "id": "toolu_hand_memory_10a",
+                  "input": {
+                    "account_id": "acct_1001"
+                  },
+                  "name": "look_up_account",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "{\"account_id\": \"acct_1001\", \"name\": \"Juniper Lane Bakery\", \"plan\": \"free\", \"seats\": 1}",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_10a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "Juniper Lane Bakery is on Free. Moving it to Pro now.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_hand_memory_11a",
+                  "input": {
+                    "account_id": "acct_1001",
+                    "plan": "pro"
+                  },
+                  "name": "change_plan",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "acct_1001 moved from free to pro.",
+                  "is_error": false,
+                  "tool_use_id": "toolu_hand_memory_11a",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-5",
+          "system": "You are the support agent for Acme Notes, a note-taking app with Free, Pro and Team plans. Resolve the customer's request using your tools. Look the account up before you change it. Only act on the customer's own account. When the request is done, or cannot be done, reply to the customer briefly.",
+          "tools": [
+            {
+              "description": "Look up an Acme Notes account: its name, current plan and seats. Only the customer's own account can be looked up.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id"
+                ],
+                "type": "object"
+              },
+              "name": "look_up_account"
+            },
+            {
+              "description": "Move an Acme Notes account to another plan: free, pro or team. Only the customer's own account can be changed.",
+              "input_schema": {
+                "properties": {
+                  "account_id": {
+                    "description": "The Acme Notes account ID, for example acct_1001.",
+                    "type": "string"
+                  },
+                  "plan": {
+                    "enum": [
+                      "free",
+                      "pro",
+                      "team"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_id",
+                  "plan"
+                ],
+                "type": "object"
+              },
+              "name": "change_plan"
+            },
+            {
+              "description": "Search Acme Notes' help-centre and policy articles, for example the refund policy, plans and pricing, or how plan changes work. Returns the most relevant articles in full. Answer and act from what they say.",
+              "input_schema": {
+                "properties": {
+                  "query": {
+                    "description": "What to look up, in plain words.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              },
+              "name": "search_knowledge_base"
+            }
+          ]
+        },
+        "model": "claude-sonnet-5",
+        "path": "/v1/messages",
+        "surface": "anthropic_messages"
+      },
+      "response": {
+        "content": [
+          {
+            "text": "Done! Juniper Lane Bakery (acct_1001) is now on Pro, with unlimited notebooks.",
+            "type": "text"
+          }
+        ],
+        "id": "msg_hand_memory_12",
+        "model": "claude-sonnet-5",
+        "role": "assistant",
+        "stop_reason": "end_turn",
+        "type": "message",
+        "usage": {
+          "input_tokens": 1869,
+          "output_tokens": 31
+        }
+      }
+    }
+  ],
+  "version": 1
+}
