@@ -6,7 +6,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A trace-structure Check fails when a tool call has no span.
 - [ ] The spans carry token usage and cost that match the Outcome.

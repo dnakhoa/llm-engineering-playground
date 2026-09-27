@@ -6,7 +6,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Invoking the skill runs Offline Checks and never goes live unasked.
 - [ ] Each failure maps to a lesson link.
