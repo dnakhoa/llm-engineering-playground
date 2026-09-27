@@ -6,7 +6,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md · ADR 0002
 
 **Blocked by:** 01, 13
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] No Appendix code or notebook file remains in the lint baseline.
 - [ ] Existing tests and the notebook smoke test pass.
