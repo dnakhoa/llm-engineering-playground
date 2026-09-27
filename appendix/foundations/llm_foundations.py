@@ -18,11 +18,14 @@ try:
 except ImportError:
     pass
 
-from llm import CallOptions, Message, complete, default_model, load_registry
+from llm import CallOptions, Message, complete, configured_registry, default_model, load_registry
 from llm.transport import HttpTransport
 
-REGISTRY = load_registry()          # llm/models.json: current IDs, prices, capabilities
-CHEAPEST = min(REGISTRY.models, key=lambda spec: spec.input_price_per_mtok)
+# llm/models.json (current IDs, prices, capabilities), plus your local server if
+# .env points at one (LLM_PROVIDER=ollama or OPENAI_BASE_URL).
+REGISTRY = configured_registry()
+# The cheapest hosted model, for cost examples: a local server is priced at $0.
+CHEAPEST = min(load_registry().models, key=lambda spec: spec.input_price_per_mtok)
 
 
 def call(messages, *, system=None, **options):
@@ -200,14 +203,19 @@ def demo_api_anatomy():
 def demo_temperature():
     print("\n=== Demo 4: Temperature Effect ===")
 
-    # Current reasoning models (Claude Opus 4.7 and later, GPT-6) reject a
-    # non-default temperature; effort is their control. The provider layer drops
-    # it for them and says why, so this demo only varies on models that accept it.
+    # Whether a temperature is honoured depends on the model AND the effort level.
+    # Claude Opus 4.7 and later reject a non-default temperature at any effort;
+    # GPT-6 rejects it unless the request runs at effort "none". The provider layer
+    # drops it where it would be refused and says why, so this demo asks the
+    # registry for an effort level at which this model does take a temperature.
     spec = REGISTRY.get(default_model(REGISTRY))
-    if not spec.accepts_sampling_params:
+    effort = None if spec.accepts_sampling_at(None) else next(iter(spec.sampling_effort_levels), None)
+    if not spec.accepts_sampling_at(effort):
         print(f"  {spec.model_id} does not act on temperature: {spec.sampling_note}")
         print("  Set LLM_MODEL to a model that does (see llm/models.json) to see the effect.")
         return
+    if effort is not None:
+        print(f"  {spec.model_id} takes a temperature only at effort '{effort}'; running there.")
 
     prompt = "Give me one creative name for a coffee shop."
     unique = {}
@@ -215,7 +223,8 @@ def demo_temperature():
         print(f"\n  temperature={temperature}:")
         names = set()
         for _ in range(3):
-            r = call([Message.user(prompt)], temperature=temperature, max_output_tokens=30)
+            r = call([Message.user(prompt)], temperature=temperature, effort=effort,
+                     max_output_tokens=30)
             name = r.text.strip()
             names.add(name)
             print(f"    '{name}'")

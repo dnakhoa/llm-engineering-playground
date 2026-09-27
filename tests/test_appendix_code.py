@@ -284,3 +284,77 @@ def test_the_typescript_check_ignores_comments():
     source = '// never send a temperature: it is rejected\nconst r = { model, temperature: 0.7 };\n'
 
     assert _typescript_temperatures(source) == [2]
+
+
+# ── One "accepts temperature" rule, and one registry for the default model ────
+
+
+@pytest.mark.parametrize("path", PYTHON, ids=PYTHON_IDS)
+def test_temperature_support_is_asked_at_an_effort_level(path):
+    """`accepts_sampling_params` is only half the rule: GPT-6 takes a temperature
+    at effort `none`. `ModelSpec.accepts_sampling_at(effort)` is the whole rule."""
+    found = [
+        f"{where}line {_line(source, m.start())}"
+        for where, source in code_of(path)
+        for m in re.finditer(r"\.accepts_sampling_params\b", source)
+    ]
+
+    assert found == [], f"{_relative(path)} reads the static flag; use spec.accepts_sampling_at(effort)"
+
+
+def _looks_up_the_default_model(path: Path) -> bool:
+    text = "\n".join(source for _, source in code_of(path))
+    return re.search(r"default_model\(\s*REGISTRY\s*\)", text) is not None
+
+
+LOOKUPS = [p for p in PYTHON if _looks_up_the_default_model(p)]
+
+
+def test_the_lookup_scan_sees_the_notebooks_that_look_the_model_up():
+    assert "appendix/foundations/llm_foundations.ipynb" in [_relative(p) for p in LOOKUPS]
+
+
+@pytest.mark.parametrize("path", LOOKUPS, ids=[_relative(p) for p in LOOKUPS])
+def test_code_that_looks_up_the_default_model_can_find_a_local_one(path):
+    """`REGISTRY.get(default_model(REGISTRY))` must work on a Reader's local server,
+    so REGISTRY comes from `configured_registry()`, which adds it."""
+    text = "\n".join(source for _, source in code_of(path))
+
+    assert "configured_registry(" in text, (
+        f"{_relative(path)} builds REGISTRY with load_registry(); a local model is not in it"
+    )
+
+
+def _text_of(path: Path) -> list[tuple[str, str]]:
+    """(where, text) for every cell of a notebook, or a whole script or page."""
+    text = path.read_text(encoding="utf-8")
+    if path.suffix != ".ipynb":
+        return [("", text)]
+    return [
+        (f"cell {i} ", "".join(c["source"]) if isinstance(c["source"], list) else c["source"])
+        for i, c in enumerate(json.loads(text)["cells"])
+    ]
+
+
+TEXT = sorted(
+    p
+    for p in APPENDIX.rglob("*")
+    if p.suffix in (".md", ".ipynb", ".py")
+    and ".ipynb_checkpoints" not in p.parts
+    and _in_scope(_relative(p))
+)
+
+
+@pytest.mark.parametrize("path", TEXT, ids=[_relative(p) for p in TEXT])
+def test_prose_about_gpt_6_and_temperature_names_effort_none(path):
+    """GPT-6 rejects a temperature except at effort `none`; saying it never takes
+    one, or pointing the Reader at the static flag, teaches the wrong rule."""
+    found = []
+    for where, text in _text_of(path):
+        if "accepts_sampling_params" in text:
+            found.append(f"{where}names accepts_sampling_params")
+        for sentence in re.split(r"(?<=[.!?])\s+|\n\s*\n", text):
+            if "GPT-6" in sentence and "temperature" in sentence.lower() and "none" not in sentence:
+                found.append(f"{where}: {' '.join(sentence.split())[:100]}")
+
+    assert found == [], f"{_relative(path)} states the temperature rule without effort none"
