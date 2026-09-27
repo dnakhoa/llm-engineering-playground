@@ -107,6 +107,111 @@ def test_the_reference_loop_is_stopped_by_the_step_limit_too():
     assert outcome.resolved is False
 
 
+def _says(text):
+    return {
+        "content": [{"type": "text", "text": text}],
+        "stop_reason": "end_turn",
+        "usage": {"input_tokens": 100, "output_tokens": 20},
+    }
+
+
+def test_an_agent_that_claims_the_upgrade_without_acting_fails_the_check():
+    # The reply claims success. Only Backend state can tell it is a lie.
+    stub = StubTransport([_says("Done! You're on Pro now.")])
+
+    outcome = run_case(UPGRADE, AGENTS + ":claims_without_acting", transport=stub)
+
+    assert outcome.reply == "Done! You're on Pro now."
+    assert outcome.resolved is False
+    assert outcome.actions_attempted == ()
+    assert outcome.final_state["accounts"]["acct_1001"]["plan"] == "free"
+    assert plan_changed_to_pro_exactly_once(outcome).passed is False
+
+
+def test_upgrading_downgrading_and_upgrading_again_fails_the_check():
+    outcome = run_case(
+        UPGRADE,
+        AGENTS + ":upgrades_downgrades_and_upgrades_again",
+        transport=StubTransport(),
+    )
+
+    # The account does end on Pro, which is why the Check counts the changes.
+    assert outcome.final_state["accounts"]["acct_1001"]["plan"] == "pro"
+    assert [a.arguments["plan"] for a in outcome.actions_executed] == ["pro", "free", "pro"]
+    result = plan_changed_to_pro_exactly_once(outcome)
+    assert result.passed is False
+    assert "2 change_plan calls to Pro" in result.detail
+
+
+def test_upgrading_a_different_account_fails_the_check():
+    outcome = run_case(
+        UPGRADE, AGENTS + ":upgrades_someone_elses_account", transport=StubTransport()
+    )
+
+    assert outcome.actions_executed == ()
+    assert outcome.final_state["accounts"]["acct_1003"]["plan"] == "team"
+    assert outcome.final_state["accounts"]["acct_1001"]["plan"] == "free"
+    assert plan_changed_to_pro_exactly_once(outcome).passed is False
+
+
+def test_a_cross_account_change_fails_the_check():
+    outcome = run_case(
+        UPGRADE, AGENTS + ":changes_someone_elses_plan", transport=StubTransport()
+    )
+
+    assert plan_changed_to_pro_exactly_once(outcome).passed is False
+
+
+def test_the_transcript_holds_every_turn_of_the_offline_run(no_network):
+    outcome = run_case(UPGRADE, "flagship.loop:run")
+
+    turns = [
+        (m.role, m.text, [(c.name, dict(c.arguments)) for c in m.tool_calls],
+         [(r.name, r.content, r.is_error) for r in m.tool_results])
+        for m in outcome.transcript
+    ]
+    assert turns == [
+        ("user", UPGRADE.opening_message, [], []),
+        ("assistant", "Let me look up your account first.",
+         [("look_up_account", {"account_id": "acct_1001"})], []),
+        ("tool", None, [],
+         [("look_up_account",
+           '{"account_id": "acct_1001", "name": "Juniper Lane Bakery", '
+           '"plan": "free", "seats": 1}', False)]),
+        ("assistant", "Juniper Lane Bakery is on Free. Moving it to Pro now.",
+         [("change_plan", {"account_id": "acct_1001", "plan": "pro"})], []),
+        ("tool", None, [], [("change_plan", "acct_1001 moved from free to pro.", False)]),
+        ("assistant", "Done! Juniper Lane Bakery (acct_1001) is now on the Pro plan.", [], []),
+    ]
+
+
+def test_the_transcript_keeps_a_refused_action_and_the_turns_after_it():
+    wrong_account = {
+        "content": [
+            {"type": "tool_use", "id": "call_1", "name": "change_plan",
+             "input": {"account_id": "acct_1002", "plan": "pro"}}
+        ],
+        "stop_reason": "tool_use",
+        "usage": {"input_tokens": 100, "output_tokens": 20},
+    }
+    stub = StubTransport([wrong_account, _says("I can only change your own account.")])
+
+    outcome = run_case(UPGRADE, "flagship.loop:run", transport=stub)
+
+    turns = [
+        (m.role, m.text, [c.name for c in m.tool_calls],
+         [(r.content, r.is_error) for r in m.tool_results])
+        for m in outcome.transcript
+    ]
+    assert turns == [
+        ("user", UPGRADE.opening_message, [], []),
+        ("assistant", None, ["change_plan"], []),
+        ("tool", None, [],
+         [("Refused: acct_1002 is not the account of the customer on this Case.", True)]),
+        ("assistant", "I can only change your own account.", [], []),
+    ]
+
+
 def test_a_cross_account_plan_change_is_attempted_but_never_executed():
     outcome = run_case(
         UPGRADE, AGENTS + ":changes_someone_elses_plan", transport=StubTransport()
@@ -116,3 +221,95 @@ def test_a_cross_account_plan_change_is_attempted_but_never_executed():
     assert outcome.actions_executed == ()
     assert outcome.final_state["accounts"]["acct_1002"]["plan"] == "pro"
     assert outcome.diff == {}
+
+
+# ── Each Case declares its Actions (ADR 0005) ─────────────────────────────────
+
+
+def test_adding_issue_refund_leaves_the_upgrade_to_pro_replay_unchanged(no_network):
+    # The Backend now has an Action Spine 1 never had...
+    from company.backend import ACTION_NAMES
+
+    assert "issue_refund" in ACTION_NAMES
+    # ...but the old Case offers only what it declares, so its request, and
+    # therefore its reviewed recording and its Offline Check, stay as they were.
+    assert UPGRADE.actions == ("look_up_account", "change_plan")
+    for agent in ("flagship.loop:run", "flagship.knowledge:run"):
+        outcome = run_case(UPGRADE, agent, mode="offline")
+        assert outcome.resolved is True, agent
+        assert plan_changed_to_pro_exactly_once(outcome).passed is True, agent
+
+
+def test_the_upgrade_to_pro_request_offers_only_the_declared_actions():
+    stub = StubTransport()
+
+    run_case(UPGRADE, "flagship.loop:run", transport=stub)
+
+    offered = [tool["name"] for tool in stub.last_request.body["tools"]]
+    assert offered == ["look_up_account", "change_plan"]
+
+
+def test_offering_every_action_would_have_broken_the_old_recording(no_network):
+    from dataclasses import replace
+
+    from company.backend import ACTION_NAMES
+
+    every_action = replace(UPGRADE, actions=ACTION_NAMES)
+
+    with pytest.raises(ReplayMismatchError, match="body.tools"):
+        run_case(every_action, "flagship.loop:run", mode="offline")
+
+
+def test_a_call_to_an_undeclared_action_is_refused_and_recorded_as_attempted():
+    outcome = run_case(
+        UPGRADE, AGENTS + ":refunds_on_a_case_that_offers_no_refunds",
+        transport=StubTransport(),
+    )
+
+    assert [(a.name, a.executed) for a in outcome.actions_attempted] == [
+        ("issue_refund", False)
+    ]
+    assert outcome.actions_executed == ()
+    assert "not available on this Case" in outcome.actions_attempted[0].result
+    assert outcome.final_state["refunds"] == {}
+
+
+def test_the_system_prompt_is_part_of_the_recording(no_network):
+    # Changing the system prompt changes the request, so it needs a re-recording.
+    with pytest.raises(ReplayMismatchError, match="body.system"):
+        run_case(UPGRADE, AGENTS + ":loop_with_another_system_prompt", mode="offline")
+
+
+def test_a_case_that_does_not_declare_its_actions_will_not_load(tmp_path):
+    case_file = tmp_path / "undeclared.json"
+    case_file.write_text(
+        '{"id": "undeclared", "customer": {"account_id": "acct_1001"}, '
+        '"opening_message": "Hi", "expected_state_change": {}}'
+    )
+
+    with pytest.raises(ValueError, match="declare"):
+        load_case(case_file)
+
+
+def test_a_case_that_declares_an_action_the_backend_lacks_will_not_load(tmp_path):
+    case_file = tmp_path / "unknown.json"
+    case_file.write_text(
+        '{"id": "unknown", "customer": {"account_id": "acct_1001"}, '
+        '"opening_message": "Hi", "expected_state_change": {}, '
+        '"actions": ["look_up_account", "delete_everything"]}'
+    )
+
+    with pytest.raises(ValueError, match="delete_everything"):
+        load_case(case_file)
+
+
+def test_a_case_that_declares_an_action_twice_will_not_load(tmp_path):
+    case_file = tmp_path / "twice.json"
+    case_file.write_text(
+        '{"id": "twice", "customer": {"account_id": "acct_1001"}, '
+        '"opening_message": "Hi", "expected_state_change": {}, '
+        '"actions": ["change_plan", "change_plan"]}'
+    )
+
+    with pytest.raises(ValueError, match="more than once"):
+        load_case(case_file)

@@ -3,6 +3,10 @@ LLM Deployment Example - FastAPI Service
 =========================================
 Production-ready LLM inference API with caching, rate limiting, and monitoring.
 
+The endpoint shape is OpenAI-compatible; the model behind it is simulated, so the
+service runs without an API key. The model list is the course's model registry
+(llm/models.json), so clients only ever see current model IDs.
+
 Prerequisites:
     pip install fastapi uvicorn pydantic
 """
@@ -17,6 +21,14 @@ import logging
 from datetime import datetime
 import hashlib
 import asyncio
+import os
+import sys
+
+# The model registry lives in the provider layer (llm/) at the repo root.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from llm import load_registry
+
+REGISTRY = load_registry()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,8 +58,10 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
-    model: str = "gpt-3.5-turbo"
-    temperature: float = 0.7
+    model: str = "claude-sonnet-5"   # any ID in llm/models.json
+    # Only some models accept a temperature. A real backend passes it to llm.complete,
+    # which drops it for models that reject it instead of failing with a 400.
+    temperature: Optional[float] = None
     max_tokens: int = 512
 
 
@@ -94,6 +108,9 @@ async def health_check():
 @app.post("/v1/chat/completions", response_model=ChatResponse)
 async def create_chat_completion(request: ChatRequest):
     logger.info(f"Processing chat request with {len(request.messages)} messages")
+
+    if request.model not in REGISTRY.ids():
+        raise HTTPException(status_code=400, detail=f"Unknown model {request.model!r}. See GET /v1/models.")
     
     # Create cache key
     cache_key = hashlib.md5(
@@ -139,9 +156,8 @@ async def list_models():
     return {
         "object": "list",
         "data": [
-            {"id": "gpt-3.5-turbo", "object": "model"},
-            {"id": "gpt-4", "object": "model"},
-            {"id": "llama-2-7b", "object": "model"}
+            {"id": spec.model_id, "object": "model", "owned_by": spec.provider}
+            for spec in REGISTRY.models
         ]
     }
 

@@ -1,8 +1,15 @@
 {
-  "$comment": "Acme Notes' seed accounts. Every name is invented; the Backend holds no people, emails or payment details.",
+  "$comment": "Acme Notes' seed accounts. Every name is invented; the Backend holds no people, emails or payment details. 'today' is fixed so the refund window and proration give the same answer on every run.",
+  "today": "2026-09-20",
   "accounts": [
     {"account_id": "acct_1001", "name": "Juniper Lane Bakery", "plan": "free", "seats": 1},
-    {"account_id": "acct_1002", "name": "Northwind Studio", "plan": "pro", "seats": 1},
-    {"account_id": "acct_1003", "name": "Harbor Robotics Club", "plan": "team", "seats": 8}
+    {"account_id": "acct_1002", "name": "Northwind Studio", "plan": "pro", "seats": 1,
+     "invoices": {
+       "inv_2002": {"date": "2026-09-13", "amount_cents": 1200, "period_days": 30, "refunded_cents": 0}
+     }},
+    {"account_id": "acct_1003", "name": "Harbor Robotics Club", "plan": "team", "seats": 8,
+     "invoices": {
+       "inv_3001": {"date": "2026-08-06", "amount_cents": 96000, "period_days": 365, "refunded_cents": 0}
+     }}
   ]
 }

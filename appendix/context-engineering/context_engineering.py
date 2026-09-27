@@ -13,12 +13,22 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 from collections import deque
 
-# ── Provider setup (uses shared provider.py pattern) ──────────────────────────
+# ── Provider setup: the provider layer (llm/) and .env live at the repo root ──
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
-from provider import get_llm_client
+ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+sys.path.insert(0, ROOT)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(ROOT, '.env'))
+except ImportError:
+    pass
 
-client, model = get_llm_client()
+from llm import ask   # any model in llm/models.json; LLM_MODEL or your key picks it
+
+# Demos 4 and 5 show Anthropic-only request fields (cache_control breakpoints,
+# thinking blocks) that the provider layer does not expose, so they call the
+# Anthropic SDK directly with this registry model.
+ANTHROPIC_MODEL = "claude-opus-5-5"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -156,12 +166,7 @@ class ObservationMasker:
             "Be terse — bullet points only, no prose.\n\n"
             f"TEXT:\n{text}"
         )
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=self.max_tokens,
-        )
-        return response.choices[0].message.content
+        return ask(prompt, max_output_tokens=self.max_tokens)
 
 
 def mask_observation(max_tokens: int = 400):
@@ -306,7 +311,7 @@ def demo_anthropic_prefix_caching():
 
         # First call: WRITES to cache (costs 1.25x for 5-min TTL)
         response1 = anth.messages.create(
-            model="claude-opus-5",
+            model=ANTHROPIC_MODEL,
             max_tokens=256,
             system=[
                 {"type": "text", "text": "You are an expert financial analyst."},
@@ -326,7 +331,7 @@ def demo_anthropic_prefix_caching():
 
         # Second call: READS from cache (costs 0.1x = 90% discount)
         response2 = anth.messages.create(
-            model="claude-opus-5",
+            model=ANTHROPIC_MODEL,
             max_tokens=256,
             system=[
                 {"type": "text", "text": "You are an expert financial analyst."},
@@ -389,7 +394,7 @@ def demo_adaptive_thinking():
 
         # Adaptive thinking — depth controlled by `effort`, not a token budget
         response = anth.messages.create(
-            model="claude-opus-5",
+            model=ANTHROPIC_MODEL,
             max_tokens=8000,
             thinking={"type": "adaptive", "display": "summarized"},
             output_config={"effort": "high"},  # low | medium | high | xhigh | max

@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 const openai = new OpenAI();
@@ -13,15 +14,17 @@ const PersonSchema = z.object({
 type Person = z.infer<typeof PersonSchema>;
 
 async function extractPerson(text: string): Promise<Person> {
-  const response = await openai.beta.chat.completions.parse({
-    model: "gpt-4o-mini",
-    response_format: zodResponseFormat(PersonSchema, "person"),
-    messages: [
-      { role: "user", content: `Extract person info from: ${text}` },
-    ],
+  // Structured output on the Responses API: the schema goes in text.format.
+  const response = await openai.responses.parse({
+    model: "gpt-6-luna", // a current OpenAI model from llm/models.json
+    input: [{ role: "user", content: `Extract person info from: ${text}` }],
+    text: { format: zodTextFormat(PersonSchema, "person") },
   });
 
-  return response.choices[0].message.parsed!;
+  if (!response.output_parsed) {
+    throw new Error("The model returned no parsable person.");
+  }
+  return response.output_parsed;
 }
 
 // Usage

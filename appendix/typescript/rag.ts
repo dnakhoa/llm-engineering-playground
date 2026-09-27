@@ -41,17 +41,12 @@ async function retrieve(query: string, topK = 3): Promise<string[]> {
 
 async function ragQuery(query: string): Promise<string> {
   const context = await retrieve(query);
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `Answer based on this context:\n${context.join("\n\n")}`,
-      },
-      { role: "user", content: query },
-    ],
+  const response = await openai.responses.create({
+    model: "gpt-6-luna", // a current OpenAI model from llm/models.json
+    instructions: `Answer based on this context:\n${context.join("\n\n")}`,
+    input: query,
   });
-  return response.choices[0].message.content ?? "";
+  return response.output_text;
 }
 
 // Usage

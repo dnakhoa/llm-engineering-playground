@@ -11,7 +11,7 @@ talked into approving the worker's own reasoning.
                             └────── gaps only ────────────┘  (gaps fed back)
 
 Run:
-    python loops/outcome_loop.py            # uses your configured provider
+    python loops/outcome_loop.py            # uses the model your .env selects (llm/)
     python loops/outcome_loop.py --mock     # no API key needed (scripted grader)
 """
 from __future__ import annotations
@@ -23,7 +23,9 @@ import re
 import sys
 from dataclasses import dataclass, field
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
+# The provider layer (llm/) and the .env file live at the repo root.
+ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
+sys.path.insert(0, ROOT)
 
 MAX_ITERATIONS_CAP = 20  # hard ceiling regardless of what the caller asks for
 
@@ -133,12 +135,21 @@ def outcome_loop(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Live worker / grader (any provider via shared/provider.py)
+# Live worker / grader (any registry model, through the provider layer llm/)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def live_worker(task: str, rubric: str, prior: str, feedback: str) -> str:
-    from provider import chat
+def _ask(prompt: str, **kwargs) -> str:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(ROOT, ".env"))
+    except ImportError:
+        pass
+    from llm import ask
 
+    return ask(prompt, **kwargs)
+
+
+def live_worker(task: str, rubric: str, prior: str, feedback: str) -> str:
     if prior and feedback:
         prompt = (
             f"TASK:\n{task}\n\nRUBRIC:\n{rubric}\n\n"
@@ -149,17 +160,17 @@ def live_worker(task: str, rubric: str, prior: str, feedback: str) -> str:
     else:
         prompt = f"TASK:\n{task}\n\nRUBRIC (your output is graded on this):\n{rubric}"
 
-    return chat(prompt, system=WORKER_SYSTEM, max_tokens=1500)
+    return _ask(prompt, system=WORKER_SYSTEM, max_output_tokens=1500)
 
 
 def live_grader(rubric: str, artifact: str) -> Verdict:
-    from provider import chat
-
-    raw = chat(
+    raw = _ask(
         f"RUBRIC:\n{rubric}\n\nARTIFACT:\n{artifact}",
         system=GRADER_SYSTEM,
-        temperature=0.0,   # graders should be as deterministic as possible
-        max_tokens=800,
+        # Graders should be as deterministic as possible. llm/ sends temperature only
+        # to models that accept it; current reasoning models reject it.
+        temperature=0.0,
+        max_output_tokens=800,
     )
     return Verdict.from_json(raw)
 

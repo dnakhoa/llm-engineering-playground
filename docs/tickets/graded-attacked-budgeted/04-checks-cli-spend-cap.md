@@ -6,7 +6,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A Spend Cap below a run's cost stops the run and reports what finished.
 - [ ] An agent reference outside the reference implementation is loaded and graded.

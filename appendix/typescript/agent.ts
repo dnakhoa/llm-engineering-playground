@@ -2,35 +2,40 @@ import OpenAI from "openai";
 
 const openai = new OpenAI();
 
-// Define tools
-const tools = [
+// A current OpenAI model from llm/models.json. Current OpenAI models make tool calls
+// through the Responses API; Chat Completions only does it with reasoning turned off.
+const MODEL = "gpt-6-luna";
+const MAX_STEPS = 10; // stop condition: never loop forever on a model that keeps calling tools
+
+// Define tools (Responses API shape: name, description and parameters at the top level)
+const tools: OpenAI.Responses.FunctionTool[] = [
   {
-    type: "function" as const,
-    function: {
-      name: "get_weather",
-      description: "Get current weather for a location",
-      parameters: {
-        type: "object",
-        properties: {
-          location: { type: "string", description: "City name" },
-        },
-        required: ["location"],
+    type: "function",
+    name: "get_weather",
+    description: "Get current weather for a location",
+    parameters: {
+      type: "object",
+      properties: {
+        location: { type: "string", description: "City name" },
       },
+      required: ["location"],
+      additionalProperties: false,
     },
+    strict: true,
   },
   {
-    type: "function" as const,
-    function: {
-      name: "search_docs",
-      description: "Search internal documentation",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query" },
-        },
-        required: ["query"],
+    type: "function",
+    name: "search_docs",
+    description: "Search internal documentation",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query" },
       },
+      required: ["query"],
+      additionalProperties: false,
     },
+    strict: true,
   },
 ];
 
@@ -43,47 +48,43 @@ function searchDocs(query: string): string {
   return `Found 3 docs about "${query}"`;
 }
 
-async function agentLoop(userMessage: string): Promise<string> {
-  const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: "You are a helpful assistant with access to tools." },
-    { role: "user", content: userMessage },
-  ];
+function runTool(name: string, args: Record<string, string>): string {
+  if (name === "get_weather") return getWeather(args.location);
+  if (name === "search_docs") return searchDocs(args.query);
+  return "Unknown tool";
+}
 
-  while (true) {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
+async function agentLoop(userMessage: string): Promise<string> {
+  const input: OpenAI.Responses.ResponseInput = [{ role: "user", content: userMessage }];
+
+  for (let step = 0; step < MAX_STEPS; step++) {
+    const response = await openai.responses.create({
+      model: MODEL,
+      instructions: "You are a helpful assistant with access to tools.",
+      input,
       tools,
     });
 
-    const choice = response.choices[0];
+    const calls = response.output.filter(
+      (item): item is OpenAI.Responses.ResponseFunctionToolCall => item.type === "function_call",
+    );
 
     // If no tool calls, return the response
-    if (!choice.message.tool_calls) {
-      return choice.message.content ?? "";
+    if (calls.length === 0) {
+      return response.output_text;
     }
 
-    // Execute tool calls
-    messages.push(choice.message);
-    for (const toolCall of choice.message.tool_calls) {
-      const args = JSON.parse(toolCall.function.arguments);
-      let result: string;
-
-      if (toolCall.function.name === "get_weather") {
-        result = getWeather(args.location);
-      } else if (toolCall.function.name === "search_docs") {
-        result = searchDocs(args.query);
-      } else {
-        result = "Unknown tool";
-      }
-
-      messages.push({
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: result,
+    // Send back everything the model produced (reasoning items included), then each result
+    input.push(...(response.output as OpenAI.Responses.ResponseInputItem[]));
+    for (const call of calls) {
+      input.push({
+        type: "function_call_output",
+        call_id: call.call_id,
+        output: runTool(call.name, JSON.parse(call.arguments)),
       });
     }
   }
+  return `Stopped after ${MAX_STEPS} steps without a final answer.`;
 }
 
 // Usage

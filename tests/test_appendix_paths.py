@@ -1,12 +1,13 @@
 """
-Appendix path setup — every Appendix script and notebook still reaches shared/ and the
-root .env from its own folder, now that the topics sit one level deeper in appendix/.
+Appendix path setup — every Appendix script and notebook still reaches the provider
+layer (llm/), shared/ and the root .env from its own folder, now that the topics sit
+one level deeper in appendix/.
 
 The Appendix code cannot run in CI: it calls the providers and needs their SDKs. So
 this test reads each script and each notebook code cell, evaluates the very path
 expressions the file hands to sys.path.insert / sys.path.append / load_dotenv, and asks
 Python's import machinery whether the shared/ modules the file imports load through
-those entries. A script is evaluated with its own __file__. A notebook is evaluated
+those entries (and the same for llm/). A script is evaluated with its own __file__. A notebook is evaluated
 against its own folder, which is the working directory Jupyter gives it.
 
 Nothing else notices a path one level off. load_dotenv returns False silently, so the
@@ -38,6 +39,7 @@ import link_check  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APPENDIX = REPO_ROOT / "appendix"
 SHARED = REPO_ROOT / "shared"
+LLM = REPO_ROOT / "llm"
 ROOT_ENV = REPO_ROOT / ".env"
 
 #: Top-level import names that live in shared/.
@@ -47,10 +49,14 @@ SHARED_MODULES = frozenset(
     | {p.name for p in SHARED.iterdir() if p.is_dir() and not p.name.startswith(("_", "."))}
 )
 
+#: Top-level import names outside the Appendix that Appendix code reaches through sys.path,
+#: and the folder each must load from: shared/'s modules, and the provider layer.
+REPO_MODULES = {**{name: SHARED for name in SHARED_MODULES}, LLM.name: LLM}
+
 #: Code that does path setup. A cell or script carrying one of these that does not
 #: parse cannot be checked, so it is reported instead of skipped.
 _PATH_SETUP = re.compile(
-    r"sys\.path|load_dotenv|^\s*(?:from|import)\s+(?:%s)\b" % "|".join(sorted(SHARED_MODULES)),
+    r"sys\.path|load_dotenv|^\s*(?:from|import)\s+(?:%s)\b" % "|".join(sorted(REPO_MODULES)),
     re.M,
 )
 
@@ -119,7 +125,7 @@ class PathSetup:
     #: Where the file's relative paths start: its folder.
     base: Path
     sys_path: list = field(default_factory=list)  # (where, entry it adds to sys.path)
-    shared_imports: list = field(default_factory=list)  # (where, dotted module from shared/)
+    shared_imports: list = field(default_factory=list)  # (where, dotted module from shared/ or llm/)
     dotenv_paths: list = field(default_factory=list)  # (where, .env it loads by explicit path)
     unresolved: list = field(default_factory=list)  # path setup this test could not evaluate
 
@@ -171,7 +177,7 @@ def scan(path: Path) -> PathSetup:
             where = f"{cell}line {getattr(node, 'lineno', '?')}"
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 setup.shared_imports += [
-                    (where, module) for module in _imported_modules(node) if module.split(".")[0] in SHARED_MODULES
+                    (where, module) for module in _imported_modules(node) if module.split(".")[0] in REPO_MODULES
                 ]
                 continue
             if not isinstance(node, ast.Call):
@@ -260,16 +266,17 @@ class TestAppendixPathSetup:
         assert missing == [], f"{setup.label} puts folders that do not exist on sys.path"
 
     @pytest.mark.parametrize("setup", IMPORTING_SHARED, ids=_ids(IMPORTING_SHARED))
-    def test_shared_imports_load_from_shared(self, setup):
+    def test_shared_and_llm_imports_load_from_the_repo(self, setup):
         # A script's own folder is sys.path[0]; a notebook's working directory is too.
         search_path = [entry for _, entry in setup.sys_path] + [setup.base]
         wrong = []
         for where, module in setup.shared_imports:
             found = locate(module, search_path)
-            if found is None or SHARED.resolve() not in (found, *found.parents):
+            home = REPO_MODULES[module.split(".")[0]].resolve()
+            if found is None or home not in (found, *found.parents):
                 wrong.append(f"{where}: import {module} -> {_shown(found) if found else 'ModuleNotFoundError'}")
 
-        assert wrong == [], f"{setup.label} cannot import shared/ from its folder"
+        assert wrong == [], f"{setup.label} cannot import shared/ or llm/ from its folder"
 
     @pytest.mark.parametrize("setup", LOADING_DOTENV, ids=_ids(LOADING_DOTENV))
     def test_dotenv_path_is_the_root_env(self, setup):

@@ -163,9 +163,19 @@ class ProviderRequest:
 
 @dataclass(frozen=True)
 class Usage:
+    """Tokens one call used, counted the same way for every provider.
+
+    ``input_tokens`` is every input token, including the ones read from or
+    written to the prompt cache; ``cached_input_tokens`` and
+    ``cache_write_input_tokens`` say how many of them were. Vendors disagree:
+    Anthropic reports cache tokens beside ``input_tokens``, OpenAI and Google
+    inside it. The surfaces translate, so cost is computed one way.
+    """
+
     input_tokens: int = 0
     output_tokens: int = 0
     cached_input_tokens: int = 0
+    cache_write_input_tokens: int = 0
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,7 @@ LLM Evaluation Example
 This script demonstrates various evaluation techniques for LLMs.
 
 Prerequisites:
-    pip install evaluate datasets ragas langchain openai
+    pip install evaluate datasets ragas
 """
 
 import json

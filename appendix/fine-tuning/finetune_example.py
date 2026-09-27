@@ -33,9 +33,9 @@ from trl import SFTTrainer  # Supervised Fine-Tuning Trainer
 # CONFIGURATION
 # ============================================================================
 
-MODEL_NAME = "mistralai/Mistral-7B-v0.1"  # Or use "meta-llama/Llama-2-7b-hf"
+MODEL_NAME = "mistralai/Mistral-7B-v0.1"  # Or use "meta-llama/Llama-3.2-3B"
 OUTPUT_DIR = "./fine-tuned-model"
-DATASET_NAME = "mlabonne/guanaco-llama2-1k"  # Sample dataset for demonstration
+DATASET_NAME = "timdettmers/openassistant-guanaco"  # Sample dataset: one "text" column
 
 # LoRA Configuration
 LORA_CONFIG = {
@@ -112,7 +112,7 @@ def load_and_prepare_dataset():
     print("Loading dataset...")
     
     # Load dataset from Hugging Face
-    dataset = load_dataset(DATASET_NAME, split="train")
+    dataset = load_dataset(DATASET_NAME, split="train[:1000]")  # 1k rows is enough to demo
     
     # For demonstration, we're using a pre-formatted dataset
     # In production, you'd format your own data here

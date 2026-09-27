@@ -13,7 +13,7 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A prorated-refund Case passes only when the refunded amount matches the policy article.
 - [ ] A refund outside the window is refused by the Action.

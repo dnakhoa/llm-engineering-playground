@@ -6,11 +6,11 @@ assert on a ProviderRequest without a key and without a network.
 from __future__ import annotations
 
 import json
-import os
 import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
+from . import credentials
 from .registry import ApiSurface
 from .types import ProviderRequest
 
@@ -31,11 +31,13 @@ class TransportError(RuntimeError):
     """The request could not be delivered, or came back as an error."""
 
 
-#: Per-provider credential env var for OpenAI-compatible servers.
-_COMPATIBLE_KEYS = {
-    "deepseek": "DEEPSEEK_API_KEY",
-    "xai": "XAI_API_KEY",
-    "qwen": "QWEN_API_KEY",
+#: The provider whose key a surface's own vendor API takes, when the transport
+#: was built without one. An OpenAI-compatible surface belongs to whoever serves it.
+_SURFACE_PROVIDER = {
+    ApiSurface.ANTHROPIC_MESSAGES: "anthropic",
+    ApiSurface.OPENAI_RESPONSES: "openai",
+    ApiSurface.GOOGLE_GEMINI: "google",
+    ApiSurface.OPENAI_CHAT_COMPLETIONS: "openai",
 }
 
 
@@ -54,16 +56,25 @@ class HttpTransport:
     def _headers(self, request: ProviderRequest) -> Dict[str, str]:
         headers = {"content-type": "application/json"}
         surface = request.surface
-        if surface == ApiSurface.ANTHROPIC_MESSAGES:
-            headers["x-api-key"] = _require_key("ANTHROPIC_API_KEY")
-            headers["anthropic-version"] = "2023-06-01"
-        elif surface == ApiSurface.OPENAI_RESPONSES:
-            headers["authorization"] = "Bearer " + _require_key("OPENAI_API_KEY")
-        elif surface == ApiSurface.GOOGLE_GEMINI:
-            headers["x-goog-api-key"] = _require_key("GEMINI_API_KEY")
+        provider = self._provider or _SURFACE_PROVIDER[surface]
+        if provider in credentials.OPTIONAL_KEY_PROVIDERS:
+            # A local server (Ollama, vLLM) needs no key. Send one only if set.
+            key = credentials.find_key(provider)
         else:
-            env = _COMPATIBLE_KEYS.get(self._provider, "OPENAI_API_KEY")
-            headers["authorization"] = "Bearer " + _require_key(env)
+            try:
+                key = credentials.require_key(provider)
+            except credentials.MissingKeyError as error:
+                raise TransportError(str(error)) from None
+        if surface == ApiSurface.ANTHROPIC_MESSAGES:
+            headers["anthropic-version"] = "2023-06-01"
+        if key is None:
+            return headers
+        if surface == ApiSurface.ANTHROPIC_MESSAGES:
+            headers["x-api-key"] = key
+        elif surface == ApiSurface.GOOGLE_GEMINI:
+            headers["x-goog-api-key"] = key
+        else:
+            headers["authorization"] = "Bearer " + key
         return headers
 
     def send(self, request: ProviderRequest) -> Dict[str, Any]:
@@ -88,22 +99,3 @@ class HttpTransport:
             raise TransportError(
                 "could not reach {}: {}".format(url, error.reason)
             ) from error
-
-
-#: Other names a Reader's existing `.env` may use for the same key. The vendor's own
-#: name is read first; `GROK_API_KEY` is what `.env.example` shipped before this layer.
-_KEY_ALIASES = {
-    "XAI_API_KEY": ("GROK_API_KEY",),
-    "GEMINI_API_KEY": ("GOOGLE_API_KEY",),
-}
-
-
-def _require_key(env_var: str) -> str:
-    names = (env_var,) + _KEY_ALIASES.get(env_var, ())
-    for name in names:
-        key: Optional[str] = os.environ.get(name)
-        if key:
-            return key
-    raise TransportError(
-        "{} is not set. Offline Checks need no key; a live run does.".format(" or ".join(names))
-    )

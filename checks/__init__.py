@@ -1,16 +1,97 @@
 """Checks: runnable pass/fail assertions over a Case's Outcome.
 
-Each Spine module owns a suite, ``checks.spine_<n>_<name>``, and each suite
-exposes its Checks as ``CHECKS``. A Check takes an Outcome and returns a
-``CheckResult`` whose ``detail`` says what it saw, so a failure explains itself.
+Each Spine module owns a suite, ``checks.spine_<n>_<name>``. A suite names its
+module (``MODULE``, ``TITLE``), the Cases it runs (``CASES``) and its Checks
+(``CHECKS``). A Check takes an Outcome and returns a ``CheckResult`` whose
+``detail`` says what it saw, so a failure explains itself.
+
+Run them with the Checks CLI::
+
+    python -m checks --modules 1 --agent path/to/my_agent.py:run
+
+A module's run includes every earlier module's suite (``checks.cli``), and a
+suite lists only its own Checks. A Check that holds on every Case
+(``on_every_case``), such as one part of the Outcome's verdict, also grades
+every later suite's Cases, once per Case, so a Case a later suite adds is
+graded on the whole verdict without that suite listing those Checks again.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable, TypeVar
 
 
 @dataclass(frozen=True)
 class CheckResult:
+    """What one Check saw on one Outcome.
+
+    A ``warning`` is a result that does not fail: something worth fixing that
+    breaks no rule the Check enforces, such as an agent span with no agent
+    name, which the conventions leave to the application. It is ``passed``, so
+    it never blocks what a pass would not, and the Checks CLI prints it as
+    ``WARN`` and counts it apart from the passes. Make one with ``warn``.
+    """
+
     name: str
     passed: bool
     detail: str
+    warning: bool = False
+
+    def __post_init__(self) -> None:
+        if self.warning and not self.passed:
+            raise ValueError(
+                "A warning never fails, so it is passed: use CheckResult.warn(name, detail).")
+
+    @classmethod
+    def warn(cls, name: str, detail: str) -> "CheckResult":
+        """A result that does not fail, but that the Reader should read."""
+        return cls(name, True, detail, warning=True)
+
+
+F = TypeVar("F", bound=Callable[..., CheckResult])
+
+
+def live_only(check: F) -> F:
+    """Mark a Check that needs a live model, such as an LLM-as-judge rubric.
+
+    Offline, the Checks CLI reports it as skipped rather than running it:
+    a recording holds the agent's calls, not the judge's.
+    """
+    setattr(check, "live_only", True)
+    return check
+
+
+def is_live_only(check: Callable[..., CheckResult]) -> bool:
+    return bool(getattr(check, "live_only", False))
+
+
+def on_every_case(check: F) -> F:
+    """Mark a Check that holds on every Case, such as one part of the verdict
+    or one of the trace Checks.
+
+    The Checks CLI grades every later suite's Cases on it too, once each. The
+    verdict is what ``Outcome.resolved`` is read from, so a Case a later suite
+    adds, which the marking suite does not run, is still failed when it is not
+    resolved, and still has its trace graded once a module has traces.
+    """
+    setattr(check, "on_every_case", True)
+    return check
+
+
+def is_on_every_case(check: Callable[..., CheckResult]) -> bool:
+    return bool(getattr(check, "on_every_case", False))
+
+
+def needs_trace(check: F) -> F:
+    """Mark a Check that reads the Outcome's OpenTelemetry trace.
+
+    Only such a Check needs ``opentelemetry-sdk``. Without it, the Checks CLI
+    will not start a run that includes one, and says how to install it, rather
+    than fail every trace Check on an empty trace.
+    """
+    setattr(check, "needs_trace", True)
+    return check
+
+
+def is_needs_trace(check: Callable[..., CheckResult]) -> bool:
+    return bool(getattr(check, "needs_trace", False))

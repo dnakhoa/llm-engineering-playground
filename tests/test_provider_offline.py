@@ -17,7 +17,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from llm import load_registry  # noqa: E402
+from llm import credentials, load_registry  # noqa: E402
 from llm.call import CallOptions, complete  # noqa: E402
 from llm.replay import RecordingTransport, ReplayTransport  # noqa: E402
 from llm.testing import StubTransport  # noqa: E402
@@ -26,19 +26,7 @@ from llm.types import Message, ToolSpec  # noqa: E402
 
 REGISTRY = load_registry()
 
-CREDENTIAL_VARS = (
-    "ANTHROPIC_API_KEY",
-    "OPENAI_API_KEY",
-    "OPENAI_BASE_URL",
-    "GEMINI_API_KEY",
-    "GOOGLE_API_KEY",
-    "DEEPSEEK_API_KEY",
-    "XAI_API_KEY",
-    "GROK_API_KEY",
-    "QWEN_API_KEY",
-    "LLM_PROVIDER",
-    "LLM_MODEL",
-)
+CREDENTIAL_VARS = credentials.ENV_VARS
 
 LOOK_UP_ACCOUNT = ToolSpec(
     name="look_up_account",

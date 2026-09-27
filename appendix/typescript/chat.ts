@@ -1,19 +1,21 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 
-// OpenAI
+// Current model IDs from llm/models.json. Neither call sends a temperature: both of
+// these models reject a non-default one (they use effort instead).
+
+// OpenAI — the Responses API
 const openai = new OpenAI();
 
 async function chatOpenAI(prompt: string): Promise<string> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.7,
+  const response = await openai.responses.create({
+    model: "gpt-6-luna",
+    input: prompt,
   });
-  return response.choices[0].message.content ?? "";
+  return response.output_text;
 }
 
-// Anthropic
+// Anthropic — the Messages API
 const anthropic = new Anthropic();
 
 async function chatAnthropic(prompt: string): Promise<string> {
@@ -23,7 +25,7 @@ async function chatAnthropic(prompt: string): Promise<string> {
     messages: [{ role: "user", content: prompt }],
   });
   const textBlock = response.content.find((b) => b.type === "text");
-  return textBlock?.text ?? "";
+  return textBlock?.type === "text" ? textBlock.text : "";
 }
 
 // Usage

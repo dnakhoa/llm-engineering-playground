@@ -12,3 +12,10 @@ Spec: docs/specs/graded-attacked-budgeted.md · Glossary: CONTEXT.md
 - [ ] The Spend Cap stops the run and marks which models are incomplete.
 - [ ] The label appears on every output.
 - [ ] The Scoreboard #1 run is documented as a one-command maintainer step (ready-for-human).
+
+## Comments
+
+**Decisions of 2026-09-27:**
+
+- [ ] **G6.** The Scoreboard's resolution rate uses the Backend-state verdict. LLM-judged reply quality is its own column, labelled "LLM-judged", with the judge model named.
+- [ ] **G5.** Each Scoreboard row is judged by a model from a different provider than the one being scored, and the judge model is named in the output.

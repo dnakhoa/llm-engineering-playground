@@ -127,11 +127,22 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Everything tests/ imports beyond the standard library (tests/test_ci_installs.py
+      # checks this line against those imports). python-dotenv reads .env.example the
+      # way the Appendix notebooks read a Reader's .env. mcp is the MCP Python SDK the
+      # Appendix example server runs on (tests/test_appendix_mcp_frameworks.py).
+      # opentelemetry-sdk traces every Case run (company/tracing.py, Spine 4).
       - name: Install dependencies
-        run: pip install pytest tiktoken
+        run: pip install pytest tiktoken python-dotenv "mcp>=2.2" opentelemetry-sdk
 
       - name: Run tests
         run: pytest tests/ -v
+
+      # The Offline Checks: every Spine module's suite against the reference
+      # Flagship Agent, replayed from the reviewed recordings. No key, no
+      # network and no secrets, so a regression fails the PR for any contributor.
+      - name: Offline Checks (every Spine module, no API key)
+        run: python -m checks --mode offline
 
       - name: Stale-reference lint (retired model IDs and dead APIs)
         run: pytest tests/test_stale_references.py -v

@@ -4,8 +4,8 @@
   "entries": [
     {
       "id": "gpt-4o-mini",
-      "pattern": "(?i)gpt-4o-mini",
-      "description": "Retired OpenAI model ID, used as the course default throughout the old modules.",
+      "pattern": "(?i)gpt-4o-mini(?!-tts\\b)",
+      "description": "Retired OpenAI model ID, used as the course default throughout the old modules. gpt-4o-mini-tts, the current text-to-speech model, is a different model and is not matched.",
       "hint": "Use a current model ID from the model registry (docs/adr/0002-provider-agnostic-capability-aware.md)."
     },
     {

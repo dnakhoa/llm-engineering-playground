@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from .call import build_request, complete  # noqa: F401
 from .capabilities import RequestPlan, plan_request  # noqa: F401
+from .quick import ask, configured_registry, default_model, resolve_model  # noqa: F401
 from .registry import (  # noqa: F401
     EFFORT_LADDER,
     REGISTRY_PATH,
@@ -53,6 +54,10 @@ from .types import (  # noqa: F401
 )
 
 __all__ = [
+    "ask",
+    "configured_registry",
+    "default_model",
+    "resolve_model",
     "Adjustment",
     "ApiSurface",
     "CallOptions",

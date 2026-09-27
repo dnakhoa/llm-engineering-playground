@@ -34,3 +34,56 @@ def changes_someone_elses_plan(customer_turn, env):
         )
     )
     return "Done."
+
+
+def claims_without_acting(customer_turn, env):
+    """Asks the model, passes on its "Done!", and never calls change_plan."""
+    response = env.complete([Message.user(customer_turn)], tools=env.tools)
+    return response.text
+
+
+def upgrades_downgrades_and_upgrades_again(customer_turn, env):
+    """Ends on Pro, but only after three plan changes."""
+    for index, plan in enumerate(("pro", "free", "pro")):
+        env.act(
+            ToolCall(
+                id="call_{}".format(index),
+                name="change_plan",
+                arguments={"account_id": "acct_1001", "plan": plan},
+            )
+        )
+    return "You're on Pro now."
+
+
+def upgrades_someone_elses_account(customer_turn, env):
+    """Upgrades the wrong account: acct_1003 instead of the Case's acct_1001."""
+    env.act(
+        ToolCall(
+            id="call_y",
+            name="change_plan",
+            arguments={"account_id": "acct_1003", "plan": "pro"},
+        )
+    )
+    return "Done! You're on Pro now."
+
+
+def refunds_on_a_case_that_offers_no_refunds(customer_turn, env):
+    """Calls issue_refund, which the upgrade-to-pro Case never offered."""
+    env.act(
+        ToolCall(
+            id="call_r",
+            name="issue_refund",
+            arguments={"account_id": "acct_1001", "invoice_id": "inv_2002", "amount_usd": 1},
+        )
+    )
+    return "Refunded."
+
+
+def loop_with_another_system_prompt(customer_turn, env):
+    """The reference loop's first call, with a reworded system prompt."""
+    response = env.complete(
+        [Message.user(customer_turn)],
+        tools=env.tools,
+        system="You are Acme Notes' friendly support agent.",
+    )
+    return response.text

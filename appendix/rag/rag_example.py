@@ -1,24 +1,23 @@
 """
 RAG (Retrieval-Augmented Generation) Example
 =============================================
-This file demonstrates a complete RAG pipeline using LangChain and ChromaDB.
+This file demonstrates a complete RAG pipeline in plain Python: chunking, embeddings,
+a ChromaDB vector store, and an answer generated through the course's provider layer
+(llm/). No framework — each step is a function you can read and swap.
 
 For the interactive step-by-step version, open rag_systems.ipynb instead.
 
 Prerequisites:
     pip install -r requirements.txt
-    cp ../../.env.example ../../.env   # add your OPENAI_API_KEY
+    cp ../../.env.example ../../.env   # add OPENAI_API_KEY (embeddings) and any chat key
 """
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI   # replaces deprecated HuggingFaceEmbeddings/HuggingFaceHub
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
+from dotenv import load_dotenv
+
+ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
+load_dotenv(os.path.join(ROOT, ".env"))
 
 # ============================================================================
 # STEP 1: Prepare Sample Documents
@@ -26,35 +25,35 @@ load_dotenv()
 
 sample_documents = [
     """
-    Artificial Intelligence (AI) is intelligence demonstrated by machines, 
-    as opposed to natural intelligence displayed by animals including humans. 
-    Leading AI textbooks define the field as the study of "intelligent agents": 
-    any device that perceives its environment and takes actions that maximize 
+    Artificial Intelligence (AI) is intelligence demonstrated by machines,
+    as opposed to natural intelligence displayed by animals including humans.
+    Leading AI textbooks define the field as the study of "intelligent agents":
+    any device that perceives its environment and takes actions that maximize
     its chance of successfully achieving its goals.
     """,
     """
-    Machine Learning (ML) is a subset of artificial intelligence that provides 
-    systems the ability to automatically learn and improve from experience 
-    without being explicitly programmed. Machine learning focuses on the 
+    Machine Learning (ML) is a subset of artificial intelligence that provides
+    systems the ability to automatically learn and improve from experience
+    without being explicitly programmed. Machine learning focuses on the
     development of computer programs that can access data and use it to learn for themselves.
     """,
     """
-    Deep Learning is a subset of machine learning that uses neural networks 
-    with many layers (deep neural networks). It's particularly effective for 
+    Deep Learning is a subset of machine learning that uses neural networks
+    with many layers (deep neural networks). It's particularly effective for
     tasks like image recognition, natural language processing, and speech recognition.
     Popular frameworks include TensorFlow, PyTorch, and Keras.
     """,
     """
-    Natural Language Processing (NLP) is a branch of AI that helps computers 
-    understand, interpret, and manipulate human language. NLP draws from many 
+    Natural Language Processing (NLP) is a branch of AI that helps computers
+    understand, interpret, and manipulate human language. NLP draws from many
     disciplines including computer science and computational linguistics.
     Applications include translation, sentiment analysis, and chatbots.
     """,
     """
-    Large Language Models (LLMs) are language models notable for their ability 
-    to achieve general-purpose language generation and understanding. They acquire 
-    these abilities by learning from massive amounts of text data. 
-    Examples include GPT-4, Claude, Llama, and PaLM.
+    Large Language Models (LLMs) are language models notable for their ability
+    to achieve general-purpose language generation and understanding. They acquire
+    these abilities by learning from massive amounts of text data.
+    Examples include GPT, Claude, Gemini, and Llama.
     """
 ]
 
@@ -62,22 +61,44 @@ sample_documents = [
 # STEP 2: Text Chunking
 # ============================================================================
 
-def chunk_documents(documents):
+def split_text(text, chunk_size=200, chunk_overlap=20, separators=(". ", " ")):
     """
-    Split documents into smaller chunks for better retrieval.
-    
+    Pack whole sentences (or, if a sentence is too long, whole words) into chunks
+    of at most chunk_size characters.
+
     Key parameters:
     - chunk_size: Number of characters per chunk
-    - chunk_overlap: Overlap between chunks to maintain context
+    - chunk_overlap: Characters repeated from the end of one chunk at the start of
+      the next, so a fact split across a boundary is still retrievable
     """
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=200,
-        chunk_overlap=20,
-        length_function=len,
-        separators=["\n\n", "\n", ". ", " ", ""]
-    )
-    
-    chunks = text_splitter.create_documents(documents)
+    for separator in separators:
+        units = text.split(separator)
+        if all(len(unit) <= chunk_size for unit in units):
+            break
+    else:
+        separator, units = "", [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+    chunks, current = [], ""
+    for unit in units:
+        candidate = f"{current}{separator}{unit}" if current else unit
+        if len(candidate) <= chunk_size or not current:
+            current = candidate
+            continue
+        chunks.append(current)
+        carried = f"{current[-chunk_overlap:]}{separator}{unit}" if chunk_overlap else unit
+        current = carried if len(carried) <= chunk_size else unit
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def chunk_documents(documents):
+    """Split documents into smaller chunks for better retrieval."""
+    chunks = [
+        {"id": f"doc{d}-chunk{c}", "text": chunk, "source": f"document {d + 1}"}
+        for d, document in enumerate(documents)
+        for c, chunk in enumerate(split_text(" ".join(document.split())))
+    ]
     print(f"Created {len(chunks)} chunks from {len(documents)} documents")
     return chunks
 
@@ -85,128 +106,109 @@ def chunk_documents(documents):
 # STEP 3: Create Embeddings and Vector Store
 # ============================================================================
 
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+
+
+def embed(texts):
+    """Embed a batch of texts. Embeddings are not part of the provider layer."""
+    from openai import OpenAI
+
+    response = OpenAI().embeddings.create(model=EMBEDDING_MODEL, input=list(texts))
+    return [item.embedding for item in response.data]
+
+
 def create_vector_store(chunks):
     """
     Create embeddings and store them in a vector database.
-    
+
     We're using:
-    - HuggingFace embeddings (free, runs locally)
-    - ChromaDB (lightweight vector store)
+    - OpenAI embeddings (text-embedding-3-small by default; set EMBEDDING_MODEL)
+    - ChromaDB (lightweight vector store, saved to ./chroma_db)
     """
-    # Initialize embedding model
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small"
+    import chromadb
+
+    client = chromadb.PersistentClient(path="./chroma_db")
+    collection = client.get_or_create_collection("rag_example", metadata={"hnsw:space": "cosine"})
+    collection.upsert(
+        ids=[c["id"] for c in chunks],
+        documents=[c["text"] for c in chunks],
+        metadatas=[{"source": c["source"]} for c in chunks],
+        embeddings=embed(c["text"] for c in chunks),
     )
-    
-    # Create vector store
-    vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory="./chroma_db"  # Saves to disk
-    )
-    
     print("Vector store created successfully!")
-    return vectorstore, embeddings
+    return collection
 
 # ============================================================================
 # STEP 4: Set Up Retriever
 # ============================================================================
 
-def setup_retriever(vectorstore):
-    """
-    Configure the retriever with search parameters.
-    """
-    retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 2}  # Return top 2 most similar chunks
-    )
-    return retriever
+def retrieve(collection, question, k=2):
+    """Return the k chunks most similar to the question, with their sources."""
+    result = collection.query(query_embeddings=embed([question]), n_results=k)
+    return [
+        {"text": text, "source": meta["source"]}
+        for text, meta in zip(result["documents"][0], result["metadatas"][0])
+    ]
 
 # ============================================================================
 # STEP 5: Create Custom Prompt
 # ============================================================================
 
-custom_prompt_template = """
-You are an AI assistant specialized in explaining technology concepts.
-Use the following pieces of context to answer the question at the end.
+SYSTEM_PROMPT = """You are an AI assistant specialized in explaining technology concepts.
+Use the context you are given to answer the question.
 If you don't know the answer based on the context, say so clearly.
-Always cite which document section you're referencing.
+Always cite which document section you're referencing."""
 
-Context:
+PROMPT_TEMPLATE = """Context:
 {context}
 
 Question: {question}
 
-Helpful Answer (with citations):
-"""
+Helpful Answer (with citations):"""
 
-def create_prompt():
-    """Create a custom prompt template."""
-    return PromptTemplate(
-        template=custom_prompt_template,
-        input_variables=["context", "question"]
-    )
+
+def build_prompt(question, sources):
+    context = "\n\n".join(f"[{s['source']}] {s['text']}" for s in sources)
+    return PROMPT_TEMPLATE.format(context=context, question=question)
 
 # ============================================================================
-# STEP 6: Set Up QA Chain
+# STEP 6: Generate the Answer
 # ============================================================================
 
-def create_qa_chain(retriever, prompt):
+def answer(question, sources):
     """
-    Create the RetrievalQA chain that combines retrieval + generation.
-    
-    Uses the shared provider — works with OpenAI, Anthropic, DeepSeek, etc.
-    Set your API key in .env and run.
+    Generate the answer through the provider layer (llm/).
+
+    Works with any model in llm/models.json — set LLM_MODEL, or just the API key
+    for the provider you use, in the root .env.
     """
-    import sys, os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from shared.provider import chat, get_client, get_model_name
-    
-    # Wrap the shared chat() in a LangChain-compatible LLM
-    from langchain_core.language_models.llms import LLM
-    from langchain_core.callbacks import CallbackManagerForLLMRun
-    
-    class SharedLLM(LLM):
-        model_name: str = ""
-        
-        def _call(self, prompt: str, stop=None, run_manager=None, **kwargs) -> str:
-            return chat(prompt)
-        
-        @property
-        def _llm_type(self) -> str:
-            return "shared-provider"
-    
-    llm = SharedLLM(model_name=get_model_name())
-    
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": prompt}
-    )
-    
-    return qa_chain
+    import sys
+
+    sys.path.insert(0, ROOT)
+    from llm import ask
+
+    return ask(build_prompt(question, sources), system=SYSTEM_PROMPT)
 
 # ============================================================================
 # STEP 7: Query the System
 # ============================================================================
 
-def query_system(qa_chain, question):
+def query_system(collection, question):
     """
     Query the RAG system and display results.
     """
     print(f"\n{'='*60}")
     print(f"Question: {question}")
     print('='*60)
-    
-    result = qa_chain.invoke({"query": question})
-    
-    print(f"Answer: {result['result']}")
+
+    sources = retrieve(collection, question)
+    result = answer(question, sources)
+
+    print(f"Answer: {result}")
     print("\nSource Documents:")
-    for i, doc in enumerate(result['source_documents'], 1):
-        print(f"\n[{i}] {doc.page_content[:150]}...")
-    
+    for i, source in enumerate(sources, 1):
+        print(f"\n[{i}] ({source['source']}) {source['text'][:150]}...")
+
     return result
 
 # ============================================================================
@@ -217,38 +219,29 @@ def main():
     """Run the complete RAG pipeline."""
     print("🚀 RAG System Demo")
     print("="*60)
-    
+
     # Step 1: Chunk documents
     chunks = chunk_documents(sample_documents)
-    
+
     # Step 2: Create vector store
-    vectorstore, embeddings = create_vector_store(chunks)
-    
-    # Step 3: Setup retriever
-    retriever = setup_retriever(vectorstore)
-    
-    # Step 4: Create prompt
-    prompt = create_prompt()
-    
-    # Step 5: Create QA chain
-    qa_chain = create_qa_chain(retriever, prompt)
-    
-    # Step 6: Test queries
+    collection = create_vector_store(chunks)
+
+    # Step 3: Test queries (retrieve, then generate)
     test_questions = [
         "What is the difference between AI and Machine Learning?",
         "How does Deep Learning work?",
         "What are some applications of NLP?"
     ]
-    
+
     for question in test_questions:
-        query_system(qa_chain, question)
-    
+        query_system(collection, question)
+
     print("\n✅ Demo complete!")
     print("\nNext steps:")
-    print("1. Replace FakeListLLM with a real LLM (OpenAI, Anthropic, etc.)")
-    print("2. Load your own documents instead of sample text")
-    print("3. Experiment with different chunk sizes and retrieval strategies")
-    print("4. Add metadata filtering for more precise retrieval")
+    print("1. Load your own documents instead of sample text")
+    print("2. Experiment with different chunk sizes and retrieval strategies")
+    print("3. Add metadata filtering for more precise retrieval")
+    print("4. Point LLM_MODEL at a different registry model and compare answers")
 
 if __name__ == "__main__":
     main()

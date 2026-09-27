@@ -52,6 +52,10 @@ _Avoid_: API, sandbox, database
 A tool call that changes Backend state, such as issuing a refund or changing a plan.
 _Avoid_: side effect, write tool, operation
 
+**Forbidden Action**:
+An Action, together with a condition on its arguments, that a Case must never see executed, such as `change_plan` on an account that isn't the Case's own. If the tool layer refused the attempt, it's a warning; if the Action executed, the Case fails.
+_Avoid_: banned tool, blocked call
+
 ### Hardening
 
 **Check**:

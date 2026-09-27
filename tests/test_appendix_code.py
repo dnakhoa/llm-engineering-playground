@@ -1,0 +1,352 @@
+"""
+Appendix code runs on current models, through the provider layer (ticket 14).
+
+What a Reader copies out of an Appendix script, notebook or TypeScript example has
+to work on the first run. That means four things, each checked here by reading the
+code, never by running it (the Appendix calls live APIs):
+
+1. No Appendix code file is still in the stale-reference lint baseline.
+2. Python goes through `llm/` — `ask()` or `complete()` — not the old
+   `shared/provider.py`, and not a vendor SDK's chat call, so the registry decides
+   what each model is sent.
+3. Every chat-model ID the code names is in the model registry.
+4. No temperature is handed straight to a vendor API. Through `llm/` it is dropped
+   for any model that rejects it; a direct call has no such guard.
+
+Run: pytest tests/test_appendix_code.py -v
+"""
+
+from __future__ import annotations
+
+import ast
+import io
+import json
+import re
+import sys
+import tokenize
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import stale_lint  # noqa: E402
+from llm import load_registry  # noqa: E402
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+APPENDIX = REPO_ROOT / "appendix"
+
+CODE_SUFFIXES = (".py", ".ipynb", ".ts")
+
+#: Files that call a vendor SDK directly, and why the provider layer cannot serve them.
+#: They are still held to current model IDs and no temperature.
+DIRECT_SDK_CALLS = {
+    "appendix/multimodal/multimodal_example.py": "images and audio: the layer is text-only",
+    "appendix/multimodal/multimodal_example.ipynb": "images and audio: the layer is text-only",
+    "appendix/context-engineering/context_engineering.py": "cache_control breakpoints and thinking blocks",
+    "appendix/deployment/deployment.ipynb": "token streaming: the layer returns whole responses",
+}
+
+#: Chat calls on the vendor SDKs, and LangChain's chat-model wrappers.
+_VENDOR_CHAT_CALL = re.compile(
+    r"\.chat\.completions\.create\s*\(|\.messages\.create\s*\(|\.responses\.create\s*\("
+    r"|\.responses\.stream\s*\(|\.messages\.stream\s*\(|\.generate_content\s*\("
+    r"|\bChat(?:OpenAI|Anthropic|GoogleGenerativeAI)\s*\("
+)
+
+#: A quoted model ID from a provider the registry covers.
+_MODEL_ID = re.compile(r"""["'`]((?:gpt|claude|gemini|grok|deepseek)-[A-Za-z0-9.\-]*)["'`]""")
+
+#: OpenAI models the registry does not list because they are not chat models: image
+#: generation, text to speech and transcription, each the replacement OpenAI's
+#: deprecations page names (read 2026-09-26).
+NON_CHAT_MODELS = frozenset({"gpt-image-2", "gpt-4o-mini-tts", "gpt-transcribe"})
+
+REGISTRY_IDS = frozenset(load_registry().ids())
+
+
+def _relative(path: Path) -> str:
+    return path.relative_to(REPO_ROOT).as_posix()
+
+
+def appendix_code() -> list[Path]:
+    return sorted(
+        path
+        for path in APPENDIX.rglob("*")
+        if path.suffix in CODE_SUFFIXES
+        and ".ipynb_checkpoints" not in path.parts
+    )
+
+
+def code_of(path: Path) -> list[tuple[str, str]]:
+    """(where, source) for a script, or for each code cell of a notebook."""
+    text = path.read_text(encoding="utf-8")
+    if path.suffix != ".ipynb":
+        return [("", text)]
+    sources = []
+    for index, cell in enumerate(json.loads(text)["cells"]):
+        if cell["cell_type"] != "code":
+            continue
+        source = cell["source"]
+        source = "".join(source) if isinstance(source, list) else source
+        # %magic and !shell lines are IPython, not Python.
+        lines = ("" if line.lstrip().startswith(("%", "!")) else line for line in source.splitlines())
+        sources.append((f"cell {index} ", "\n".join(lines)))
+    return sources
+
+
+CODE = appendix_code()
+PYTHON = [p for p in CODE if p.suffix in (".py", ".ipynb")]
+IDS = [_relative(p) for p in CODE]
+PYTHON_IDS = [_relative(p) for p in PYTHON]
+
+
+def _without_strings_and_comments(source: str) -> str:
+    """Python source with comments and string literals blanked, line numbers kept.
+
+    A docstring that says "stands in for client.messages.create(...)" is not a call.
+    """
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        return source
+    lines = source.splitlines(keepends=True)
+    for token in reversed(tokens):
+        if token.type not in (tokenize.COMMENT, tokenize.STRING):
+            continue
+        (start_row, start_col), (end_row, end_col) = token.start, token.end
+        for row in range(start_row, end_row + 1):
+            line = lines[row - 1]
+            begin = start_col if row == start_row else 0
+            end = end_col if row == end_row else len(line.rstrip("\n"))
+            lines[row - 1] = line[:begin] + " " * (end - begin) + line[end:]
+    return "".join(lines)
+
+
+def _line(source: str, offset: int) -> int:
+    return source.count("\n", 0, offset) + 1
+
+
+def test_the_scan_sees_the_appendix_code():
+    # An empty scan would pass everything below on nothing.
+    assert "appendix/foundations/llm_foundations.py" in IDS
+    assert "appendix/rag/rag_systems.ipynb" in IDS
+    assert "appendix/typescript/agent.ts" in IDS
+    # Ticket 15 brought the MCP pages and the frameworks notebook into the scan.
+    assert "appendix/mcp/mcp_example.py" in IDS
+    assert "appendix/mcp/servers/example_server.py" in IDS
+    assert "appendix/agent-frameworks/agentic_workflows.ipynb" in IDS
+
+
+def test_no_appendix_code_file_is_in_the_lint_baseline():
+    baselined = sorted(label for label in stale_lint.load_baseline() if label in IDS)
+
+    assert baselined == [], "fix these and take them out of tests/stale_lint_baseline.txt"
+
+
+@pytest.mark.parametrize("path", PYTHON, ids=PYTHON_IDS)
+def test_python_does_not_use_the_old_provider(path):
+    found = []
+    for where, source in code_of(path):
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names = [node.module] + [f"{node.module}.{a.name}" for a in node.names]
+            else:
+                continue
+            if any(name in ("provider", "shared.provider") for name in names):
+                found.append(f"{where}line {node.lineno}")
+
+    assert found == [], f"{_relative(path)} imports shared/provider.py; use `from llm import ask`"
+
+
+@pytest.mark.parametrize("path", PYTHON, ids=PYTHON_IDS)
+def test_python_chat_calls_go_through_the_provider_layer(path):
+    if _relative(path) in DIRECT_SDK_CALLS:
+        pytest.skip(DIRECT_SDK_CALLS[_relative(path)])
+    found = [
+        f"{where}line {_line(source, m.start())}: {m.group(0).strip()}"
+        for where, source in code_of(path)
+        for m in _VENDOR_CHAT_CALL.finditer(_without_strings_and_comments(source))
+    ]
+
+    assert found == [], f"{_relative(path)} calls a vendor chat API directly; use llm.ask or llm.complete"
+
+
+@pytest.mark.parametrize("path", CODE, ids=IDS)
+def test_chat_model_ids_are_in_the_registry(path):
+    unknown = [
+        f"{where}line {_line(source, m.start())}: {m.group(1)}"
+        for where, source in code_of(path)
+        for m in _MODEL_ID.finditer(source)
+        if m.group(1) not in REGISTRY_IDS | NON_CHAT_MODELS
+    ]
+
+    assert unknown == [], f"{_relative(path)} names models missing from llm/models.json"
+
+
+#: Vendor SDK methods that send a request, and LangChain's chat-model wrappers. A
+#: temperature passed to one of these reaches the model whether it accepts it or not.
+_VENDOR_METHODS = frozenset({"create", "stream", "parse", "generate_content"})
+_VENDOR_WRAPPERS = frozenset({"ChatOpenAI", "ChatAnthropic", "ChatGoogleGenerativeAI"})
+#: Building a kwargs dict for `create(**kwargs)` counts as sending it.
+_KWARGS_BUILDERS = frozenset({"dict"})
+
+
+def _temperature_sent_directly(source: str) -> list[int]:
+    """Lines where a temperature reaches a vendor API without going through llm/.
+
+    That is a temperature keyword on a vendor SDK call or chat-model wrapper, or a
+    "temperature" key in a dict literal (a kwargs dict or a raw request body).
+    Anything else — `ask`, `CallOptions`, a helper that forwards to them, or a local
+    Hugging Face `generate` — is not a request to a hosted model.
+    """
+    tree = ast.parse(source)
+    lines = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and any(k.arg == "temperature" for k in node.keywords):
+            func = node.func
+            if (isinstance(func, ast.Attribute) and func.attr in _VENDOR_METHODS) or (
+                isinstance(func, ast.Name) and func.id in _VENDOR_WRAPPERS | _KWARGS_BUILDERS
+            ):
+                lines.append(node.lineno)
+        elif isinstance(node, ast.Dict):
+            if any(isinstance(k, ast.Constant) and k.value == "temperature" for k in node.keys):
+                lines.append(node.lineno)
+    return sorted(lines)
+
+
+def _typescript_temperatures(source: str) -> list[int]:
+    """Lines of TypeScript code (comments aside) that set a temperature."""
+    code = re.sub(r"/\*.*?\*/", lambda m: re.sub(r"[^\n]", " ", m.group(0)), source, flags=re.S)
+    code = re.sub(r"//[^\n]*", "", code)
+    return [_line(code, m.start()) for m in re.finditer(r"\btemperature\s*:", code)]
+
+
+@pytest.mark.parametrize("path", CODE, ids=IDS)
+def test_no_temperature_goes_straight_to_a_vendor_api(path):
+    found = []
+    for where, source in code_of(path):
+        if path.suffix == ".ts":
+            # TypeScript has no provider layer to drop it, so it never sends one.
+            found += [f"line {n}" for n in _typescript_temperatures(source)]
+            continue
+        try:
+            found += [f"{where}line {n}" for n in _temperature_sent_directly(source)]
+        except SyntaxError:
+            continue
+
+    assert found == [], (
+        f"{_relative(path)} sends temperature itself; pass it to llm.ask/complete, "
+        "which drops it for models that reject it"
+    )
+
+
+def test_a_call_named_in_a_docstring_is_not_a_call():
+    source = '"""Stands in for client.messages.create(...)."""\nx = 1  # not .responses.create(\n'
+
+    assert _VENDOR_CHAT_CALL.search(_without_strings_and_comments(source)) is None
+    assert _VENDOR_CHAT_CALL.search("client.messages.create(model=m)")
+
+
+def test_the_temperature_check_catches_a_direct_call():
+    source = 'client.chat.completions.create(model=m, messages=[], temperature=0.7)\n'
+
+    assert _temperature_sent_directly(source) == [1]
+
+
+def test_the_temperature_check_catches_a_kwargs_dict():
+    source = 'kwargs = dict(model=m, temperature=0)\nbody = {"model": m, "temperature": 0}\n'
+
+    assert _temperature_sent_directly(source) == [1, 2]
+
+
+def test_the_temperature_check_allows_the_provider_layer():
+    source = 'ask("hi", temperature=0.7)\nCallOptions(temperature=0.2)\nllm(p, temperature=0.7)\n'
+
+    assert _temperature_sent_directly(source) == []
+
+
+def test_the_typescript_check_ignores_comments():
+    source = '// never send a temperature: it is rejected\nconst r = { model, temperature: 0.7 };\n'
+
+    assert _typescript_temperatures(source) == [2]
+
+
+# ── One "accepts temperature" rule, and one registry for the default model ────
+
+
+@pytest.mark.parametrize("path", PYTHON, ids=PYTHON_IDS)
+def test_temperature_support_is_asked_at_an_effort_level(path):
+    """`accepts_sampling_params` is only half the rule: GPT-6 takes a temperature
+    at effort `none`. `ModelSpec.accepts_sampling_at(effort)` is the whole rule."""
+    found = [
+        f"{where}line {_line(source, m.start())}"
+        for where, source in code_of(path)
+        for m in re.finditer(r"\.accepts_sampling_params\b", source)
+    ]
+
+    assert found == [], f"{_relative(path)} reads the static flag; use spec.accepts_sampling_at(effort)"
+
+
+def _looks_up_the_default_model(path: Path) -> bool:
+    text = "\n".join(source for _, source in code_of(path))
+    return re.search(r"default_model\(\s*REGISTRY\s*\)", text) is not None
+
+
+LOOKUPS = [p for p in PYTHON if _looks_up_the_default_model(p)]
+
+
+def test_the_lookup_scan_sees_the_notebooks_that_look_the_model_up():
+    assert "appendix/foundations/llm_foundations.ipynb" in [_relative(p) for p in LOOKUPS]
+
+
+@pytest.mark.parametrize("path", LOOKUPS, ids=[_relative(p) for p in LOOKUPS])
+def test_code_that_looks_up_the_default_model_can_find_a_local_one(path):
+    """`REGISTRY.get(default_model(REGISTRY))` must work on a Reader's local server,
+    so REGISTRY comes from `configured_registry()`, which adds it."""
+    text = "\n".join(source for _, source in code_of(path))
+
+    assert "configured_registry(" in text, (
+        f"{_relative(path)} builds REGISTRY with load_registry(); a local model is not in it"
+    )
+
+
+def _text_of(path: Path) -> list[tuple[str, str]]:
+    """(where, text) for every cell of a notebook, or a whole script or page."""
+    text = path.read_text(encoding="utf-8")
+    if path.suffix != ".ipynb":
+        return [("", text)]
+    return [
+        (f"cell {i} ", "".join(c["source"]) if isinstance(c["source"], list) else c["source"])
+        for i, c in enumerate(json.loads(text)["cells"])
+    ]
+
+
+TEXT = sorted(
+    p
+    for p in APPENDIX.rglob("*")
+    if p.suffix in (".md", ".ipynb", ".py")
+    and ".ipynb_checkpoints" not in p.parts
+)
+
+
+@pytest.mark.parametrize("path", TEXT, ids=[_relative(p) for p in TEXT])
+def test_prose_about_gpt_6_and_temperature_names_effort_none(path):
+    """GPT-6 rejects a temperature except at effort `none`; saying it never takes
+    one, or pointing the Reader at the static flag, teaches the wrong rule."""
+    found = []
+    for where, text in _text_of(path):
+        if "accepts_sampling_params" in text:
+            found.append(f"{where}names accepts_sampling_params")
+        for sentence in re.split(r"(?<=[.!?])\s+|\n\s*\n", text):
+            if "GPT-6" in sentence and "temperature" in sentence.lower() and "none" not in sentence:
+                found.append(f"{where}: {' '.join(sentence.split())[:100]}")
+
+    assert found == [], f"{_relative(path)} states the temperature rule without effort none"

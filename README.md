@@ -1,62 +1,62 @@
-# LLM Engineering Course — The Complete Guide to Building Production AI Applications
+# Graded, Attacked, Budgeted — take one agent to production
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/dnakhoa/llm-engineering-playground/actions/workflows/ci.yml/badge.svg)](https://github.com/dnakhoa/llm-engineering-playground/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/spaces)
-[![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](tests/)
-[![Modules](https://img.shields.io/badge/modules-17-blue.svg)]()
-[![Notebooks](https://img.shields.io/badge/notebooks-17-orange.svg)]()
+[![Open Spine 1 in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dnakhoa/llm-engineering-playground/blob/main/spine/01-loop/loop.ipynb)
 
-> **The most comprehensive open-source LLM engineering course** — 17 hands-on modules covering RAG, agents, loop and graph engineering, fine-tuning, prompt engineering, deployment, guardrails, and more. From beginner to production-ready in 33 hours.
+> **Your agent isn't done until it's graded, attacked and budgeted.**
 
+You build one support agent from scratch, for Acme Notes, a fictional
+note-taking SaaS. It answers from a Knowledge Base and takes real Actions on a
+mock Backend: it looks up accounts, changes plans and issues refunds. Each
+Spine module hardens it, and ends with **Checks that grade *your own* agent**
+against the Backend's state, not against what the agent says. A reply of
+"Refunded $100" fails if the refund never happened, and so does a refund
+issued twice.
 
-## What You'll Learn
+**For:** software engineers who already call LLM APIs and now have to ship an
+agent. You'll need Python and one API key, or none at all: every Check has an
+Offline mode that replays recorded model calls for $0.
 
-This course teaches you everything needed to build, deploy, and operate production LLM applications:
+**Grade your own agent from your coding agent.** The Grader skill runs the
+course's Checks against your agent, Offline and free by default, and links each
+failure to the lesson that covers it. Install it in one command, no clone:
 
-| Topic | What You Master |
-|-------|-----------------|
-| **Prompt Engineering** | Zero-shot, few-shot, chain-of-thought, structured output, reasoning models |
-| **RAG Systems** | Vector databases, chunking, embedding, HyDE, corrective RAG, graph RAG |
-| **Fine-Tuning** | LoRA, QLoRA, model merging, interpretability, when NOT to fine-tune |
-| **Evaluation** | LLM-as-judge, benchmarks, A/B testing, EvalOps CI/CD |
-| **Deployment** | Cloud APIs, streaming, edge deployment, SLMs, cost optimization |
-| **Agents** | Agent SDKs, multi-agent orchestration, ACI design, supervisor/swarm |
-| **Loop Engineering** | Novelty gates, task budgets, durable journals, outcome loops |
-| **Graph Engineering** | State graphs, reducers, checkpointers, knowledge graphs, Graph RAG |
-| **MCP & Tools** | Model Context Protocol, A2A, tool design, Secure MCP Tunnels |
-| **Guardrails** | Prompt injection detection, PII filtering, rate limiting, compliance |
-| **Observability** | Tracing, drift detection, cost tracking, prompt versioning |
-| **Context Engineering** | Token budgets, observation masking, prefix caching, compression |
-| **Memory** | Short/long-term memory, hierarchical systems, personalization |
-| **Multimodal** | Vision, image generation, audio, video, voice agents |
+```bash
+npx skills add dnakhoa/llm-engineering-playground --skill grader
+```
 
-## Why This Course?
+Then ask your coding agent to "grade my agent". See [skills/grader](skills/grader/SKILL.md).
 
-| Topic | Microsoft GenAI (112k⭐) | awesome-llm-apps (115k⭐) | **This Course** |
-|----------------|-------------------|--------------------------|-------------|
-| Context Engineering (U-curve, caching) | ❌ | ❌ | ✅ Module 12 |
-| Agent Harness & Loop Engineering | ❌ | ❌ | ✅ Module 13 |
-| Graph Engineering (state graphs + knowledge graphs) | ❌ | Demos only | ✅ Module 16 |
-| EvalOps (CI/CD for LLMs) | ❌ | ❌ | ✅ Module 9 |
-| LLM Ops (tracing, drift detection) | Partial | ❌ | ✅ Module 8 |
-| MCP Tool Design | Separate course | Templates only | ✅ Module 14 |
-| Gateway & Guardrails | One lesson | ❌ | ✅ Module 10 |
-| Multi-provider (6+ providers) | Azure-only | Varies | ✅ All modules |
-| **Total coverage** | 21 lessons, ~12h | 100+ standalone demos | **17 modules, ~33h** |
+## The Spine
 
+| # | Module | Your agent can… | Status |
+|---|---|---|---|
+| 1 | [Loop](spine/01-loop/) | resolve a Case with tool calls, in a ~20-line loop with no framework | ✅ live |
+| 2 | [Knowledge](spine/02-knowledge/) | answer from policy (BM25, no embeddings) and refund the right amount | ✅ live |
+| 3 | [Graded](spine/03-graded/) | pass one verdict that grades what it *attempted*, in CI | ✅ live |
+| 4 | [Observed](spine/04-observed/) | emit OpenTelemetry GenAI traces with tokens and cost | ✅ live |
+| 5 | Attacked | survive prompt injection in the Knowledge Base and the customer's message | 🚧 next |
+| 6 | Budgeted | hold a cost-per-resolved-Case limit without losing quality | 🚧 next |
+| 7 | Shipped | serve behind a streaming endpoint, with a live demo | 🚧 planned |
 
-## Who This Course Is For
+The rest of the old course is in the [Appendix](appendix/): prompt
+engineering, RAG, fine-tuning, MCP (spec 2026-07-28), agent frameworks,
+multimodal and more. It's refreshed onto current models.
 
-- **Software engineers** transitioning to AI/ML roles
-- **ML engineers** who want to learn LLM production patterns
-- **Product managers** building AI-powered features
-- **Students** looking for a structured path into AI engineering
-- **Teams** needing a shared reference for LLM best practices
+## Run the Checks in one minute
 
-**Prerequisites:** Basic Python knowledge. No ML background required — we start from fundamentals.
+```bash
+git clone https://github.com/dnakhoa/llm-engineering-playground.git
+cd llm-engineering-playground
+pip install -r requirements.txt
+python -m checks --mode offline      # no key, no network, $0
+```
 
-## Quick Start
+It ends with `Passed through module 4 of 4.` To grade your own agent, point
+`--agent` at it: `python -m checks --agent my_agent:run --mode offline`.
+
+## The Appendix demo (live key)
 
 ```bash
 git clone https://github.com/dnakhoa/llm-engineering-playground.git
@@ -130,9 +130,9 @@ README, a notebook and its own `requirements.txt`.
 | `chromadb` install fails on Mac | Use `pip install chromadb --no-cache-dir` |
 | Ollama connection refused | Start Ollama first: `ollama serve` |
 
-## Curriculum Structure
+## Appendix topics
 
-**17 Comprehensive Modules** covering the complete LLM engineering lifecycle — all with interactive notebooks:
+The original 17 modules, now reference material alongside the Spine:
 
 > The modules now live as topic folders in the [Appendix](appendix/README.md).
 

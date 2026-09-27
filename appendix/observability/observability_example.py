@@ -18,11 +18,22 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import hashlib
+import os
+import sys
+
+# Model IDs and prices come from the course's model registry (llm/models.json).
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from llm import load_registry
+
+REGISTRY = load_registry()
 
 
 class ModelProvider(Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    GOOGLE = "google"
+    DEEPSEEK = "deepseek"
+    XAI = "xai"
     LOCAL = "local"
 
 
@@ -317,7 +328,7 @@ class FeedbackCollector:
 # ============================================================================
 
 def simulate_llm_call(obs_client: ObservabilityClient, prompt: str, 
-                      prompt_version: str, model: str = "gpt-4") -> LLMSpan:
+                      prompt_version: str, model: str = "claude-sonnet-5") -> LLMSpan:
     """Simulate an LLM call with realistic metrics"""
     
     trace_id = str(uuid.uuid4())
@@ -332,7 +343,7 @@ def simulate_llm_call(obs_client: ObservabilityClient, prompt: str,
     # Calculate mock metrics
     prompt_tokens = len(prompt) // 4
     completion_tokens = len(response) // 4
-    cost_per_token = 0.00003  # Approximate GPT-4 cost
+    spec = REGISTRY.get(model)  # registry prices, per model
     
     span = LLMSpan(
         trace_id=trace_id,
@@ -340,7 +351,7 @@ def simulate_llm_call(obs_client: ObservabilityClient, prompt: str,
         parent_span_id=None,
         timestamp=datetime.now(),
         model=model,
-        provider=ModelProvider.OPENAI,
+        provider=ModelProvider(spec.provider),
         prompt=prompt,
         prompt_version=prompt_version,
         response=response,
@@ -348,7 +359,7 @@ def simulate_llm_call(obs_client: ObservabilityClient, prompt: str,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=prompt_tokens + completion_tokens,
-            cost_usd=(prompt_tokens + completion_tokens) * cost_per_token
+            cost_usd=spec.cost_usd(input_tokens=prompt_tokens, output_tokens=completion_tokens)
         ),
         latency=LatencyMetrics(
             total_ms=1250.5,
@@ -425,7 +436,7 @@ def main():
             obs_client,
             prompt,
             prompt_version=variant,
-            model="gpt-4"
+            model="claude-sonnet-5"
         )
         
         # Record A/B test result
@@ -449,7 +460,7 @@ def main():
         obs_client,
         "Analyze this 50000 word document...",
         "v1",
-        model="gpt-4-turbo"
+        model="claude-opus-5-5"
     )
     span.token_usage.cost_usd = 0.15  # Force over threshold
     span.token_usage.total_tokens = 5000

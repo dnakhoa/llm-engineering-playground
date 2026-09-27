@@ -6,7 +6,7 @@ TypeScript versions of key patterns from this course. Run with `npx tsx <file>`.
 
 ```bash
 npm init -y
-npm install openai anthropic
+npm install openai @anthropic-ai/sdk zod
 npm install -D typescript @types/node tsx
 ```
 

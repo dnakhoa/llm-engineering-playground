@@ -1,270 +1,139 @@
-# Module 07: Agentic Workflows
-> **Why this matters:** Agents are the future of LLM applications — systems that reason, plan, use tools, and recover from errors. Getting agent architecture right determines whether your system is reliable or a liability.
+# Module 07: Agent Frameworks
 
+_Last verified: 2026-09-27, against LangGraph 1.2.12, the OpenAI Agents SDK 0.22.3 and Google ADK 2.10.0_
+
+> **Why this matters:** In the Spine you build the Flagship Agent's loop by hand, with no framework ([ADR 0003](../../docs/adr/0003-flagship-agent-built-without-a-framework.md)), so you can read every step it takes. Sooner or later you will meet a framework in someone else's codebase, or want one of its runtime features. This page maps what you built onto the three you are most likely to meet — so a framework's name for a thing never hides what the thing is.
 
 ## Learning Objectives
-- Master the agentic development workflow
-- Build multi-agent systems with specialized roles
-- Implement dynamic routing and orchestration
-- Create reusable skills and tool libraries
-- Structure knowledge bases for agents
+- Recognise the agent loop, tools, step limits, memory and human approval in LangGraph 1.x, the OpenAI Agents SDK and Google ADK 2.0
+- Know what each framework adds on top of the loop you wrote, and what it hides
+- Build the same loop as a LangGraph `StateGraph`, over the course's provider layer ([agentic_workflows.ipynb](agentic_workflows.ipynb))
+- Apply framework-agnostic multi-agent patterns: supervisor/worker, pipeline vs barrier, adversarial verification, swarm
 
-## 📚 Core Concepts
+## 🧭 What you built by hand, in each framework
 
-### 1. Agent Architecture Patterns
+Each row is a concept from the Spine. The link goes to the lesson where you built it yourself; the other columns name the same thing in each framework.
 
-#### Single Agent vs Multi-Agent Systems
-```
-Single Agent:           Multi-Agent (Specialized):
-┌─────────────┐         ┌──────────┐  ┌──────────┐  ┌──────────┐
-│   General   │         │ Research │  │  Coder   │  │ Reviewer │
-│    Agent    │   OR    │  Agent   │→ │  Agent   │→ │  Agent   │
-└─────────────┘         └──────────┘  └──────────┘  └──────────┘
-                              ↓           ↓           ↓
-                         ┌──────────────────────────────┐
-                         │      Orchestrator/Router     │
-                         └──────────────────────────────┘
-```
+| Concept | Where you built it | LangGraph 1.x | OpenAI Agents SDK | Google ADK 2.0 |
+|---------|--------------------|---------------|-------------------|----------------|
+| **The agent loop**: call the model, run its tool calls, send results back, repeat | [Spine 1 · The loop](../../spine/01-loop/README.md#the-loop) | A `StateGraph` with a model node, a tool node and a conditional edge back | `Runner.run(agent, input)` runs the loop for you | A `Runner` runs an `Agent`; in 2.0 the agent is a node in the workflow graph engine |
+| **Tools / Actions**: a name, a description, a JSON schema, and your function behind it | [Spine 1 · The agent contract](../../spine/01-loop/README.md#the-agent-contract) | Plain functions called from a node (or LangChain `@tool`s with the prebuilt `ToolNode`) | `@function_tool` on a Python function; the schema comes from its signature | Plain functions in `Agent(tools=[...])`, wrapped as `FunctionTool` |
+| **Stop conditions and the step limit** | [Spine 1 · The loop](../../spine/01-loop/README.md#the-loop) | The graph ends at `END`; `recursion_limit` in the run config raises `GraphRecursionError` | A final output ends the run; `max_turns` (default 10) raises `MaxTurnsExceeded` | The agent's final response ends the run; `RunConfig(max_llm_calls=...)` caps model calls |
+| **Authorization belongs in the Action**, not the prompt | [Spine 1 · Authorization belongs in the Action](../../spine/01-loop/README.md#authorization-belongs-in-the-action) | Inside the tool function or the node that runs it | Inside the tool; tool guardrails (`@tool_input_guardrail`) run before each call | Inside the tool; `before_tool_callback` can inspect or block a call |
+| **The Outcome**: what the run did, for a Check to assert on | [Spine 1 · The Outcome](../../spine/01-loop/README.md#the-outcome) | The final state returned by `invoke()` | A `RunResult`: `final_output`, `new_items`, usage | The stream of `Event`s the `Runner` yields, and the session's state |
+| **Retrieval over the Knowledge Base** | [Spine 2 · How the agent reaches the Knowledge Base](../../spine/02-knowledge/README.md#how-the-agent-reaches-the-knowledge-base) | A retrieval tool, or a retrieval node before the model node | A function tool (or a hosted `FileSearchTool` on OpenAI's side) | A function tool, or one of ADK's grounding tools |
+| **Each Case declares its Actions**: the agent is offered only those | [Spine 2 · Each Case declares its Actions](../../spine/02-knowledge/README.md#each-case-declares-its-actions) | Build the tool list per run and pass it to the model node | Build the `Agent(tools=...)` per Case, or `agent.clone(tools=...)` | Build the `Agent(tools=...)` per Case |
+| **Policy belongs in the Action**: refund window, limits, proration | [Spine 2 · Policy belongs in the Action](../../spine/02-knowledge/README.md#policy-belongs-in-the-action) | In the tool function — the graph cannot enforce it for you | In the tool function; a guardrail can add a check, not replace it | In the tool function; a callback can add a check, not replace it |
+| **Memory across a Case's turns** | [Spine 2 · Memory across a Case's turns](../../spine/02-knowledge/README.md#memory-across-a-cases-turns) | A checkpointer (`InMemorySaver`, or a database one) keyed by `thread_id` | A `Session` (`SQLiteSession("case-42")`) passed to `Runner.run` | A `SessionService` (`InMemorySessionService`) holding the session's events and state |
+| **Offline: replaying recorded model responses** | [Spine 1 · Offline: why this costs nothing](../../spine/01-loop/README.md#offline-why-this-costs-nothing) | Nothing built in: swap the model call in your node | A custom `Model` implementation, or the SDK's testing helpers | A custom model class |
 
-### 2. Key Components
+Two concepts come later in the Spine and are not mapped here yet: **human approval and escalation** (the Attacked module) and **tracing** (the Observed module). The frameworks name them `interrupt()` + `Command(resume=...)` (LangGraph), `needs_approval` on a tool + `RunState` (OpenAI Agents SDK), and human-input nodes in a workflow graph (ADK 2.0); and each ships its own tracing — the OpenAI Agents SDK traces by default and exports to OpenAI unless you disable it (`OPENAI_AGENTS_DISABLE_TRACING=1`) or replace its processors.
 
-| Component | Purpose | Implementation |
-|-----------|---------|----------------|
-| **Skills** | Reusable capabilities | Python functions + Tool decorators |
-| **Tools** | External integrations | LangChain Tools, API wrappers |
-| **Knowledge** | Domain context | Vector stores, Document loaders |
-| **Router** | Task distribution | LLM-based classification, State machines |
-| **Specialist Agents** | Domain experts | Role-prompted agents with specific tools |
-| **Orchestrator** | Coordination | LangGraph StateGraph, Supervisor |
+## LangGraph 1.x
 
-### 3. LangGraph Fundamentals
+[LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) models an agent as a graph of nodes over a shared, typed state. A node is a plain function that returns an update to the state; edges, including conditional ones, decide what runs next.
 
-LangGraph extends LangChain with:
-- **State Management**: Typed state objects
-- **Graph Flows**: Nodes (functions) and Edges (transitions)
-- **Cycles**: Loops for iterative refinement
-- **Human-in-the-loop**: Checkpoints for approval
+- **What it adds**: explicit, inspectable control flow; cycles; checkpointers that persist state per `thread_id`; `interrupt()` to pause for a human and `Command(resume=...)` to continue; streaming of each step.
+- **What it hides**: little — you still write the model call. That is why the notebook runs LangGraph over this course's provider layer (`llm.complete()`) instead of LangChain's chat-model wrappers: LangGraph 1.x does not require them.
 
 ```python
-# Basic Graph Structure
-from langgraph.graph import StateGraph, END
-
-workflow = StateGraph(StateSchema)
-workflow.add_node("researcher", research_node)
-workflow.add_node("coder", code_node)
-workflow.add_edge("researcher", "coder")
-workflow.add_edge("coder", END)
-```
-
-## 🏗️ Development Workflow
-
-### Phase 1: Define Skills & Tools
-```python
-# skills/search_skills.py
-from langchain.tools import tool
-from typing import List, Dict
-
-@tool
-def search_academic_papers(query: str, year_range: tuple = None) -> str:
-    """Search academic papers with advanced filtering."""
-    # Implementation
-    pass
-
-@tool
-def execute_code(code: str, language: str = "python") -> str:
-    """Safely execute code in sandboxed environment."""
-    # Implementation
-    pass
-```
-
-### Phase 2: Build Knowledge Base
-```python
-# knowledge/loader.py
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
-
-def load_domain_knowledge(domain: str) -> Chroma:
-    """Load and index domain-specific documents."""
-    documents = load_documents(f"data/{domain}/")
-    embeddings = HuggingFaceEmbeddings()
-    return Chroma.from_documents(documents, embeddings)
-```
-
-### Phase 3: Design Specialist Agents
-```python
-# agents/specialists.py
-from langchain.agents import create_tool_calling_agent
-from langchain.prompts import ChatPromptTemplate
-
-def create_research_agent(llm, tools, knowledge_base):
-    """Create a specialized research agent."""
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a Senior Research Analyst.
-        Expertise: Academic literature review, data synthesis.
-        Tools: {tools}
-        Knowledge: Use the provided vector store for domain context.
-        Style: Cite sources, be precise, flag uncertainties."""),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}")
-    ])
-    return create_tool_calling_agent(llm, tools, prompt)
-```
-
-### Phase 4: Implement Router
-```python
-# router/dynamic_router.py
-from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field
-
-class RouteDecision(BaseModel):
-    target_agent: str = Field(description="research, coding, review, or general")
-    confidence: float = Field(description="Confidence score 0-1")
-    reasoning: str = Field(description="Why this route was chosen")
-
-def create_router(llm):
-    """LLM-based dynamic router."""
-    parser = PydanticOutputParser(pydantic_object=RouteDecision)
-    # Implementation with few-shot examples
-```
-
-### Phase 5: Orchestrate with LangGraph
-```python
-# orchestrator/workflow.py
-from langgraph.graph import StateGraph
-from typing import TypedDict, Annotated, List
 import operator
+from typing import Annotated, TypedDict
+from langgraph.graph import END, START, StateGraph
 
 class AgentState(TypedDict):
-    messages: Annotated[List[str], operator.add]
-    current_step: str
-    results: dict
-    history: List[dict]
+    messages: Annotated[list, operator.add]     # each node's messages are appended
 
-def build_multi_agent_graph():
-    graph = StateGraph(AgentState)
-    
-    # Add specialist nodes
-    graph.add_node("router", router_node)
-    graph.add_node("researcher", researcher_node)
-    graph.add_node("coder", coder_node)
-    graph.add_node("reviewer", reviewer_node)
-    
-    # Define edges with conditional routing
-    graph.add_conditional_edges(
-        "router",
-        route_based_on_decision,
-        {
-            "research": "researcher",
-            "coding": "coder",
-            "review": "reviewer",
-            "general": "general_agent"
-        }
-    )
-    
-    # Add loops for refinement
-    graph.add_edge("reviewer", "router")  # Can route back for revisions
-    
-    return graph.compile()
+def model_node(state):   # one model call through llm.complete(), as in Spine 1
+    response = call_model(state["messages"], tools=TOOL_SPECS)
+    return {"messages": [Message.assistant(response.text or None, response.tool_calls)]}
+
+def tools_node(state):   # run what the model asked for
+    return {"messages": [Message.tool([run_tool(c) for c in state["messages"][-1].tool_calls])]}
+
+graph = StateGraph(AgentState)
+graph.add_node("model", model_node)
+graph.add_node("tools", tools_node)
+graph.add_edge(START, "model")
+graph.add_conditional_edges("model", lambda s: "tools" if s["messages"][-1].tool_calls else END)
+graph.add_edge("tools", "model")
+app = graph.compile()
+
+app.invoke({"messages": [Message.user("What is 15% of 840?")]}, config={"recursion_limit": 10})
 ```
 
-## 📁 Project Structure
+The notebook builds this graph, a multi-agent router, and a human approval step with `interrupt()`.
 
-```
-agentic-workflows/
-├── skills/
-│   ├── __init__.py
-│   └── skill_library.py         # Search, code, analysis, knowledge skills
-├── tools/
-│   └── __init__.py
-├── knowledge/
-│   └── __init__.py
-├── agents/
-│   └── __init__.py
-├── router/
-│   └── __init__.py
-├── orchestrator/
-│   └── __init__.py
-├── examples/
-│   ├── __init__.py
-│   ├── multi_agent_workflow.py   # ★ Multi-agent LangGraph demo
-│   └── human_in_loop.py          # ★ HITL workflow
-└── agentic_workflows.ipynb       # ★ Interactive notebook
-```
+## OpenAI Agents SDK
 
-## 🔧 Best Practices
+The [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) is a small runtime around the loop: **agents** (a model with instructions and tools), **handoffs** and agents-as-tools for delegation, **guardrails** (input, output and tool guardrails), **sessions** for memory, and built-in **tracing**. It calls OpenAI models through the Responses API by default; other providers go through its model interfaces and adapters.
 
-### 1. Skill Design
-- **Atomic**: Each skill does one thing well
-- **Composable**: Skills can be combined
-- **Observable**: Log inputs/outputs for debugging
-- **Safe**: Validate inputs, handle errors gracefully
+- **What it adds**: the loop, tool dispatch and turn limit; delegation between agents; guardrails that run alongside the loop and fail fast; pausing for human approval (`needs_approval`) and resuming from a serialized `RunState`; tracing on by default.
+- **What it hides**: the loop itself. A run is one `Runner.run()` call, so what the model was sent each turn is in the trace, not in your code.
 
-### 2. Agent Specialization
-- **Clear Roles**: Define expertise boundaries
-- **Tool Scoping**: Give agents only needed tools
-- **Context Limits**: Provide relevant knowledge only
-- **Prompt Templates**: Consistent role definitions
+```python
+from agents import Agent, Runner, SQLiteSession, function_tool
 
-### 3. Routing Strategies
-- **Hierarchical**: High-level → Specific routing
-- **Confidence-based**: Fallback on low confidence
-- **Learning**: Improve routes from feedback
-- **Multi-criteria**: Consider cost, latency, expertise
+@function_tool
+def look_up_account(account_id: str) -> str:
+    """Look up an Acme Notes account: plan, status and invoices."""
+    return backend.look_up_account(account_id)   # authorization and policy stay in here
 
-### 4. State Management
-- **Immutable History**: Keep conversation history
-- **Structured Results**: Typed output schemas
-- **Checkpointing**: Save state for recovery
-- **Metadata**: Track token usage, timing, costs
+agent = Agent(
+    name="Acme Notes support",
+    instructions="Resolve the customer's request. Act only on their own account.",
+    model="gpt-6-luna",
+    tools=[look_up_account],
+)
 
-## 🚀 Advanced Patterns
-
-### 1. Hierarchical Teams
-```
-CEO/Supervisor
-    ↓
-Project Manager (routes to)
-    ├─ Research Team Lead → Researchers
-    ├─ Engineering Lead → Coders
-    └─ QA Lead → Reviewers
+result = await Runner.run(agent, "Can you move me to Pro?", session=SQLiteSession("case-42"), max_turns=8)
+print(result.final_output)
 ```
 
-### 2. Competitive Collaboration
-- Multiple agents solve same problem
-- Voting mechanism selects best answer
-- Useful for critical decisions
+## Google ADK 2.0
 
-### 3. Iterative Refinement
-```
-Generate → Critique → Revise → Validate → Deploy
-    ↑                                    │
-    └──────────── Loop ──────────────────┘
+[Google's Agent Development Kit](https://google.github.io/adk-docs/) reached 2.0 for Python on 19 May 2026. 2.0 introduces a Workflow Runtime: agents, tools and functions are nodes in a graph-based execution engine, and `BaseAgent` now subclasses `BaseNode`. On top of single agents it offers three ways to compose work: **graph-based workflows** (`Workflow` with explicit edges), **dynamic workflows** in your own code, and the prebuilt **workflow agents** (`SequentialAgent`, `ParallelAgent`, `LoopAgent`).
+
+- **What it adds**: sessions and state, callbacks around every agent, model and tool call (`before_tool_callback` and the rest), deterministic graph workflows that mix code and model calls, human-input nodes, and a runner with a dev UI and API server.
+- **What it hides**: the loop and the event log. A run is a stream of `Event`s; 2.0 added `node_info` and `output` fields to them, which matters if you store sessions yourself.
+
+```python
+from google.adk import Agent, Workflow
+
+def look_up_account(account_id: str) -> dict:
+    """Look up an Acme Notes account: plan, status and invoices."""
+    return backend.look_up_account(account_id)   # authorization and policy stay in here
+
+support = Agent(
+    name="support",
+    model="gemini-3.8-flash",
+    instruction="Resolve the customer's request. Act only on their own account.",
+    tools=[look_up_account],
+)
+
+def log_outcome(node_input: str):
+    """A plain function node: no model call."""
+    return f"Resolved: {node_input}"
+
+root_agent = Workflow(name="support_flow", edges=[("START", support, log_outcome)])
 ```
 
-### 4. Human-in-the-Loop
-- Critical steps require approval
-- Agents propose, humans decide
-- Audit trail for compliance
+## 🧠 Choosing
+
+| If you need… | Reach for |
+|--------------|-----------|
+| To read and own every step (the Flagship Agent) | The loop you wrote in [Spine 1](../../spine/01-loop/README.md) |
+| Explicit control flow, checkpoints, human interrupts, any provider | LangGraph 1.x |
+| A small runtime with handoffs, guardrails and tracing, mostly on OpenAI models | OpenAI Agents SDK |
+| Deterministic graph workflows mixing code and agents, on Google Cloud or Gemini | Google ADK 2.0 |
+
+Whichever you pick, keep authorization and policy inside the Actions, and keep the Checks. A framework changes how the loop is written, not what your agent must withstand.
 
 ---
 
-## 🚀 Advanced Multi-Agent Patterns (2025-2026)
+## 🚀 Framework-agnostic Multi-Agent Patterns
 
-### Agent SDKs — Production-Ready Agent Frameworks
-
-Major providers now offer dedicated agent SDKs that handle the boilerplate of tool calling, state management, and orchestration:
-
-| SDK | Provider | Key Features |
-|-----|----------|-------------|
-| **OpenAI Agents SDK** | OpenAI | Multi-agent orchestration, handoffs, guardrails, sandboxing |
-| **Anthropic Agent SDK** | Anthropic | Claude-native tool use, MCP integration, human-in-the-loop |
-| **LangGraph** | LangChain | State machine graphs, checkpointing, streaming |
-| **Strands Agents SDK** | AWS | Bedrock-native, enterprise integration |
-
-**When to use SDKs vs raw API**:
-- SDKs reduce boilerplate but add abstraction layers that can obscure prompts/responses
-- Start with raw API to understand the mechanics, then adopt SDKs for production
-- Always verify what's happening under the hood — incorrect assumptions are a common source of errors
+These patterns work the same with or without a framework.
 
 ### Agent-Computer Interface (ACI) Design
 
@@ -290,6 +159,8 @@ def edit_file(absolute_path: str, content: str) -> str:
 - [ ] Change parameter names to make mistakes harder (poka-yoke)
 - [ ] Use absolute paths, explicit formats, and constrained types over free-form inputs
 - [ ] Test with many examples — watch what mistakes the model makes, then fix the tool
+
+See the [MCP page](../mcp/README.md) for tool design in depth.
 
 ### Supervisor / Worker Architecture
 
@@ -436,73 +307,62 @@ async def swarm(tasks: list, n_workers: int = 5) -> list:
     return results
 ```
 
-**Use supervisor/worker when**: task decomposition is complex, subtask dependencies exist, or you need a synthesis step.  
+**Use supervisor/worker when**: task decomposition is complex, subtask dependencies exist, or you need a synthesis step.
 **Use swarm when**: tasks are independent, uniform, and embarrassingly parallel (e.g., analyze 1,000 documents).
 
 ---
 
-## 📖 Next Steps
+## 📁 Project Structure
 
-1. **Start Simple**: Build a single agent with 2-3 tools
-2. **Add Specialization**: Create 2-3 specialist agents
-3. **Implement Router**: Add dynamic routing logic
-4. **Build Graph**: Orchestrate with LangGraph
-5. **Add HITL**: Include human approval steps
-6. **Optimize**: Monitor, measure, improve
+```
+appendix/agent-frameworks/
+├── README.md
+├── requirements.txt
+├── agentic_workflows.ipynb       # ★ The loop by hand, then as a LangGraph graph; routing; HITL
+├── configs/
+│   └── agent_configs.yaml
+├── examples/
+│   ├── multi_agent_workflow.py   # Multi-agent LangGraph demo
+│   └── human_in_loop.py          # HITL workflow
+└── skills/
+    └── skill_library.py          # Search, code, analysis, knowledge skills
+```
 
 ## 🛠️ Required Dependencies
 
 ```bash
-pip install langchain langchain-core langchain-community
-pip install langgraph
-pip install chromadb sentence-transformers
-pip install pydantic pyyaml
+pip install -r requirements.txt          # LangGraph 1.x, for the notebook and examples
+pip install "openai-agents>=0.22"        # optional: the OpenAI Agents SDK snippet
+pip install "google-adk>=2.0"            # optional: the Google ADK 2.0 snippet
 ```
-
-## 📝 Example Use Cases
-
-1. **Research Assistant**: Search → Synthesize → Cite
-2. **Code Generation**: Plan → Code → Test → Review
-3. **Customer Support**: Triage → Solve → Escalate
-4. **Data Analysis**: Query → Analyze → Visualize → Report
-5. **Content Creation**: Research → Draft → Edit → Publish
-
----
-
-
 
 ## 🔧 Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| Agent loops infinitely | Add max iterations limit and novelty gate |
+| Agent loops infinitely | Set a step limit: `recursion_limit` (LangGraph), `max_turns` (Agents SDK), `max_llm_calls` (ADK) |
 | Agent calls wrong tool | Improve tool descriptions; add "Do NOT use for..." disclaimers |
-| LangGraph state not persisting | Add checkpointer to graph compilation |
+| LangGraph state not persisting, or `interrupt()` fails | Compile the graph with a checkpointer and pass a `thread_id` in the config |
 | Multi-agent context pollution | Isolate worker context; don't pass full parent context |
-
-## 📚 Resources
-
-- [LangGraph](https://langchain-ai.github.io/langgraph/) — state machine agents
-- [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) — OpenAI's agent framework
-- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — ACI principles
 
 ## 🧪 Hands-On Exercises
 
-1. **Single Agent with Tools**: Build a single agent with 3 tools (calculator, web search, text summarizer). Give it a complex query that requires using all 3 tools. How does it decide which tool to use?
+1. **Same Case, three ways**: Take the Spine 1 Case (Free → Pro) and run it through your hand-written loop, a LangGraph graph and one of the two SDKs. Point the Case runner at each (`run_case(case, your_agent)`). Do all three pass the Spine 1 Check? Which one made it hardest to see what the model was sent?
 
-2. **Multi-Agent Debate**: Create two agents with opposing viewpoints. Have them debate a topic for 5 rounds. Who "wins"? How would you evaluate the quality of the debate?
+2. **Move the limit**: In each framework, set the step limit to 2 and give the agent a Case that needs 3 tool calls. What does each one do when it runs out — raise, return partial output, or answer anyway?
 
-3. **LangGraph State Machine**: Build a LangGraph workflow with at least 3 nodes and 2 conditional edges. Add a loop that retries up to 3 times before giving up.
+3. **Guardrail vs Action**: Put the "own account only" rule in an OpenAI Agents SDK tool guardrail instead of inside the tool. Then write a customer message that gets past the guardrail. Why does the Spine keep the rule inside the Action?
 
-4. **Router Improvement**: Replace the keyword-based router in `multi_agent_workflow.py` with an LLM-based classifier. Compare routing accuracy on 20 test queries.
+4. **LangGraph State Machine**: Build a LangGraph workflow with at least 3 nodes and 2 conditional edges. Add a loop that retries up to 3 times before giving up.
 
-5. **Human-in-the-Loop**: Add a checkpoint before the "review" step that requires human approval. What happens if the human rejects? What if they suggest changes?
+5. **Human-in-the-Loop**: In the notebook's review graph, resume with `Command(resume="no")`, then route a rejected draft back to the drafting node with the reviewer's feedback.
 
----
+## 📚 Resources
 
-**Ready to build?** Start with `examples/multi_agent_workflow.py` and work up to complex multi-agent systems!
-
-## Resources
-- [LangGraph](https://langchain-ai.github.io/langgraph/)
-- [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)
-- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
+- [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview) — graphs, state, checkpointers, interrupts
+- [LangGraph changelog](https://github.com/langchain-ai/langgraph/releases)
+- [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) — agents, handoffs, guardrails, sessions, tracing
+- [OpenAI Agents SDK: human-in-the-loop](https://openai.github.io/openai-agents-python/human_in_the_loop/)
+- [Google ADK](https://google.github.io/adk-docs/) and [Welcome to ADK 2.0](https://adk.dev/2.0/) — graph-based, dynamic and collaborative workflows
+- [ADK changelog](https://github.com/google/adk-python/blob/main/CHANGELOG.md)
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — ACI principles
