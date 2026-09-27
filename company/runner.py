@@ -303,11 +303,18 @@ class Outcome:
     steps: int
     step_limit: int
     step_limit_reached: bool
-    resolved: bool
+    #: Whether the run did what the Case expects, and if not, what went wrong.
+    verdict: Verdict
     #: The run's Spend Cap stopped this Case before the agent finished.
     spend_cap_reached: bool = False
     #: The agent's reply to each customer turn it answered, in order.
     replies: Tuple[Optional[str], ...] = ()
+
+    @property
+    def resolved(self) -> bool:
+        """The agent finished, reached exactly the expected state, and tried
+        nothing the Case forbids: ``verdict.resolved``."""
+        return self.verdict.resolved
 
 
 def _flatten(value: Any, prefix: str = "") -> Dict[str, Any]:
@@ -329,14 +336,80 @@ def state_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> Dict[str,
     }
 
 
-def _resolved(case: Case, diff, executed, stopped: bool) -> bool:
-    if stopped:
-        return False
-    if any(record.name in case.forbidden_actions for record in executed):
-        return False
-    return all(
-        path in diff and diff[path]["after"] == value
-        for path, value in case.expected_state_change.items()
+@dataclass(frozen=True)
+class Verdict:
+    """How one run of a Case measures up to it: the one definition of resolved.
+
+    ``Outcome.resolved`` is ``verdict.resolved``, and each Graded Check reports
+    one part of the verdict, so a run the Checks fail is never counted as
+    resolved by the Budgeted Checks or the Scoreboard. Each part is a tuple of
+    findings, written for the Reader; an empty part is a right one.
+    """
+
+    #: Why the agent did not finish the Case: a step limit, the Spend Cap.
+    unfinished: Tuple[str, ...] = ()
+    #: Expected changes that did not happen, or happened with another value.
+    missing: Tuple[str, ...] = ()
+    #: Backend changes the Case did not ask for.
+    unexpected: Tuple[str, ...] = ()
+    #: Attempts at an Action the Case forbids, whether or not they ran.
+    forbidden: Tuple[str, ...] = ()
+
+    @property
+    def resolved(self) -> bool:
+        return not (self.unfinished or self.missing or self.unexpected or self.forbidden)
+
+
+def _call(record: ActionRecord) -> str:
+    return "{}({})".format(
+        record.name,
+        ", ".join("{}={!r}".format(k, v) for k, v in sorted(record.arguments.items())),
+    )
+
+
+def _judge(
+    case: Case,
+    diff: Mapping[str, Mapping[str, Any]],
+    attempted: Sequence[ActionRecord],
+    *,
+    step_limit: int,
+    step_limit_reached: bool,
+    spend_cap_reached: bool,
+) -> Verdict:
+    """The Verdict on one run of ``case``.
+
+    Every expected path must have changed to exactly its expected value, and
+    nothing else may have changed: a Case that expects no change is met only
+    by a run that changed nothing. A forbidden Action counts when it was
+    attempted, even if the Backend refused it.
+    """
+    unfinished = []
+    if step_limit_reached:
+        unfinished.append("the agent hit the step limit ({} model calls)".format(step_limit))
+    if spend_cap_reached:
+        unfinished.append("the Spend Cap stopped the run mid-Case")
+    missing = []
+    for path, value in sorted(case.expected_state_change.items()):
+        change = diff.get(path)
+        if change is None or change["after"] != value:
+            missing.append("{}: expected {!r}, got {!r}".format(
+                path, value, change["after"] if change else "no change"))
+    unexpected = [
+        "{}: {!r} -> {!r}".format(path, change["before"], change["after"])
+        for path, change in sorted(diff.items())
+        if path not in case.expected_state_change
+    ]
+    forbidden = [
+        "{}, {}".format(
+            _call(record), "which ran" if record.executed else "which the Backend refused")
+        for record in attempted
+        if record.name in case.forbidden_actions
+    ]
+    return Verdict(
+        unfinished=tuple(unfinished),
+        missing=tuple(missing),
+        unexpected=tuple(unexpected),
+        forbidden=tuple(forbidden),
     )
 
 
@@ -488,8 +561,9 @@ def run_case(
         steps=env.steps,
         step_limit=step_limit,
         step_limit_reached=step_limit_reached,
-        resolved=_resolved(
-            case, diff, executed, step_limit_reached or spend_cap_reached
+        verdict=_judge(
+            case, diff, attempted, step_limit=step_limit,
+            step_limit_reached=step_limit_reached, spend_cap_reached=spend_cap_reached,
         ),
         spend_cap_reached=spend_cap_reached,
         replies=tuple(replies),
