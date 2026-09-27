@@ -176,6 +176,35 @@ def test_running_module_1_leaves_later_suites_out(no_network):
     assert {r.module for r in report.results} == {1}
 
 
+def test_a_check_on_every_case_grades_each_later_case_once(no_network):
+    # Module 1 marks a Check that holds on every Case. Module 2 lists only its
+    # own Check, on module 1's Case again and on a Case of its own: the marked
+    # Check grades the new Case, and does not grade the old one a second time.
+    from checks import on_every_case
+    from checks.spine_1_loop import plan_changed_to_pro_exactly_once
+    from tests.fixtures.checks_cli_suites import AGAIN
+
+    @on_every_case
+    def holds_on_every_case(outcome):
+        return CheckResult("holds on every case", True, "it does.")
+
+    first = Suite(module=1, title="First", cases=("upgrade-to-pro",),
+                  checks=(plan_changed_to_pro_exactly_once, holds_on_every_case))
+    second = Suite(module=2, title="Second", cases=("upgrade-to-pro", AGAIN),
+                   checks=(plan_changed_to_pro_exactly_once,))
+
+    report = run_checks(through=2, agent="flagship.loop:run", suites=(first, second),
+                        out=lambda line: None)
+
+    assert [(r.module, r.case_id, r.name) for r in report.results] == [
+        (1, "upgrade-to-pro", "plan_changed_to_pro_exactly_once"),
+        (1, "upgrade-to-pro", "holds_on_every_case"),
+        (2, "upgrade-to-pro", "plan_changed_to_pro_exactly_once"),
+        (2, "upgrade-to-pro-again", "holds_on_every_case"),
+        (2, "upgrade-to-pro-again", "plan_changed_to_pro_exactly_once"),
+    ]
+
+
 def test_a_module_range_always_starts_at_module_1():
     assert parse_modules("3") == 3
     assert parse_modules("1-3") == 3

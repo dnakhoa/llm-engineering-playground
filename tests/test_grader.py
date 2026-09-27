@@ -277,6 +277,23 @@ def test_the_badge_names_only_the_milestones_that_passed(tmp_path):
     assert message == "Graded ✓ — through module 4 · 4 Checks passed"
 
 
+def test_an_unresolved_case_blocks_the_graded_badge_and_share_line(capsys, tmp_path):
+    # Upgrades as asked, then gives the customer an empty reply: Spine 1's Check
+    # passes and the Knowledge suite does not run the Case, but it is not resolved.
+    badge_file = tmp_path / "badge.json"
+    code = main(["--agent", "tests.fixtures.graded_agents:upgrades_then_says_nothing",
+                 "--badge-file", str(badge_file)])
+
+    out = capsys.readouterr().out
+    lines = _lines(out)
+    assert code == 1, out
+    assert "FAIL  upgrade-to-pro: the agent finishes the Case." in out
+    assert lines[-2].startswith("Passed through module 2 of ")
+    message = _badge(badge_file)["message"]
+    assert message.startswith("through module 2 · ") and "Graded" not in message
+    assert "Spine module 2," in lines[-1] and "Graded" not in lines[-1]
+
+
 def test_a_failing_run_writes_no_new_badge(tmp_path):
     badge_file = tmp_path / "badge.json"
     main(["--modules", "1", "--agent", FAILING, "--badge-file", str(badge_file)])
@@ -396,12 +413,54 @@ def test_the_skill_follows_the_agent_skills_format():
     assert body.strip()
 
 
-def test_the_skill_runs_the_grader_command_offline_unless_the_reader_asks():
-    _, body = _frontmatter(SKILL.read_text(encoding="utf-8"))
+def _section(body, number):
+    """The body of the skill's ``## <number>.`` section."""
+    import re
 
-    assert "python -m checks.grader" in body
-    assert "--mode live" in body
-    assert "Offline" in body and "only when the Reader asks" in body
+    match = re.search(r"^## {}\. .*?$(.*?)(?=^## |\Z)".format(number), body, re.M | re.S)
+    assert match, "SKILL.md has a section {}".format(number)
+    return match.group(1)
+
+
+def _bash_blocks(text):
+    """Each ```bash block in ``text``: (where it starts, its commands)."""
+    import re
+
+    return [(m.start(), m.group(1))
+            for m in re.finditer(r"^```bash\n(.*?)^```", text, re.M | re.S)]
+
+
+def _prose(text):
+    """Text on one line, whatever the line breaks: a sentence can wrap anywhere."""
+    return " ".join(text.split())
+
+
+def test_the_skill_runs_the_grader_command_offline_unless_the_reader_asks():
+    import re
+
+    fields, body = _frontmatter(SKILL.read_text(encoding="utf-8"))
+    run = _section(body, 3)
+    blocks = _bash_blocks(run)
+
+    # The command a coding agent runs by default is section 3's first: Offline.
+    assert blocks, "section 3 shows the command to run"
+    first_at, default = blocks[0]
+    assert "python -m checks.grader" in default
+    assert "--mode" not in default, default
+    assert "Offline is the default" in _prose(run[:first_at])
+    # Going live is conditioned on the Reader asking, and never the agent's idea.
+    prose = _prose(run)
+    assert "Go live only when the Reader asks for a live run in this conversation." in prose
+    assert "Never add `--mode live` on your own" in prose
+    ask = re.search(r"Go\s+live\s+only\s+when\s+the\s+Reader\s+asks", run)
+    # A live command appears only after that rule, and in no other section.
+    live = [at for at, commands in blocks if "--mode live" in commands]
+    assert live and all(at > ask.start() for at in live)
+    for number in (1, 2, 4, 5, 6):
+        assert not any("--mode live" in commands
+                       for _, commands in _bash_blocks(_section(body, number))), number
+    assert "Offline by default" in fields["description"]
+    assert "live only when the Reader explicitly asks" in fields["description"]
 
 
 def test_the_skill_ends_on_the_summary_and_the_share_line():

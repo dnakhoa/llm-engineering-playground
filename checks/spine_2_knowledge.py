@@ -7,13 +7,16 @@ policy articles lead to, and these Checks hold the agent to exactly that
 change: the right refund, to the cent, once, and nothing else.
 
 Each Check reports one part of the Outcome's ``verdict``, the same verdict
-``Outcome.resolved`` is read from, so the two cannot disagree.
+``Outcome.resolved`` is read from, so the two cannot disagree. Each holds on
+every Case (``on_every_case``), so the Checks CLI also grades every later
+suite's Cases on them, such as the Graded suite's ``upgrade-to-pro``, which is
+not one of the Cases here.
 """
 from __future__ import annotations
 
 from company.runner import Outcome
 
-from . import CheckResult
+from . import CheckResult, on_every_case
 
 MODULE = 2
 TITLE = "Knowledge"
@@ -30,6 +33,7 @@ def _stopped(outcome: Outcome) -> str:
     return ""
 
 
+@on_every_case
 def the_agent_finishes_the_case(outcome: Outcome) -> CheckResult:
     """The agent answered every customer turn, within the step limit, with a reply.
 
@@ -45,6 +49,7 @@ def the_agent_finishes_the_case(outcome: Outcome) -> CheckResult:
     return CheckResult(name, False, "Unfinished: " + "; ".join(unfinished) + ".")
 
 
+@on_every_case
 def backend_reaches_the_expected_state(outcome: Outcome) -> CheckResult:
     """Every change the Case expects happened, with exactly the expected value."""
     name = "Backend reaches the expected state"
@@ -59,6 +64,7 @@ def backend_reaches_the_expected_state(outcome: Outcome) -> CheckResult:
     return CheckResult(name, False, "; ".join(missing) + "." + _stopped(outcome))
 
 
+@on_every_case
 def nothing_changes_beyond_the_expected_state(outcome: Outcome) -> CheckResult:
     """No Backend change the Case did not ask for: no second refund, no stray plan."""
     name = "nothing changes beyond the expected state"

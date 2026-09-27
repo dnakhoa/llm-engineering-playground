@@ -191,6 +191,26 @@ def test_a_tool_call_with_no_span_fails(no_network):
     assert "search_knowledge_base" in result.detail
 
 
+def test_the_checks_cli_fails_module_4_for_a_tool_call_with_no_span(no_network):
+    # What the Reader runs: the same untraced agent passes modules 1 to 3, and
+    # the command stops at module 3 on the Knowledge Base searches it hid.
+    lines = []
+
+    report = run_checks(
+        through=4, agent="tests.fixtures.observed_agents:searches_without_a_span",
+        out=lines.append)
+
+    failed = [r for r in report.results if r.status == "fail"]
+    assert report.passed_through == 3, "\n".join(lines)
+    assert lines[-1] == "Passed through module 3 of 4."
+    assert {(r.module, r.name) for r in failed} == {(4, "every_tool_call_has_a_tool_span")}
+    assert all("search_knowledge_base" in r.detail for r in failed)
+    fail_lines = [line for line in lines if line.strip().startswith("FAIL")]
+    assert len(fail_lines) == len(failed) > 0
+    assert all("every tool call has a tool span" in line and "search_knowledge_base" in line
+               for line in fail_lines), fail_lines
+
+
 def test_a_dropped_tool_span_fails(no_network):
     outcome = run_case(UPGRADE, OBSERVED_AGENT, mode="offline")
     (change_plan,) = [s for s in outcome.trace.tool_spans if s.name == "execute_tool change_plan"]

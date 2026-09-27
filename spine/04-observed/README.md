@@ -186,9 +186,10 @@ single-turn upgrade, the Knowledge Base Cases and the multi-turn one:
 The Spine 2 agent passes the first five as it is, because the environment
 traces it; it fails the last until it names itself.
 
-The suite lists only these six. A module 4 run runs modules 1 to 3 first, so
-the Graded Checks already run on the same Cases, and listing them again would
-print every one of their results twice.
+The suite lists only these six. A module 4 run runs modules 1 to 3 first, and
+the Checks on the verdict hold on every Case, so each Case here is graded on the
+whole verdict once, and a Case a later suite adds is graded on it too without
+listing those Checks again. Listing them would print their results twice.
 
 ## Installing the SDK
 

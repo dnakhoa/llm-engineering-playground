@@ -9,7 +9,11 @@ Run them with the Checks CLI::
 
     python -m checks --modules 1 --agent path/to/my_agent.py:run
 
-A module's run includes every earlier module's suite (``checks.cli``).
+A module's run includes every earlier module's suite (``checks.cli``), and a
+suite lists only its own Checks. A Check that holds on every Case
+(``on_every_case``), such as one part of the Outcome's verdict, also grades
+every later suite's Cases, once per Case, so a Case a later suite adds is
+graded on the whole verdict without that suite listing those Checks again.
 """
 from __future__ import annotations
 
@@ -39,3 +43,19 @@ def live_only(check: F) -> F:
 
 def is_live_only(check: Callable[..., CheckResult]) -> bool:
     return bool(getattr(check, "live_only", False))
+
+
+def on_every_case(check: F) -> F:
+    """Mark a Check that holds on every Case, such as one part of the verdict.
+
+    The Checks CLI grades every later suite's Cases on it too, once each. The
+    verdict is what ``Outcome.resolved`` is read from, so a Case a later suite
+    adds, which the marking suite does not run, is still failed when it is not
+    resolved.
+    """
+    setattr(check, "on_every_case", True)
+    return check
+
+
+def is_on_every_case(check: Callable[..., CheckResult]) -> bool:
+    return bool(getattr(check, "on_every_case", False))

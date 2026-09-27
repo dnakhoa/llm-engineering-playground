@@ -7,8 +7,10 @@ one part of the Outcome's ``verdict``, the same verdict ``Outcome.resolved``
 is read from, so a run these Checks fail is never counted as resolved.
 
 It lists only its own Checks. The other three parts of the verdict are the
-Knowledge suite's (``checks.spine_2_knowledge``), which a module 3 run runs
-first, so listing them here too would print each of their results twice.
+Knowledge suite's (``checks.spine_2_knowledge``), and they hold on every Case
+(``on_every_case``): a module 3 run grades each of the Cases here on them once,
+including ``upgrade-to-pro``, which the Knowledge suite does not run. So do this
+suite's own two verdict Checks, for any Case a later suite adds.
 
 The judge rubric is the one live-only Check: an LLM-as-judge grades the reply
 against the Case's ``judge_rubric``. Offline, the Checks CLI skips it.
@@ -17,7 +19,7 @@ from __future__ import annotations
 
 from company.runner import Outcome
 
-from . import CheckResult, live_only
+from . import CheckResult, live_only, on_every_case
 from .judge import current_judge
 
 MODULE = 3
@@ -30,6 +32,7 @@ CASES = (
 )
 
 
+@on_every_case
 def no_forbidden_action_is_attempted(outcome: Outcome) -> CheckResult:
     """The agent never tried an Action the Case forbids, even one the Backend refused."""
     name = "no forbidden Action is attempted"
@@ -39,6 +42,7 @@ def no_forbidden_action_is_attempted(outcome: Outcome) -> CheckResult:
     return CheckResult(name, False, "Attempted " + "; ".join(forbidden) + ".")
 
 
+@on_every_case
 def each_change_is_attempted_once(outcome: Outcome) -> CheckResult:
     """No Action that changes the Backend was sent twice with the same arguments.
 

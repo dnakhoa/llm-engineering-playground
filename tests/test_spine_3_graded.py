@@ -50,7 +50,8 @@ def _graded(outcome):
     """Every Check on the verdict that runs Offline, on one Outcome: name -> passed.
 
     The Graded suite lists only its own Checks; the verdict's other parts are
-    the Knowledge suite's, which a module 3 run runs first.
+    the Knowledge suite's, which hold on every Case, so a module 3 run grades
+    each Graded Case on them too.
     """
     return {
         check.__name__: check(outcome).passed
@@ -144,11 +145,57 @@ def test_an_agent_that_never_finishes_fails_every_case(agent, case_id):
 def test_the_checks_cli_fails_every_case_of_an_agent_that_never_finishes(agent, no_network):
     report = run_checks(through=3, agent=agent, out=lambda line: None)
 
-    # Each Case fails in some suite; which one depends on the Case, since a
-    # suite lists only its own Checks.
     failed = {r.case_id for r in report.results if r.status == "fail"}
     assert failed == set(CASES)
     assert report.passed_through == 0
+    # Not just any Check: "the agent finishes the Case" itself fails on every
+    # Graded Case. Spine 1's Check also fails upgrade-to-pro for these agents,
+    # because they never change the plan, and must not be what catches them.
+    unfinished = {r.case_id for r in report.results
+                  if r.name == "the_agent_finishes_the_case" and r.status == "fail"}
+    assert unfinished == set(CASES)
+
+
+STOPS_AFTER_UPGRADING = (
+    "tests.fixtures.graded_agents:upgrades_then_says_nothing",
+    "tests.fixtures.graded_agents:upgrades_then_hits_the_step_limit",
+)
+
+
+@pytest.mark.parametrize("agent", STOPS_AFTER_UPGRADING, ids=lambda agent: agent.split(":")[1])
+def test_an_agent_that_upgrades_and_then_never_finishes_fails_the_graded_suite(agent, no_network):
+    # It upgrades as asked, so Spine 1's Check passes, and the Knowledge suite
+    # does not run upgrade-to-pro. The Outcome is not resolved, so the CLI must
+    # not say otherwise: the Graded suite grades the whole verdict on its Cases.
+    upgrade = load_case("upgrade-to-pro")
+    assert upgrade.id not in spine_2_knowledge.CASES
+    assert run_case(upgrade, agent, mode="offline").resolved is False
+    top = discover_suites()[-1].module
+    lines = []
+
+    report = run_checks(through=top, agent=agent, out=lines.append)
+
+    failed = {(r.module, r.case_id, r.name) for r in report.results if r.status == "fail"}
+    assert failed == {(3, upgrade.id, "the_agent_finishes_the_case")}, "\n".join(lines)
+    assert report.passed_through == 2
+    assert lines[-1] == "Passed through module 2 of {}.".format(top)
+
+
+def test_every_later_case_is_graded_once_on_every_part_of_the_verdict(no_network):
+    # A suite lists only its own Checks, and the verdict's parts are split
+    # between Knowledge and Graded. Every Case from the Graded suite on is still
+    # graded on all of them, each exactly once in the run.
+    suites = discover_suites()
+    verdict = [c.__name__ for c in spine_2_knowledge.CHECKS + CHECKS if not is_live_only(c)]
+    later = {case for suite in suites if suite.module >= 3
+             for case in (load_case(ref).id for ref in suite.cases)}
+
+    report = run_checks(through=suites[-1].module, out=lambda line: None)
+
+    graded = [(r.case_id, r.name) for r in report.results]
+    assert len(graded) == len(set(graded)), "a Check ran twice on the same Case"
+    for case_id in sorted(later):
+        assert [name for c, name in graded if c == case_id and name in verdict] == verdict, case_id
 
 
 # ── A seeded regression: refunding twice ─────────────────────────────────────

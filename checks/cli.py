@@ -6,7 +6,9 @@
 
 Running module N runs the suites of modules 1 to N, because hardening an agent
 must not silently break what it already did. Each Case runs once, however many
-suites use it. The last line is the one to share: "Passed through module N of M."
+suites use it. A Check that holds on every Case (``checks.on_every_case``),
+such as each part of the verdict, also grades every later suite's Cases, once
+per Case, so a suite that adds a Case need not list those Checks again. The last line is the one to share: "Passed through module N of M."
 
 Offline (the default) replays the reviewed recordings: no key, no network, and
 live-only Checks such as judge rubrics are reported as skipped. Live mode calls
@@ -28,7 +30,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 from company.runner import (
     DEFAULT_MODEL,
@@ -47,7 +49,7 @@ from llm.registry import LOCAL_PROVIDER, ModelSpec, local_model
 from llm.replay import ReplayMismatchError
 from llm.transport import TransportError
 
-from . import is_live_only
+from . import is_live_only, is_on_every_case
 from .judge import Judge, judging_with
 from .suites import Check, Suite, discover_suites
 
@@ -211,11 +213,19 @@ def run_checks(
         judge = Judge(model=model, transport=transport, registry=registry, spend_cap=cap)
 
     outcomes: Dict[str, Outcome] = {}
+    # Earlier suites' Checks that hold on every Case, such as each part of the
+    # verdict: each later suite grades its Cases on them too, and on a Case
+    # already graded on one (graded) it does not run again.
+    carried: List[Check] = []
+    graded: Set[Tuple[str, Check]] = set()
     for suite in selected:
         write("")
         write("Module {} · {}".format(suite.module, suite.title))
         for case_ref in suite.cases:
             case = load_case(case_ref)
+            checks = _checks_for(case.id, carried, suite.checks, graded)
+            if not checks:
+                continue
 
             def emit(check: Check, status: str, detail: str, title: Optional[str] = None) -> None:
                 report.results.append(
@@ -227,11 +237,11 @@ def run_checks(
                     write("          " + more)
 
             if report.stopped_by_spend_cap or report.stopped_reason:
-                for check in suite.checks:
+                for check in checks:
                     emit(check, NOT_RUN, "Not run: the run stopped before this Case.")
                 continue
             if mode == OFFLINE and not case.recording:
-                for check in suite.checks:
+                for check in checks:
                     emit(check, SKIP, "Case {} has no recording; run it live.".format(case.id))
                 continue
 
@@ -244,15 +254,15 @@ def run_checks(
                     )
                 except TransportError as error:
                     report.stopped_reason = str(error)
-                    for check in suite.checks:
+                    for check in checks:
                         emit(check, ERROR, str(error))
                     continue
                 except ReplayMismatchError as error:
-                    for check in suite.checks:
+                    for check in checks:
                         emit(check, ERROR, str(error))
                     continue
                 except Exception as error:  # the Reader's agent raised: grade it as such
-                    for check in suite.checks:
+                    for check in checks:
                         emit(check, ERROR, "The agent raised {}: {}".format(
                             type(error).__name__, error))
                     continue
@@ -260,10 +270,10 @@ def run_checks(
 
             if outcome.spend_cap_reached:
                 report.stopped_by_spend_cap = True
-                for check in suite.checks:
+                for check in checks:
                     emit(check, STOPPED, "Stopped mid-Case by the Spend Cap.")
                 continue
-            for check in suite.checks:
+            for check in checks:
                 if mode == OFFLINE and is_live_only(check):
                     emit(check, SKIP, "Live only: it needs a model call no recording holds.")
                     continue
@@ -279,6 +289,8 @@ def run_checks(
                     emit(check, ERROR, str(error))
                     continue
                 emit(check, PASS if result.passed else FAIL, result.detail, result.name)
+        carried.extend(
+            check for check in suite.checks if is_on_every_case(check) and check not in carried)
 
     priced = cap.spent_usd if cap is not None else 0.0
     if mode == OFFLINE:
@@ -304,6 +316,21 @@ def run_checks(
         write("Spent {} of the {} Spend Cap.".format(_usd(priced), _usd(cap.limit_usd)))
     write("Passed through module {} of {}.".format(report.passed_through, through))
     return report
+
+
+def _checks_for(
+    case_id: str,
+    carried: Sequence[Check],
+    own: Sequence[Check],
+    graded: Set[Tuple[str, Check]],
+) -> List[Check]:
+    """The Checks one suite grades a Case on: those earlier suites carry to
+    every Case that the Case has not been graded on yet, then the suite's own."""
+    checks = [
+        check for check in carried if (case_id, check) not in graded and check not in own
+    ] + list(own)
+    graded.update((case_id, check) for check in checks)
+    return checks
 
 
 def _passed_through(suites: Sequence[Suite], results: Sequence[CheckRun]) -> int:
