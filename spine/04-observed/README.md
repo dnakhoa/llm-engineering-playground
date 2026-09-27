@@ -195,6 +195,11 @@ the Checks on the verdict hold on every Case, so each Case here is graded on the
 whole verdict once, and a Case a later suite adds is graded on it too without
 listing those Checks again. Listing them would print their results twice.
 
+The six trace Checks hold on every Case the same way. The suite's Cases are
+every earlier suite's Cases, read from those suites rather than copied, and
+every Case a later module adds gets the six too, so no Case from here on goes
+untraced (ADR 0006).
+
 ## Installing the SDK
 
 The tracing needs the OpenTelemetry SDK, which is in the course's

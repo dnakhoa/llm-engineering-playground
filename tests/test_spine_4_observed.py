@@ -168,6 +168,72 @@ def test_the_spine_4_reference_agent_passes_every_observed_check(no_network, cas
 def test_the_suite_runs_every_case_so_far():
     earlier = set(spine_1_loop.CASES) | set(spine_2_knowledge.CASES) | set(spine_3_graded.CASES)
     assert set(CASES) == earlier
+    assert len(CASES) == len(set(CASES))
+
+
+def test_the_suites_cases_are_derived_not_hand_copied():
+    # ADR 0006: copies drift. No Case id is written into the suite's source.
+    from checks.suites import cases_before
+
+    source = (Path(__file__).parent.parent / "checks" / "spine_4_observed.py").read_text(
+        encoding="utf-8")
+    assert CASES == cases_before(4)
+    assert not [case for case in CASES if '"{}"'.format(case) in source]
+
+
+def test_cases_before_a_module_are_every_earlier_suites_cases_once_in_order():
+    from checks.suites import cases_before
+
+    assert cases_before(1) == ()
+    assert cases_before(2) == spine_1_loop.CASES
+    assert cases_before(4) == tuple(dict.fromkeys(
+        spine_1_loop.CASES + spine_2_knowledge.CASES + spine_3_graded.CASES))
+
+
+def test_every_trace_check_holds_on_every_case():
+    from checks import is_on_every_case
+
+    assert [c.__name__ for c in CHECKS if not is_on_every_case(c)] == []
+
+
+def test_a_case_a_later_suite_adds_gets_the_trace_checks(no_network):
+    # A module 5 suite that lists none of Spine 4's Checks, on a Case of its own.
+    from checks.suites import Suite, discover_suites
+    from tests.fixtures.checks_cli_suites import AGAIN
+
+    later = Suite(module=5, title="Later", cases=(AGAIN,), checks=())
+    lines = []
+
+    report = run_checks(through=5, agent=OBSERVED_AGENT,
+                        suites=discover_suites() + (later,), out=lines.append)
+
+    graded = [(r.name, r.status) for r in report.results
+              if r.module == 5 and r.case_id == "upgrade-to-pro-again"]
+    assert {name for name, _ in graded} >= {check.__name__ for check in CHECKS}
+    assert all(status == "pass" for _, status in graded), graded
+    assert report.passed is True, "\n".join(lines)
+
+
+#: ADR 0006: offline, each module's Cases replay against that module's own
+#: reference agent, the agent whose requests the recording holds.
+_OWN_REFERENCE_AGENT = {1: "flagship.loop:run", 2: "flagship.knowledge:run",
+                        3: "flagship.knowledge:run", 4: OBSERVED_AGENT}
+
+
+@pytest.mark.parametrize("case_id", CASES)
+def test_each_earlier_case_passes_the_trace_checks_on_its_own_modules_agent(
+        no_network, case_id):
+    # The older reference agents do not name themselves: that is a warning,
+    # never a failure, so the trace Checks on every Case and ADR 0006 agree.
+    case = load_case(case_id)
+    agent = _OWN_REFERENCE_AGENT[case.tags["module"]]
+
+    results = _results(run_case(case, agent, mode="offline"))
+
+    assert {name: r.detail for name, r in results.items() if not r.passed} == {}
+    warned = {name for name, r in results.items() if r.warning}
+    assert warned == (set() if agent == OBSERVED_AGENT
+                      else {"the_agent_span_names_the_agent"})
 
 
 def test_the_suite_lists_only_its_own_checks():

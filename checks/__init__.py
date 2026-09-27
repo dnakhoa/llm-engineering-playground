@@ -66,12 +66,13 @@ def is_live_only(check: Callable[..., CheckResult]) -> bool:
 
 
 def on_every_case(check: F) -> F:
-    """Mark a Check that holds on every Case, such as one part of the verdict.
+    """Mark a Check that holds on every Case, such as one part of the verdict
+    or one of the trace Checks.
 
     The Checks CLI grades every later suite's Cases on it too, once each. The
     verdict is what ``Outcome.resolved`` is read from, so a Case a later suite
     adds, which the marking suite does not run, is still failed when it is not
-    resolved.
+    resolved, and still has its trace graded once a module has traces.
     """
     setattr(check, "on_every_case", True)
     return check

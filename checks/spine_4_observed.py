@@ -6,8 +6,11 @@ nothing here: every model call needs its chat span, every tool call the model
 asked for needs its tool span, and the tokens and cost on the spans must add
 up to the Outcome's, because the Budgeted module prices the agent from them.
 
-They run on every Case so far, so that multi-turn Cases and Knowledge Base
-searches are traced as completely as a single-turn upgrade.
+They run on every Case so far (``CASES``, derived from the earlier suites,
+never copied), so that multi-turn Cases and Knowledge Base searches are traced
+as completely as a single-turn upgrade. And they hold on every Case
+(``on_every_case``), so every later suite's Cases are graded on them too,
+without that suite listing them (ADR 0006).
 """
 from __future__ import annotations
 
@@ -36,16 +39,12 @@ from company.tracing import (
 )
 from llm.types import ROLE_ASSISTANT
 
-from . import CheckResult, needs_trace
+from . import CheckResult, needs_trace, on_every_case
+from .suites import cases_before
 
 MODULE = 4
 TITLE = "Observed"
-CASES = (
-    "upgrade-to-pro",
-    "downgrade-with-prorated-refund",
-    "annual-refund-outside-window",
-    "upgrade-after-a-question",
-)
+CASES = cases_before(MODULE)
 
 #: What each operation's span must look like under the pinned conventions:
 #: its kind, and the attributes the conventions require or this course relies on.
@@ -60,6 +59,7 @@ def _describe(span: SpanRecord) -> str:
     return "'{}'".format(span.name)
 
 
+@on_every_case
 @needs_trace
 def trace_is_one_tree_under_the_agent_span(outcome: Outcome) -> CheckResult:
     """One trace, one ``invoke_agent`` span at its root, every other span below it."""
@@ -83,6 +83,7 @@ def trace_is_one_tree_under_the_agent_span(outcome: Outcome) -> CheckResult:
         len(trace.spans) - 1, _describe(agents[0])))
 
 
+@on_every_case
 @needs_trace
 def spans_follow_the_pinned_conventions(outcome: Outcome) -> CheckResult:
     """Every GenAI span has the pinned schema, its operation's name, kind and attributes."""
@@ -114,6 +115,7 @@ def spans_follow_the_pinned_conventions(outcome: Outcome) -> CheckResult:
     return CheckResult(name, True, "{} spans checked.".format(len(outcome.trace.spans)))
 
 
+@on_every_case
 @needs_trace
 def every_model_call_has_a_chat_span(outcome: Outcome) -> CheckResult:
     """One ``chat`` span per model call the agent made, each under the agent span."""
@@ -129,6 +131,7 @@ def every_model_call_has_a_chat_span(outcome: Outcome) -> CheckResult:
     return CheckResult(name, True, "{0} model calls, {0} chat spans.".format(outcome.steps))
 
 
+@on_every_case
 @needs_trace
 def every_tool_call_has_a_tool_span(outcome: Outcome) -> CheckResult:
     """Each tool call the model asked for has an ``execute_tool`` span with its call id."""
@@ -153,6 +156,7 @@ def every_tool_call_has_a_tool_span(outcome: Outcome) -> CheckResult:
     return CheckResult(name, True, "{0} tool calls, {0} traced.".format(len(asked)))
 
 
+@on_every_case
 @needs_trace
 def span_tokens_and_cost_match_the_outcome(outcome: Outcome) -> CheckResult:
     """The chat spans' tokens and cost add up to the Outcome's, and so does the agent span."""
@@ -184,6 +188,7 @@ def _number(value: float) -> str:
     return str(value) if float(value).is_integer() else "{:.6f}".format(value)
 
 
+@on_every_case
 @needs_trace
 def the_agent_span_names_the_agent(outcome: Outcome) -> CheckResult:
     """The agent says who it is (``env.describe_agent``), so a backend can find its traces.
