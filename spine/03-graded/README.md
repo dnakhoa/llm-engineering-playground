@@ -81,8 +81,9 @@ An agent that hits the step limit, or answers a customer turn with nothing,
 fails every Case, including the Case where nothing was meant to change. Without
 that rule, an agent that gives up at once passes `annual-refund-outside-window`
 by doing nothing, and a customer who got silence counts as helped. The Check
-is "the agent finishes the Case", and it runs in the Knowledge suite as well as
-this one, because the multi-turn Case is where an empty second reply hides.
+is "the agent finishes the Case". It belongs to the Knowledge suite, because
+the multi-turn Case is where an empty second reply hides, and `--modules 3`
+runs it before the Graded Checks.
 
 ## The judge rubric is live only
 
@@ -162,8 +163,9 @@ downgraded them to Free instead.
 
 ## The Graded suite
 
-`checks/spine_3_graded.py` runs six Checks on four Cases that between them
-use every Action built so far:
+`checks/spine_3_graded.py` runs three Checks of its own (no forbidden Action,
+each change once, and the judge rubric) on four Cases that between them use
+every Action built so far:
 
 | Case | Actions the reference agent runs |
 |---|---|
@@ -173,7 +175,9 @@ use every Action built so far:
 | `upgrade-after-a-question` | `look_up_account`, `change_plan`, over two turns |
 
 A module's run includes every earlier module's suite, so `--modules 3` runs
-the Loop and Knowledge Checks too. Each Case runs once however many suites use
+the Loop and Knowledge Checks too, and a suite lists only its own Checks: the
+Knowledge suite's three verdict Checks are not listed again here, which would
+print each of their results twice. Each Case runs once however many suites use
 it.
 
 ## CI

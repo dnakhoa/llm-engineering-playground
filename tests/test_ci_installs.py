@@ -29,7 +29,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 #: Import name -> the name pip installs it under, where the two differ.
-DISTRIBUTIONS = {"dotenv": "python-dotenv", "yaml": "pyyaml"}
+DISTRIBUTIONS = {
+    "dotenv": "python-dotenv",
+    "yaml": "pyyaml",
+    "opentelemetry": "opentelemetry-sdk",
+}
 
 _PIP = re.compile(r"^(?:python3?\s+-m\s+)?pip3?\s+install\s+(?P<args>.+)$")
 _PYTEST = re.compile(r"^(?:python3?\s+-m\s+)?pytest(?:\s+(?P<args>.*))?$")

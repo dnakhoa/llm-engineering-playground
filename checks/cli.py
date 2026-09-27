@@ -52,7 +52,7 @@ from .judge import Judge, judging_with
 from .suites import Check, Suite, discover_suites
 
 #: The reference Flagship Agent at the latest Spine module's end state.
-DEFAULT_AGENT = "flagship.knowledge:run"
+DEFAULT_AGENT = "flagship.observed:run"
 DEFAULT_SPEND_CAP_USD = 1.00
 
 #: The Reader's settings: the root .env that `cp .env.example .env` creates.

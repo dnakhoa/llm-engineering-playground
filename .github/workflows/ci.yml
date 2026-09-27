@@ -131,8 +131,9 @@ jobs:
       # checks this line against those imports). python-dotenv reads .env.example the
       # way the Appendix notebooks read a Reader's .env. mcp is the MCP Python SDK the
       # Appendix example server runs on (tests/test_appendix_mcp_frameworks.py).
+      # opentelemetry-sdk traces every Case run (company/tracing.py, Spine 4).
       - name: Install dependencies
-        run: pip install pytest tiktoken python-dotenv "mcp>=2.2"
+        run: pip install pytest tiktoken python-dotenv "mcp>=2.2" opentelemetry-sdk
 
       - name: Run tests
         run: pytest tests/ -v

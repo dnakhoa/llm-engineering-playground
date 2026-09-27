@@ -6,6 +6,10 @@ change_plan, issue_refund) across four Cases, and grades what the agent
 one part of the Outcome's ``verdict``, the same verdict ``Outcome.resolved``
 is read from, so a run these Checks fail is never counted as resolved.
 
+It lists only its own Checks. The other three parts of the verdict are the
+Knowledge suite's (``checks.spine_2_knowledge``), which a module 3 run runs
+first, so listing them here too would print each of their results twice.
+
 The judge rubric is the one live-only Check: an LLM-as-judge grades the reply
 against the Case's ``judge_rubric``. Offline, the Checks CLI skips it.
 """
@@ -15,11 +19,6 @@ from company.runner import Outcome
 
 from . import CheckResult, live_only
 from .judge import current_judge
-from .spine_2_knowledge import (
-    backend_reaches_the_expected_state,
-    nothing_changes_beyond_the_expected_state,
-    the_agent_finishes_the_case,
-)
 
 MODULE = 3
 TITLE = "Graded"
@@ -75,9 +74,6 @@ def reply_meets_the_judge_rubric(outcome: Outcome) -> CheckResult:
 
 
 CHECKS = (
-    the_agent_finishes_the_case,
-    backend_reaches_the_expected_state,
-    nothing_changes_beyond_the_expected_state,
     no_forbidden_action_is_attempted,
     each_change_is_attempted_once,
     reply_meets_the_judge_rubric,

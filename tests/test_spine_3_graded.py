@@ -19,7 +19,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from checks import is_live_only  # noqa: E402
+from checks import is_live_only, spine_2_knowledge  # noqa: E402
 from checks.spine_2_knowledge import nothing_changes_beyond_the_expected_state  # noqa: E402
 from checks.spine_3_graded import (  # noqa: E402
     CASES,
@@ -28,7 +28,7 @@ from checks.spine_3_graded import (  # noqa: E402
     reply_meets_the_judge_rubric,
 )
 from checks.cli import run_checks  # noqa: E402
-from checks.suites import Suite  # noqa: E402
+from checks.suites import Suite, discover_suites  # noqa: E402
 from company.runner import StepLimitReached, load_case, run_case  # noqa: E402
 from llm.testing import StubTransport  # noqa: E402
 from llm.types import ToolCall  # noqa: E402
@@ -47,9 +47,15 @@ def no_network(monkeypatch):
 
 
 def _graded(outcome):
-    """Every Graded Check that runs Offline, on one Outcome: name -> passed."""
+    """Every Check on the verdict that runs Offline, on one Outcome: name -> passed.
+
+    The Graded suite lists only its own Checks; the verdict's other parts are
+    the Knowledge suite's, which a module 3 run runs first.
+    """
     return {
-        check.__name__: check(outcome).passed for check in CHECKS if not is_live_only(check)
+        check.__name__: check(outcome).passed
+        for check in spine_2_knowledge.CHECKS + CHECKS
+        if not is_live_only(check)
     }
 
 
@@ -138,9 +144,10 @@ def test_an_agent_that_never_finishes_fails_every_case(agent, case_id):
 def test_the_checks_cli_fails_every_case_of_an_agent_that_never_finishes(agent, no_network):
     report = run_checks(through=3, agent=agent, out=lambda line: None)
 
-    failed = {(r.module, r.case_id) for r in report.results if r.status == "fail"}
-    graded = {(r.module, r.case_id) for r in report.results}
-    assert failed == graded
+    # Each Case fails in some suite; which one depends on the Case, since a
+    # suite lists only its own Checks.
+    failed = {r.case_id for r in report.results if r.status == "fail"}
+    assert failed == set(CASES)
     assert report.passed_through == 0
 
 
@@ -359,7 +366,8 @@ def test_the_ci_command_passes_offline_with_no_key_and_no_network(capsys, no_net
 
     out = capsys.readouterr().out
     assert code == 0, out
-    assert out.strip().splitlines()[-1].startswith("Passed through module 3 of")
+    top = discover_suites()[-1].module
+    assert out.strip().splitlines()[-1] == "Passed through module {0} of {0}.".format(top)
 
 
 PANEL = (

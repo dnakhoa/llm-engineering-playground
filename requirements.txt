@@ -7,6 +7,9 @@ openai>=1.0.0
 anthropic>=0.25.0
 python-dotenv>=1.0.0
 
+# ── Tracing (Spine 4: every Case run is an OpenTelemetry trace) ────────────────
+opentelemetry-sdk>=1.27.0
+
 # ── LangChain Ecosystem ────────────────────────────────────────────────────────
 langchain>=0.2.0
 langchain-core>=0.2.0

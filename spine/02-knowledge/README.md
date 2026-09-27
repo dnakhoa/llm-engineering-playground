@@ -187,7 +187,8 @@ python -m checks --modules 2 --agent path/to/my_agent.py:run \
 ```
 
 `--modules 2` runs module 1's Check too. Without `--agent`, the CLI grades the
-reference agent at the latest module, `flagship.knowledge:run`. Offline replays
+reference agent at the latest module; at the end of this one that is
+`flagship.knowledge:run`. Offline replays
 only the requests the reference agent sends, so your own agent is graded live,
 or recorded once with `RecordingTransport` and replayed from then on.
 

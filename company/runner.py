@@ -3,8 +3,9 @@
 This is seam 1. Everything a Check needs comes back on the Outcome: the final
 Backend state and its diff from the seed, every Action the agent attempted and
 every one that ran, the transcript, the reply to each customer turn, usage and
-cost, whether the step limit stopped the run, and the verdict: whether the Case
-was resolved, and if not, why.
+cost, whether the step limit stopped the run, the verdict: whether the Case
+was resolved, and if not, why, and the run's OpenTelemetry trace
+(``company.tracing``).
 
     from company.runner import load_case, run_case
 
@@ -45,6 +46,15 @@ from llm.types import (
 
 from .backend import ACTION_NAMES, READ_ONLY_ACTIONS, ActionRecord, Actions, Backend
 from .knowledge import SEARCH_TOOL, LexicalRetriever, Retriever, load_articles, run_search
+from .tracing import (
+    CaseTracer,
+    Trace,
+    describe_agent,
+    record_response,
+    record_stop,
+    record_tool_result,
+    record_usage,
+)
 
 COMPANY_DIR = Path(__file__).resolve().parent
 CASES_DIR = COMPANY_DIR / "cases"
@@ -214,6 +224,11 @@ class Environment:
     toward the step limit and toward usage and cost. ``memory`` is the agent's
     own, for the length of one Case: empty at the first turn, kept across the
     follow-ups, gone before the next Case.
+
+    Every ``complete`` is a ``chat`` span and every ``act`` an ``execute_tool``
+    span, under the Case's ``invoke_agent`` span (``company.tracing``). An agent
+    names itself on that span with ``describe_agent``, and can add spans of its
+    own with ``tracer``, an OpenTelemetry tracer: they join the same trace.
     """
 
     def __init__(
@@ -227,8 +242,14 @@ class Environment:
         options: Optional[CallOptions] = None,
         spend_cap: Optional[SpendCap] = None,
         knowledge: Optional[Retriever] = None,
+        tracing: Optional[CaseTracer] = None,
+        agent_span=None,
     ) -> None:
         self._actions = actions
+        self._tracing = tracing if tracing is not None else CaseTracer()
+        self.tracer = self._tracing.tracer
+        #: The Case's ``invoke_agent`` span, while the agent runs.
+        self.agent_span = agent_span
         self.knowledge = knowledge
         self.memory: Dict[str, Any] = {}
         self._spend_cap = spend_cap
@@ -247,6 +268,14 @@ class Environment:
             return self._actions.tools
         return self._actions.tools + (SEARCH_TOOL,)
 
+    def describe_agent(
+        self, name: str, *, version: Optional[str] = None, description: Optional[str] = None
+    ) -> None:
+        """Name the agent on the Case's ``invoke_agent`` span, so a tracing
+        backend can tell its traces from any other agent's."""
+        if self.agent_span is not None:
+            describe_agent(self.agent_span, name, version=version, description=description)
+
     def complete(
         self,
         messages: Sequence[Message],
@@ -260,15 +289,19 @@ class Environment:
         if self._spend_cap is not None:
             self._spend_cap.check()
         self.steps += 1
-        response = complete(
-            model=self.model,
-            messages=messages,
-            tools=tools,
-            system=system,
-            options=options if options is not None else self._options,
-            transport=self._transport,
-            registry=self._registry,
-        )
+        with self._tracing.chat(
+            model=self.model, provider=self._registry.get(self.model).provider
+        ) as span:
+            response = complete(
+                model=self.model,
+                messages=messages,
+                tools=tools,
+                system=system,
+                options=options if options is not None else self._options,
+                transport=self._transport,
+                registry=self._registry,
+            )
+            record_response(span, response)
         self.responses.append(response)
         if self._spend_cap is not None:
             self._spend_cap.charge(response.cost_usd)
@@ -281,10 +314,13 @@ class Environment:
         A Knowledge Base search reads and changes nothing, so it is not an
         Action: it goes into the transcript but not into the Action log.
         """
-        if self.knowledge is not None and call.name == SEARCH_TOOL.name:
-            result = run_search(self.knowledge, call)
-        else:
-            result = self._actions.run(call)
+        description = next((t.description for t in self.tools if t.name == call.name), None)
+        with self._tracing.tool(call, description) as span:
+            if self.knowledge is not None and call.name == SEARCH_TOOL.name:
+                result = run_search(self.knowledge, call)
+            else:
+                result = self._actions.run(call)
+            record_tool_result(span, result)
         last = self.transcript[-1] if self.transcript else None
         if last is not None and last.role == ROLE_TOOL:
             self.transcript[-1] = Message.tool(last.tool_results + (result,))
@@ -350,6 +386,9 @@ class Outcome:
     spend_cap_reached: bool = False
     #: The agent's reply to each customer turn it answered, in order.
     replies: Tuple[Optional[str], ...] = ()
+    #: The run's OpenTelemetry trace: one ``invoke_agent`` span over a ``chat``
+    #: span per model call and an ``execute_tool`` span per tool call.
+    trace: Trace = field(default_factory=Trace)
 
     @property
     def resolved(self) -> bool:
@@ -524,6 +563,7 @@ def run_case(
     registry: Optional[Registry] = None,
     spend_cap: Optional[SpendCap] = None,
     retriever: Optional[Retriever] = None,
+    exporters: Sequence[Any] = (),
 ) -> Outcome:
     """Run ``case`` against ``agent`` on a fresh Backend and report the Outcome.
 
@@ -538,12 +578,17 @@ def run_case(
     Pass a ``SpendCap`` shared across a run's Cases to stop the run when it
     has spent the limit; a Case it stops is reported, unresolved, with
     ``spend_cap_reached`` set.
+
+    Every run is traced (``company.tracing``); the trace is ``outcome.trace``.
+    Pass OpenTelemetry span ``exporters``, such as an ``OTLPSpanExporter``, to
+    send the same spans to a tracing backend as well.
     """
     registry = registry or load_registry()
     run_agent = load_agent(agent)
     backend = Backend.seeded()
     seed = backend.export_state()
     actions = backend.actions_for(case.customer_account_id, allowed=case.actions)
+    tracing = CaseTracer(exporters=tuple(exporters))
     env = Environment(
         actions=actions,
         model=model,
@@ -553,19 +598,38 @@ def run_case(
         options=options,
         spend_cap=spend_cap,
         knowledge=_knowledge_for(case, retriever),
+        tracing=tracing,
     )
 
     replies: List[Optional[str]] = []
     step_limit_reached = False
     spend_cap_reached = False
-    try:
-        for turn in case.customer_turns:
-            env.transcript.append(Message.user(turn))
-            replies.append(run_agent(turn, env))
-    except StepLimitReached:
-        step_limit_reached = True
-    except SpendCapReached:
-        spend_cap_reached = True
+    with tracing.agent(
+        case_id=case.id, model=model, provider=registry.get(model).provider
+    ) as agent_span:
+        env.agent_span = agent_span
+        try:
+            for turn in case.customer_turns:
+                env.transcript.append(Message.user(turn))
+                replies.append(run_agent(turn, env))
+        except StepLimitReached as stop:
+            step_limit_reached = True
+            record_stop(agent_span, "step_limit_reached", str(stop))
+        except SpendCapReached as stop:
+            spend_cap_reached = True
+            record_stop(agent_span, "spend_cap_reached", str(stop))
+        finally:
+            env.agent_span = None
+            usage = _total_usage(env.responses)
+            cost_usd = sum(r.cost_usd for r in env.responses)
+            record_usage(
+                agent_span,
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
+                cache_read_tokens=usage.cached_input_tokens,
+                cache_creation_tokens=usage.cache_write_input_tokens,
+                cost_usd=cost_usd,
+            )
     # The final reply is the answer to the last turn; a Case stopped before it has none.
     reply = replies[-1] if len(replies) == len(case.customer_turns) else None
 
@@ -582,15 +646,8 @@ def run_case(
         actions_attempted=attempted,
         actions_executed=executed,
         transcript=tuple(env.transcript),
-        usage=Usage(
-            input_tokens=sum(r.usage.input_tokens for r in env.responses),
-            output_tokens=sum(r.usage.output_tokens for r in env.responses),
-            cached_input_tokens=sum(r.usage.cached_input_tokens for r in env.responses),
-            cache_write_input_tokens=sum(
-                r.usage.cache_write_input_tokens for r in env.responses
-            ),
-        ),
-        cost_usd=sum(r.cost_usd for r in env.responses),
+        usage=usage,
+        cost_usd=cost_usd,
         steps=env.steps,
         step_limit=step_limit,
         step_limit_reached=step_limit_reached,
@@ -600,4 +657,14 @@ def run_case(
         ),
         spend_cap_reached=spend_cap_reached,
         replies=tuple(replies),
+        trace=tracing.finish(),
+    )
+
+
+def _total_usage(responses: Sequence[Response]) -> Usage:
+    return Usage(
+        input_tokens=sum(r.usage.input_tokens for r in responses),
+        output_tokens=sum(r.usage.output_tokens for r in responses),
+        cached_input_tokens=sum(r.usage.cached_input_tokens for r in responses),
+        cache_write_input_tokens=sum(r.usage.cache_write_input_tokens for r in responses),
     )

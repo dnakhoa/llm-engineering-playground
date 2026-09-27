@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from checks.cli import run_checks  # noqa: E402
+from checks.cli import DEFAULT_AGENT, run_checks  # noqa: E402
 from checks.spine_2_knowledge import (  # noqa: E402
     CASES,
     CHECKS,
@@ -307,7 +307,7 @@ def test_the_checks_cli_grades_the_latest_reference_agent_by_default(capsys, no_
 
     out = capsys.readouterr().out
     assert code == 0, out
-    assert "agent flagship.knowledge:run" in out
+    assert "agent {}".format(DEFAULT_AGENT) in out
     assert out.strip().splitlines()[-1] == "Passed through module 2 of 2."
 
 
