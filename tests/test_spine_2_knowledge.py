@@ -34,8 +34,10 @@ from company.runner import load_case, run_case  # noqa: E402
 from llm.replay import ReplayMismatchError  # noqa: E402
 from llm.testing import StubTransport  # noqa: E402
 from llm.types import ToolCall  # noqa: E402
+from tests.fixtures.knowledge_agents import WRONG_ON_THE_PRORATED_CASE  # noqa: E402
 
 AGENT = "flagship.knowledge:run"
+WRONG_AGENTS = "tests.fixtures.knowledge_agents"
 PRORATED = load_case("downgrade-with-prorated-refund")
 OUTSIDE_WINDOW = load_case("annual-refund-outside-window")
 MULTI_TURN = load_case("upgrade-after-a-question")
@@ -51,6 +53,7 @@ def no_network(monkeypatch):
 
 
 def _passes_every_check(outcome):
+    """The Knowledge suite's verdict on one Case: every Check in its CHECKS passes."""
     results = [check(outcome) for check in CHECKS]
     return all(result.passed for result in results), [r.detail for r in results]
 
@@ -104,6 +107,7 @@ def test_a_refund_the_policy_allows_but_the_article_does_not_give_fails_the_chec
     assert result.passed is False
     assert "920" in result.detail and "500" in result.detail
     assert outcome.resolved is False
+    assert _passes_every_check(outcome)[0] is False
 
 
 def test_a_full_refund_is_refused_by_the_action_and_fails_the_check():
@@ -113,6 +117,7 @@ def test_a_full_refund_is_refused_by_the_action_and_fails_the_check():
         ("change_plan", True), ("issue_refund", False)]
     assert outcome.final_state["refunds"] == {}
     assert backend_reaches_the_expected_state(outcome).passed is False
+    assert _passes_every_check(outcome)[0] is False
 
 
 def test_two_refunds_that_add_up_to_the_policy_amount_fail_the_check():
@@ -131,6 +136,40 @@ def test_two_refunds_that_add_up_to_the_policy_amount_fail_the_check():
     assert result.passed is False
     assert "rf_0002" in result.detail
     assert backend_reaches_the_expected_state(outcome).passed is False
+    assert _passes_every_check(outcome)[0] is False
+
+
+def test_an_agent_that_does_nothing_fails_the_prorated_refund_case():
+    # Nothing changes, so nothing changes beyond the expected state either:
+    # only the expected-state Check stands between this agent and a PASS.
+    def does_nothing(customer_turn, env):
+        return "Sorry, can't help."
+
+    outcome = run_case(PRORATED, does_nothing, transport=StubTransport())
+
+    assert outcome.diff == {}
+    assert nothing_changes_beyond_the_expected_state(outcome).passed is True
+    assert _passes_every_check(outcome)[0] is False
+
+
+@pytest.mark.parametrize("wrong", WRONG_ON_THE_PRORATED_CASE)
+def test_the_checks_cli_fails_module_2_when_only_the_prorated_refund_is_wrong(
+    wrong, capsys, no_network
+):
+    # The agent is the reference agent on every other Case, so the prorated
+    # refund is all that stands between it and "module 2 of 2". This is what
+    # the Reader runs, graded by whatever the Knowledge suite's CHECKS hold.
+    from checks.cli import main
+
+    code = main(["--modules", "2", "--agent", "{}:{}".format(WRONG_AGENTS, wrong)])
+
+    out = capsys.readouterr().out
+    graded = [line.split() for line in out.splitlines()
+              if line.strip().startswith(("PASS", "FAIL", "SKIP", "STOP", "ERROR"))]
+    assert code == 1, out
+    assert {row[0] for row in graded} <= {"PASS", "FAIL"}, out
+    assert {row[1] for row in graded if row[0] == "FAIL"} == {PRORATED.id + ":"}, out
+    assert out.strip().splitlines()[-1] == "Passed through module 1 of 2."
 
 
 # ── The refund outside the window ─────────────────────────────────────────────
